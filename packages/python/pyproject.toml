@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lizard"
+version = "0.1.0"
+description = "Lizard SDK — cloud sandboxes for AI agents"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.8"
+dependencies = [
+  "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["lizard"]
