@@ -9,3 +9,13 @@ export {
   NotFoundError,
   TimeoutError,
 } from './errors'
+
+export { CodeSandbox } from './code-interpreter'
+export type {
+  Execution,
+  ExecutionError,
+  CodeContext,
+  RunCodeOpts,
+  CreateContextOpts,
+  RunCodeLanguage,
+} from './code-interpreter'
