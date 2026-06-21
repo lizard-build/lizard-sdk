@@ -108,7 +108,7 @@ class NodeExecutor:
                     continue
 
                 if item.get("type") == "error_obj":
-                    yield {"type": "error", **item["data"] if isinstance(item.get("data"), dict) else {"name": "Error", "message": str(item), "traceback": ""}}
+                    yield {"type": "error", **(item["data"] if isinstance(item.get("data"), dict) else {"name": "Error", "message": str(item), "traceback": ""})}
                     continue
 
                 yield item
