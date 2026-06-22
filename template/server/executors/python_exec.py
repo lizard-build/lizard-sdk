@@ -38,6 +38,8 @@ class PythonExecutor:
 
             try:
                 with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+                    import importlib
+                    importlib.invalidate_caches()
                     compiled = compile(code, "<sandbox>", "exec")
                     exec(compiled, self.globals)
 
