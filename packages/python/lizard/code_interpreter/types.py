@@ -39,6 +39,7 @@ class ExecutionError(Exception):
     def __init__(self, name: str, message: str, traceback: str):
         super().__init__(message)
         self.name = name
+        self.message = message
         self.traceback = traceback
 
 
