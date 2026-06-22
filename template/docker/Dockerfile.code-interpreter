@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
     apt-get update && apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
+# Pre-install common SDK packages globally so sandboxes don't need to npm install (OOM risk in 512MB VMs)
+RUN npm install -g @daytona/sdk tsx typescript
 RUN mkdir -p /home/user
 WORKDIR /app
 COPY server/requirements.txt .
