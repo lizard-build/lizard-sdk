@@ -1,4 +1,4 @@
-import { Sandbox } from '../sandbox'
+import { Sandbox, SandboxOpts } from '../sandbox'
 import { ConnectionOpts } from '../config'
 import {
   Execution,
@@ -192,11 +192,11 @@ export class CodeSandbox extends Sandbox {
     if (!res.ok) throw new Error(`Failed to restart context: ${await res.text()}`)
   }
 
-  static override async create(opts?: Parameters<typeof Sandbox.create>[0]): Promise<CodeSandbox>
-  static override async create(template: string, opts?: Parameters<typeof Sandbox.create>[1]): Promise<CodeSandbox>
+  static override async create(opts?: SandboxOpts): Promise<CodeSandbox>
+  static override async create(template: string, opts?: SandboxOpts): Promise<CodeSandbox>
   static override async create(
-    templateOrOpts?: string | Parameters<typeof Sandbox.create>[0],
-    opts?: Parameters<typeof Sandbox.create>[1]
+    templateOrOpts?: string | SandboxOpts,
+    opts?: SandboxOpts
   ): Promise<CodeSandbox> {
     return super.create(templateOrOpts as string, opts) as Promise<CodeSandbox>
   }

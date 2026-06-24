@@ -37,7 +37,7 @@ export { SandboxOpts, SandboxInfo }
  * ```
  */
 export class Sandbox extends SandboxClient {
-  protected static readonly defaultTemplate = 'base'
+  protected static readonly defaultTemplate: string = 'base'
   protected static readonly defaultTimeoutMs = DEFAULT_SANDBOX_TIMEOUT_MS
 
   /**

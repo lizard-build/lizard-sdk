@@ -162,20 +162,6 @@ def _wait_for_server(guest_ip: str, timeout: float = 5.0) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(scope="module")
-def sandbox():
-    """One code-interpreter sandbox shared across tests in this module."""
-    sb = NodeSandbox.create()
-    _wait_for_server(sb.guest_ip)
-    yield sb
-    sb.kill()
-
-
-# ---------------------------------------------------------------------------
 # 1. Warm-pool performance
 # ---------------------------------------------------------------------------
 
