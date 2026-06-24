@@ -101,4 +101,18 @@ export class SandboxClient {
     })
     if (!res.ok) await handleApiError(res)
   }
+
+  protected static async exposeSandboxPort(
+    sandboxId: string,
+    port: number,
+    opts?: ConnectionOpts
+  ): Promise<{ hostname: string; url: string }> {
+    const config = new ConnectionConfig(opts)
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/expose/${port}`, {
+      method: 'POST',
+      headers: config.headers,
+    })
+    if (!res.ok) await handleApiError(res)
+    return res.json() as Promise<{ hostname: string; url: string }>
+  }
 }

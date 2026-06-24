@@ -44,8 +44,8 @@ const CODE_INTERPRETER_PORT = 8080
 export class CodeSandbox extends Sandbox {
   protected static override readonly defaultTemplate = 'code-interpreter-v1'
 
-  private get serverUrl(): string {
-    return `https://${this.getHost(CODE_INTERPRETER_PORT)}`
+  private get serverUrl(): Promise<string> {
+    return this.getHost(CODE_INTERPRETER_PORT).then(h => `https://${h}`)
   }
 
   /**
@@ -86,7 +86,7 @@ export class CodeSandbox extends Sandbox {
       : undefined
 
     try {
-      const res = await fetch(`${this.serverUrl}/execute`, {
+      const res = await fetch(`${await this.serverUrl}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -153,7 +153,7 @@ export class CodeSandbox extends Sandbox {
    * ```
    */
   async createContext(opts?: CreateContextOpts): Promise<CodeContext> {
-    const res = await fetch(`${this.serverUrl}/contexts`, {
+    const res = await fetch(`${await this.serverUrl}/contexts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -169,7 +169,7 @@ export class CodeSandbox extends Sandbox {
    * List all active execution contexts in this sandbox.
    */
   async listContexts(): Promise<CodeContext[]> {
-    const res = await fetch(`${this.serverUrl}/contexts`)
+    const res = await fetch(`${await this.serverUrl}/contexts`)
     if (!res.ok) throw new Error(`Failed to list contexts: ${await res.text()}`)
     return res.json()
   }
@@ -179,7 +179,7 @@ export class CodeSandbox extends Sandbox {
    */
   async deleteContext(context: CodeContext | string): Promise<void> {
     const id = typeof context === 'string' ? context : context.id
-    const res = await fetch(`${this.serverUrl}/contexts/${id}`, { method: 'DELETE' })
+    const res = await fetch(`${await this.serverUrl}/contexts/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error(`Failed to delete context: ${await res.text()}`)
   }
 
@@ -188,7 +188,7 @@ export class CodeSandbox extends Sandbox {
    */
   async restartContext(context: CodeContext | string): Promise<void> {
     const id = typeof context === 'string' ? context : context.id
-    const res = await fetch(`${this.serverUrl}/contexts/${id}/restart`, { method: 'POST' })
+    const res = await fetch(`${await this.serverUrl}/contexts/${id}/restart`, { method: 'POST' })
     if (!res.ok) throw new Error(`Failed to restart context: ${await res.text()}`)
   }
 
