@@ -32,7 +32,7 @@ jobs:
         run: cp README.md packages/js/README.md
 
       - name: Publish
-        run: npm publish --access public
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          npm publish --access public
         working-directory: packages/js
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
