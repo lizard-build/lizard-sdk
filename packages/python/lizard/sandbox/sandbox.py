@@ -262,10 +262,8 @@ class Sandbox:
 
     def get_host(self, port: int) -> str:
         """
-        Get the public HTTPS URL for a port exposed inside the sandbox.
-
-        Useful for reaching HTTP servers started inside the microVM from your
-        agent or tests without any additional tunneling.
+        Register a public HTTPS route for a port inside the sandbox and return
+        the hostname (without scheme).
 
         :param port: Port number the service is listening on inside the microVM.
 
@@ -273,12 +271,16 @@ class Sandbox:
 
             sandbox.process.exec_("npx -y serve -p 3000 &")
             url = sandbox.get_host(3000)
-            # https://{sandboxId}-3000.sandbox.lizard.run
+            # {sandboxId}-3000.sandbox.{region}.onlizard.com
         """
-        from urllib.parse import urlparse
-        api_host = urlparse(self._config.api_url).netloc
-        base_host = api_host.replace("api.", "", 1)
-        return f"{self.sandbox_id}-{port}.sandbox.{base_host}"
+        import httpx
+        res = httpx.post(
+            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/expose/{port}",
+            headers=self._config.headers,
+            timeout=30,
+        )
+        res.raise_for_status()
+        return res.json()["hostname"]
 
     def __enter__(self) -> "Sandbox":
         return self

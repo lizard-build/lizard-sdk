@@ -204,10 +204,9 @@ export class Sandbox extends SandboxClient {
    * // https://{sandboxId}-3000.sandbox.lizard.run
    * ```
    */
-  getHost(port: number): string {
-    const apiHost = new URL(this.connectionConfig.apiUrl).host
-    const baseHost = apiHost.replace(/^api\./, '')
-    return `${this.sandboxId}-${port}.sandbox.${baseHost}`
+  async getHost(port: number, opts?: ConnectionOpts): Promise<string> {
+    const { hostname } = await SandboxClient.exposeSandboxPort(this.sandboxId, port, this.resolveOpts(opts))
+    return hostname
   }
 
   private resolveOpts(opts?: ConnectionOpts): ConnectionOpts {
