@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lizard"
+name = "lizard-sdk"
 version = "0.1.0"
 description = "Lizard SDK — cloud sandboxes for AI agents"
 readme = "README.md"

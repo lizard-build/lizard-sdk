@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 .env
 .venv/
+venv/
+*.tgz
+package-lock.json
