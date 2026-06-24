@@ -8,10 +8,10 @@ Each sandbox is an isolated microVM with its own filesystem, network, and proces
 
 ```bash
 # JavaScript / TypeScript
-npm install lizard
+npm install @lizard-build/sdk
 
 # Python
-pip install lizard
+pip install lizard-sdk
 ```
 
 ## Quickstart
@@ -19,7 +19,7 @@ pip install lizard
 ### JavaScript / TypeScript
 
 ```ts
-import { Sandbox } from 'lizard'
+import { Sandbox } from '@lizard-build/sdk'
 
 // Boot a Node.js microVM from the 'node22' template
 const sandbox = await Sandbox.create('node22')

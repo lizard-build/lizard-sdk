@@ -13,12 +13,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install build tools
         run: pip install hatch
+
+      - name: Copy README into package
+        run: cp README.md packages/python/README.md
 
       - name: Set version from tag
         run: hatch version ${GITHUB_REF_NAME#v}
@@ -28,7 +32,7 @@ jobs:
         run: hatch build
         working-directory: packages/python
 
-      - name: Publish
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python/dist/
