@@ -162,14 +162,6 @@ def _wait(guest_ip: str, timeout: float = 5.0) -> None:
     raise TimeoutError(f"{guest_ip}:8080 not ready")
 
 
-@pytest.fixture(scope="module")
-def sb():
-    sandbox = NodeSandbox.create()
-    _wait(sandbox.guest_ip)
-    yield sandbox
-    sandbox.kill()
-
-
 # ---------------------------------------------------------------------------
 # 1. Statefulness  (mirrors e2b test_statefulness.py)
 # ---------------------------------------------------------------------------
