@@ -25,7 +25,7 @@ jobs:
         run: cp README.md packages/python/README.md
 
       - name: Set version from tag
-        run: hatch version ${GITHUB_REF_NAME#v}
+        run: sed -i "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" pyproject.toml
         working-directory: packages/python
 
       - name: Build
