@@ -8,8 +8,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # required for OIDC trusted publisher
 
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +31,11 @@ jobs:
       - name: Copy README
         run: cp README.md packages/js/README.md
 
+      - name: Authenticate to npm
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish
-        run: npm publish --access public --provenance
+        run: npm publish --access public
         working-directory: packages/js
