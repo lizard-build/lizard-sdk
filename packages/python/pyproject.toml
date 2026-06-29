@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lizard-sdk"
-version = "0.1.1"
+version = "0.1.8"
 description = "Lizard SDK — cloud sandboxes for AI agents"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = { text = "Apache-2.0" }
