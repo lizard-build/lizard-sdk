@@ -14,6 +14,7 @@ export interface SandboxOpts extends ConnectionOpts {
   metadata?: Record<string, string>
   envs?: Record<string, string>
   timeoutMs?: number
+  volumeId?: string
 }
 
 /**
@@ -35,6 +36,7 @@ export class SandboxClient {
         timeoutMs,
         metadata: opts?.metadata,
         envs: opts?.envs,
+        volumeId: opts?.volumeId,
       }),
     })
     if (!res.ok) await handleApiError(res)
