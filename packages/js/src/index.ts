@@ -19,3 +19,6 @@ export type {
   CreateContextOpts,
   RunCodeLanguage,
 } from './code-interpreter'
+
+export { Volume } from './volume'
+export type { VolumeInfo, CreateVolumeOpts } from './volume'
