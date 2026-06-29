@@ -1,6 +1,6 @@
 {
   "name": "@lizard-build/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lizard SDK — cloud sandboxes for AI agents",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -21,7 +21,13 @@
   "files": [
     "dist"
   ],
-  "keywords": ["lizard", "sandbox", "ai", "agents", "firecracker"],
+  "keywords": [
+    "lizard",
+    "sandbox",
+    "ai",
+    "agents",
+    "firecracker"
+  ],
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^20.0.0",
