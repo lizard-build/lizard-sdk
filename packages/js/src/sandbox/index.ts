@@ -17,7 +17,7 @@ export { SandboxOpts, SandboxInfo }
  * ```ts
  * import { Sandbox } from 'lizard'
  *
- * const sandbox = await Sandbox.create('node22')
+ * const sandbox = await Sandbox.create('base')
  * await sandbox.fs.write('/app/index.js', 'console.log("hello world")')
  * const result = await sandbox.process.exec('node /app/index.js')
  * console.log(result.stdout) // "hello world"
@@ -26,7 +26,7 @@ export { SandboxOpts, SandboxInfo }
  *
  * @example Pause and resume a long-running session:
  * ```ts
- * const sandbox = await Sandbox.create('python312')
+ * const sandbox = await Sandbox.create('code-interpreter-v1')
  * await sandbox.process.exec('pip install numpy')
  * const id = sandbox.sandboxId
  * await sandbox.pause()
@@ -89,15 +89,16 @@ export class Sandbox extends SandboxClient {
   /**
    * Create a new Lizard sandbox from the specified template.
    *
-   * Available templates include `base`, `node22`, and `python312`. Custom
-   * templates can be built and pushed via `lizard push`.
+   * Available templates: `base` (Debian + Node.js 20) and `code-interpreter-v1`
+   * (Python 3.11 + Node.js 20). Custom templates can be built and pushed via
+   * `lizard push`.
    *
    * @param template Name of the sandbox template to boot from.
    *
    * @example
    * ```ts
-   * const sandbox = await Sandbox.create('node22')
-   * const sandbox = await Sandbox.create('python312', { timeoutMs: 10 * 60 * 1000 })
+   * const sandbox = await Sandbox.create('base')
+   * const sandbox = await Sandbox.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
    * ```
    */
   static async create(template: string, opts?: SandboxOpts): Promise<Sandbox>
