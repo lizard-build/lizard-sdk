@@ -15,6 +15,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Push the tag under a PAT so it re-triggers publish-npm / publish-pypi.
+          # GitHub deliberately does not let the default GITHUB_TOKEN trigger other
+          # workflows. Falls back to GITHUB_TOKEN until RELEASE_PAT exists (tag is
+          # still created, nothing publishes — same as before this change).
+          token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Bump patch version
         id: bump
