@@ -154,7 +154,7 @@ Returns a public HTTPS URL for a port listening inside the microVM — no tunnel
 ```ts
 await sandbox.process.exec('npx -y serve -p 3000 &')
 const url = sandbox.getHost(3000)
-// https://{sandboxId}-3000.sandbox.lizard.run
+// https://{sandboxId}-3000.sandbox.{region}.onlizard.com
 ```
 
 ### `sandbox.pause()` / `sandbox.resume()`
@@ -175,8 +175,8 @@ Extend or reduce the sandbox timeout.
 
 | Variable | Description |
 |---|---|
-| `LIZARD_API_KEY` | API key (required — get one at [lizard.run](https://lizard.run)) |
-| `LIZARD_API_URL` | Override the API base URL (default: `https://api.lizard.run`) |
+| `LIZARD_API_KEY` | API key (required — get one at [lizard.build](https://lizard.build)) |
+| `LIZARD_API_URL` | Override the API base URL (default: `https://lizard.build`) |
 
 The `X-API-Key` header is used for all authenticated requests.
 
