@@ -29,7 +29,7 @@ class Sandbox:
 
         from lizard import Sandbox
 
-        sandbox = Sandbox.create("node22")
+        sandbox = Sandbox.create("base")
         sandbox.fs.write("/app/index.js", 'console.log("hello world")')
         result = sandbox.process.exec_("node /app/index.js")
         print(result.stdout)  # "hello world"
@@ -37,7 +37,7 @@ class Sandbox:
 
     Can also be used as a context manager::
 
-        with Sandbox.create("python312") as sandbox:
+        with Sandbox.create("code-interpreter-v1") as sandbox:
             sandbox.fs.write("/app/main.py", "print('done')")
             sandbox.process.exec_("python /app/main.py")
     """
@@ -72,14 +72,15 @@ class Sandbox:
         """
         Boot a new Lizard sandbox from the specified template.
 
-        Available templates include ``base``, ``node22``, and ``python312``.
-        Custom templates can be built and pushed via ``lizard push``.
+        Available templates: ``base`` (Debian + Node.js 20) and
+        ``code-interpreter-v1`` (Python 3.11 + Node.js 20). Custom templates
+        can be built and pushed via ``lizard push``.
 
         :param template: Template name. Defaults to ``base``.
 
         Example::
 
-            sandbox = Sandbox.create("node22")
+            sandbox = Sandbox.create("base")
             sandbox = Sandbox.create()  # uses 'base' template
         """
         import httpx

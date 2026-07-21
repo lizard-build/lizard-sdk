@@ -21,8 +21,8 @@ pip install lizard-sdk
 ```ts
 import { Sandbox } from '@lizard-build/sdk'
 
-// Boot a Node.js microVM from the 'node22' template
-const sandbox = await Sandbox.create('node22')
+// Boot a microVM from the 'base' template (Debian + Node.js 20)
+const sandbox = await Sandbox.create('base')
 
 // Write a file directly into the microVM filesystem
 await sandbox.fs.write('/app/server.js', `
@@ -46,8 +46,8 @@ await sandbox.kill()
 ```python
 from lizard import Sandbox
 
-# Boot a Python microVM from the 'python312' template
-sandbox = Sandbox.create("python312")
+# Boot a Python microVM from the 'code-interpreter-v1' template
+sandbox = Sandbox.create("code-interpreter-v1")
 
 # Write a script into the microVM filesystem
 sandbox.fs.write("/app/main.py", """
@@ -77,7 +77,7 @@ Sandboxes can be snapshotted mid-execution and resumed exactly where they left o
 
 ```ts
 // Boot and set up the environment once
-const sandbox = await Sandbox.create('python312')
+const sandbox = await Sandbox.create('code-interpreter-v1')
 await sandbox.process.exec('pip install numpy pandas scikit-learn')
 const id = sandbox.sandboxId
 await sandbox.pause()
@@ -92,7 +92,7 @@ await resumed.kill()
 ```python
 from lizard import Sandbox
 
-sandbox = Sandbox.create("python312")
+sandbox = Sandbox.create("code-interpreter-v1")
 sandbox.process.exec_("pip install numpy pandas scikit-learn")
 sandbox_id = sandbox.sandbox_id
 sandbox.pause()
@@ -108,11 +108,11 @@ resumed.kill()
 
 ### `Sandbox.create(template?, opts?)`
 
-Boot a new Lizard microVM. Built-in templates: `base`, `node22`, `python312`. Custom templates can be pushed via `lizard push`.
+Boot a new Lizard microVM. Built-in templates: `base` (Debian + Node.js 20) and `code-interpreter-v1` (Python 3.11 + Node.js 20). Custom templates can be pushed via `lizard push`.
 
 ```ts
-const sandbox = await Sandbox.create('node22')
-const sandbox = await Sandbox.create('python312', { timeoutMs: 10 * 60 * 1000 })
+const sandbox = await Sandbox.create('base')
+const sandbox = await Sandbox.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
 ```
 
 ### `Sandbox.connect(sandboxId, opts?)`
