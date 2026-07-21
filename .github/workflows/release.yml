@@ -1,0 +1,95 @@
+name: Release
+
+# One workflow that versions, tags and publishes both packages in a single run.
+# Publishing happens in this same job, so we do not rely on the tag push
+# triggering a separate workflow — the default GITHUB_TOKEN is enough and no
+# release PAT is needed. (Same model as lizard-cli.)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the bump commit and tag
+      id-token: write    # PyPI OIDC trusted publisher
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          latest=$(git tag -l 'v*' --sort=-version:refname | head -1)
+          if [ -z "$latest" ]; then latest="v0.0.0"; fi
+          v="${latest#v}"
+          major=$(echo "$v" | cut -d. -f1)
+          minor=$(echo "$v" | cut -d. -f2)
+          patch=$(echo "$v" | cut -d. -f3)
+          new="${major}.${minor}.$((patch + 1))"
+          echo "version=$new" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$new (previous tag: $latest)"
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/" packages/js/package.json
+          sed -i "s/^version = .*/version = \"$new\"/" packages/python/pyproject.toml
+
+      - name: Commit bump and tag
+        run: |
+          git add packages/js/package.json packages/python/pyproject.toml
+          git commit -m "chore: release v${{ steps.bump.outputs.version }} [skip ci]"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin main --tags
+
+      # ---------- npm: @lizard-build/sdk ----------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install deps (js)
+        run: npm install
+        working-directory: packages/js
+
+      - name: Build (js)
+        run: npm run build
+        working-directory: packages/js
+
+      - name: Copy README into js package
+        run: cp README.md packages/js/README.md
+
+      - name: Authenticate to npm
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm
+        run: npm publish --access public
+        working-directory: packages/js
+
+      # ---------- PyPI: lizard-sdk ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: pip install hatch
+
+      - name: Copy README into python package
+        run: cp README.md packages/python/README.md
+
+      - name: Build (python)
+        run: hatch build
+        working-directory: packages/python
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/python/dist/
