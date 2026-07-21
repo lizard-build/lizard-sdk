@@ -29,6 +29,12 @@
     "firecracker"
   ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lizard-build/lizard-sdk.git",
+    "directory": "packages/js"
+  },
+  "homepage": "https://lizard.build",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
