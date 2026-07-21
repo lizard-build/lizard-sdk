@@ -201,7 +201,7 @@ export class Sandbox extends SandboxClient {
    * ```ts
    * await sandbox.process.exec('npx -y serve -p 3000 &')
    * const url = sandbox.getHost(3000)
-   * // https://{sandboxId}-3000.sandbox.lizard.run
+   * // https://{sandboxId}-3000.sandbox.{region}.onlizard.com
    * ```
    */
   async getHost(port: number, opts?: ConnectionOpts): Promise<string> {
