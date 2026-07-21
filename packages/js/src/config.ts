@@ -1,4 +1,4 @@
-export const DEFAULT_API_URL = 'https://api.lizard.run'
+export const DEFAULT_API_URL = 'https://lizard.build'
 export const DEFAULT_SANDBOX_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
 export interface ConnectionOpts {
