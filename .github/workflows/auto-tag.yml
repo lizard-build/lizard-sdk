@@ -15,11 +15,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Push the tag under a PAT so it re-triggers publish-npm / publish-pypi.
-          # GitHub deliberately does not let the default GITHUB_TOKEN trigger other
-          # workflows. Falls back to GITHUB_TOKEN until RELEASE_PAT exists (tag is
-          # still created, nothing publishes — same as before this change).
-          token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Bump patch version
         id: bump
@@ -36,6 +31,10 @@ jobs:
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "Bumping $latest → $new_tag"
 
+      # The tag is pushed with the default GITHUB_TOKEN. That intentionally does
+      # NOT trigger the tag-based publish workflows (GitHub blocks GITHUB_TOKEN
+      # events from starting new runs), so publish-npm / publish-pypi instead key
+      # off this workflow's completion via `workflow_run` — which is not blocked.
       - name: Push tag
         run: |
           git config user.name "github-actions[bot]"
