@@ -15,6 +15,8 @@ jobs:
     # Skip if the auto-tag run failed or was cancelled (manual dispatch always runs).
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # OIDC — publish via the npm trusted publisher (no NPM_TOKEN)
 
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +33,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # npm OIDC trusted publishing needs npm >= 11.5.1; Node 22 ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm install
@@ -49,11 +55,8 @@ jobs:
       - name: Copy README
         run: cp README.md packages/js/README.md
 
-      - name: Authenticate to npm
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+      # No NPM_TOKEN needed: an npm trusted publisher (OIDC) is bound to this workflow,
+      # so publish authenticates tokenlessly. Repo is public, so npm attaches provenance.
       - name: Publish
         run: npm publish --access public
         working-directory: packages/js
