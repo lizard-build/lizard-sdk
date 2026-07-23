@@ -26,7 +26,7 @@ const CODE_INTERPRETER_PORT = 8080
  * ```ts
  * import { CodeSandbox } from 'lizard/code-interpreter'
  *
- * const sandbox = await CodeSandbox.create()
+ * const sandbox = await CodeSandbox.create({ projectId: 'proj_abc123' })
  *
  * await sandbox.runCode('x = 42')
  * const result = await sandbox.runCode('print(x * 2)')

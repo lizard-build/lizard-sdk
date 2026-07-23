@@ -1,5 +1,5 @@
 import { ConnectionConfig, ConnectionOpts } from '../config'
-import { handleApiError } from '../errors'
+import { handleApiError, LizardError } from '../errors'
 
 export interface SandboxInfo {
   sandboxId: string
@@ -10,6 +10,11 @@ export interface SandboxInfo {
 }
 
 export interface SandboxOpts extends ConnectionOpts {
+  /**
+   * ID of the project this sandbox belongs to. Required: a sandbox must be
+   * attributed to a project so its CPU, RAM, egress, and storage are billed.
+   */
+  projectId: string
   template?: string
   metadata?: Record<string, string>
   envs?: Record<string, string>
@@ -27,11 +32,17 @@ export class SandboxClient {
     timeoutMs: number,
     opts?: SandboxOpts
   ): Promise<{ sandboxId: string }> {
+    if (!opts?.projectId) {
+      throw new LizardError(
+        'projectId is required: a sandbox must belong to a project so its usage is billed. Pass { projectId } to Sandbox.create().'
+      )
+    }
     const config = new ConnectionConfig(opts)
     const res = await fetch(`${config.apiUrl}/api/sandboxes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({
+        projectId: opts.projectId,
         template,
         timeoutMs,
         metadata: opts?.metadata,

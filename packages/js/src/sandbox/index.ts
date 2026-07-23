@@ -17,7 +17,7 @@ export { SandboxOpts, SandboxInfo }
  * ```ts
  * import { Sandbox } from 'lizard'
  *
- * const sandbox = await Sandbox.create('base')
+ * const sandbox = await Sandbox.create('base', { projectId: 'proj_abc123' })
  * await sandbox.fs.write('/app/index.js', 'console.log("hello world")')
  * const result = await sandbox.process.exec('node /app/index.js')
  * console.log(result.stdout) // "hello world"
@@ -26,7 +26,7 @@ export { SandboxOpts, SandboxInfo }
  *
  * @example Pause and resume a long-running session:
  * ```ts
- * const sandbox = await Sandbox.create('code-interpreter-v1')
+ * const sandbox = await Sandbox.create('code-interpreter-v1', { projectId: 'proj_abc123' })
  * await sandbox.process.exec('pip install numpy')
  * const id = sandbox.sandboxId
  * await sandbox.pause()
@@ -81,7 +81,7 @@ export class Sandbox extends SandboxClient {
    *
    * @example
    * ```ts
-   * const sandbox = await Sandbox.create()
+   * const sandbox = await Sandbox.create({ projectId: 'proj_abc123' })
    * ```
    */
   static async create(opts?: SandboxOpts): Promise<Sandbox>
@@ -97,8 +97,8 @@ export class Sandbox extends SandboxClient {
    *
    * @example
    * ```ts
-   * const sandbox = await Sandbox.create('base')
-   * const sandbox = await Sandbox.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
+   * const sandbox = await Sandbox.create('base', { projectId: 'proj_abc123' })
+   * const sandbox = await Sandbox.create('code-interpreter-v1', { projectId: 'proj_abc123', timeoutMs: 10 * 60 * 1000 })
    * ```
    */
   static async create(template: string, opts?: SandboxOpts): Promise<Sandbox>
