@@ -31,7 +31,7 @@ class CodeSandbox(Sandbox):
 
     Example::
 
-        with CodeSandbox.create() as sandbox:
+        with CodeSandbox.create(project_id="proj_abc123") as sandbox:
             sandbox.run_code("x = 42")
             result = sandbox.run_code("print(x * 2)")
             print(result.stdout)  # "84\\n"
