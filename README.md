@@ -19,10 +19,15 @@ pip install lizard-sdk
 ### JavaScript / TypeScript
 
 ```ts
-import { Sandbox } from '@lizard-build/sdk'
+import { Lizard } from '@lizard-build/sdk'
+
+// A client is pinned to one project — sandboxes are billed per project, so a
+// project is required. It can be the project's ID, slug, or name.
+// apiKey defaults to the LIZARD_API_KEY env var.
+const lizard = new Lizard({ project: 'my-project' })
 
 // Boot a microVM from the 'base' template (Debian + Node.js 20)
-const sandbox = await Sandbox.create('base')
+const sandbox = await lizard.create('base')
 
 // Write a file directly into the microVM filesystem
 await sandbox.fs.write('/app/server.js', `
@@ -44,10 +49,14 @@ await sandbox.kill()
 ### Python
 
 ```python
-from lizard import Sandbox
+from lizard import Lizard
+
+# A client is pinned to one project — sandboxes are billed per project, so a
+# project is required (its ID, slug, or name). api_key defaults to LIZARD_API_KEY.
+lizard = Lizard(project="my-project")
 
 # Boot a Python microVM from the 'code-interpreter-v1' template
-sandbox = Sandbox.create("code-interpreter-v1")
+sandbox = lizard.create("code-interpreter-v1")
 
 # Write a script into the microVM filesystem
 sandbox.fs.write("/app/main.py", """
@@ -76,29 +85,28 @@ sandbox.kill()
 Sandboxes can be snapshotted mid-execution and resumed exactly where they left off — including installed packages, in-memory state, and running processes. This makes Lizard sandboxes well-suited for long-running AI agent workflows where you want to checkpoint and continue across separate invocations.
 
 ```ts
-// Boot and set up the environment once
-const sandbox = await Sandbox.create('code-interpreter-v1')
+// Boot and set up the environment once (reusing the `lizard` client from above)
+const sandbox = await lizard.create('code-interpreter-v1')
 await sandbox.process.exec('pip install numpy pandas scikit-learn')
 const id = sandbox.sandboxId
 await sandbox.pause()
 
 // Later — resume instantly from the snapshot (no reinstall needed)
-const resumed = await Sandbox.connect(id)
+const resumed = await lizard.connect(id)
 const result = await resumed.process.exec('python -c "import sklearn; print(sklearn.__version__)"')
 console.log(result.stdout)
 await resumed.kill()
 ```
 
 ```python
-from lizard import Sandbox
-
-sandbox = Sandbox.create("code-interpreter-v1")
+# reusing the `lizard` client from above
+sandbox = lizard.create("code-interpreter-v1")
 sandbox.process.exec_("pip install numpy pandas scikit-learn")
 sandbox_id = sandbox.sandbox_id
 sandbox.pause()
 
 # Resume later — environment is exactly as left
-resumed = Sandbox.connect(sandbox_id)
+resumed = lizard.connect(sandbox_id)
 result = resumed.process.exec_("python -c 'import sklearn; print(sklearn.__version__)'")
 print(result.stdout)
 resumed.kill()
@@ -106,13 +114,23 @@ resumed.kill()
 
 ## API
 
-### `Sandbox.create(template?, opts?)`
+### `new Lizard({ project, apiKey?, apiUrl?, timeoutMs? })`
 
-Boot a new Lizard microVM. Built-in templates: `base` (Debian + Node.js 20) and `code-interpreter-v1` (Python 3.11 + Node.js 20). Custom templates can be pushed via `lizard push`.
+Create a client pinned to a project. Every sandbox is billed per project, so `project` is required — pass its ID, slug, or name (resolved to an ID on first use and cached). `apiKey` defaults to the `LIZARD_API_KEY` env var.
 
 ```ts
-const sandbox = await Sandbox.create('base')
-const sandbox = await Sandbox.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
+const lizard = new Lizard({ project: 'my-project' })
+const sandbox = await lizard.create('base')
+const sandbox = await lizard.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
+```
+
+### `Sandbox.create(template?, opts?)`
+
+Boot a new Lizard microVM. Built-in templates: `base` (Debian + Node.js 20) and `code-interpreter-v1` (Python 3.11 + Node.js 20). Custom templates can be pushed via `lizard push`. A project is required — pass `project` (ID, slug, or name) or an exact `projectId` in `opts`, or use a `Lizard` client, which pins one for you.
+
+```ts
+const sandbox = await Sandbox.create('base', { project: 'my-project' })
+const sandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
 ```
 
 ### `Sandbox.connect(sandboxId, opts?)`

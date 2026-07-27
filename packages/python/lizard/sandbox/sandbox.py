@@ -29,7 +29,7 @@ class Sandbox:
 
         from lizard import Sandbox
 
-        sandbox = Sandbox.create("base", project_id="proj_abc123")
+        sandbox = Sandbox.create("base", project="my-project")
         sandbox.fs.write("/app/index.js", 'console.log("hello world")')
         result = sandbox.process.exec_("node /app/index.js")
         print(result.stdout)  # "hello world"
@@ -37,7 +37,7 @@ class Sandbox:
 
     Can also be used as a context manager::
 
-        with Sandbox.create("code-interpreter-v1", project_id="proj_abc123") as sandbox:
+        with Sandbox.create("code-interpreter-v1", project="my-project") as sandbox:
             sandbox.fs.write("/app/main.py", "print('done')")
             sandbox.process.exec_("python /app/main.py")
     """
@@ -63,7 +63,8 @@ class Sandbox:
         cls,
         template: str | None = None,
         *,
-        project_id: str,
+        project: str | None = None,
+        project_id: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
         timeout_ms: int | None = None,
@@ -78,30 +79,39 @@ class Sandbox:
         ``code-interpreter-v1`` (Python 3.11 + Node.js 20). Custom templates
         can be built and pushed via ``lizard push``.
 
+        Every sandbox must belong to a project — billing is metered per project.
+        Pass ``project`` (its ID, slug, or name) or an exact ``project_id``, or
+        create sandboxes through a :class:`~lizard.Lizard` client, which pins the
+        project for you.
+
         :param template: Template name. Defaults to ``base``.
-        :param project_id: ID of the project this sandbox belongs to. Required —
-            a sandbox must be attributed to a project so its CPU, RAM, egress,
-            and storage are billed.
+        :param project: Project ID, slug, or name the sandbox belongs to.
+        :param project_id: Exact project ID — skips resolving ``project``.
         :param volume_id: Attach a persistent volume, mounted at ``/data``
             inside the microVM. See :class:`lizard.Volume`.
 
         Example::
 
-            sandbox = Sandbox.create("base", project_id="proj_abc123")
+            sandbox = Sandbox.create("base", project="my-project")
         """
         import httpx
 
-        if not project_id:
-            from ..errors import LizardError
-            raise LizardError(
-                "project_id is required: a sandbox must belong to a project so its usage is billed. Pass project_id to Sandbox.create()."
-            )
+        from ..project import require_project_ref, resolve_project_id
 
+        # A sandbox must belong to a project — billing is metered per project.
+        # The API rejects project-less creates with 400 PROJECT_REQUIRED;
+        # checking here first reports the missing project before the missing key.
+        exact_id, project_ref = require_project_ref(project=project, project_id=project_id)
         config = ConnectionConfig(api_key=api_key, api_url=api_url, timeout_ms=timeout_ms)
         effective_template = template or cls._default_template
         effective_timeout = timeout_ms or cls._default_timeout_ms
+        resolved_project_id = exact_id or resolve_project_id(project_ref, config)
 
-        body: dict[str, Any] = {"projectId": project_id, "template": effective_template, "timeoutMs": effective_timeout}
+        body: dict[str, Any] = {
+            "template": effective_template,
+            "timeoutMs": effective_timeout,
+            "projectId": resolved_project_id,
+        }
         if metadata:
             body["metadata"] = metadata
         if envs:
