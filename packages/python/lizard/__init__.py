@@ -1,6 +1,7 @@
 from .sandbox import Sandbox, SandboxInfo, ProcessResult, FileInfo
 from .errors import LizardError, AuthenticationError, NotFoundError, TimeoutError
 from .code_interpreter import CodeSandbox, Execution, ExecutionError, CodeContext
+from .volume import Volume, VolumeInfo
 
 __all__ = [
     "Sandbox",
@@ -15,4 +16,6 @@ __all__ = [
     "Execution",
     "ExecutionError",
     "CodeContext",
+    "Volume",
+    "VolumeInfo",
 ]

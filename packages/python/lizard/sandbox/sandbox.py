@@ -69,6 +69,7 @@ class Sandbox:
         timeout_ms: int | None = None,
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
+        volume_id: str | None = None,
     ) -> "Sandbox":
         """
         Boot a new Lizard sandbox from the specified template.
@@ -81,6 +82,8 @@ class Sandbox:
         :param project_id: ID of the project this sandbox belongs to. Required —
             a sandbox must be attributed to a project so its CPU, RAM, egress,
             and storage are billed.
+        :param volume_id: Attach a persistent volume, mounted at ``/data``
+            inside the microVM. See :class:`lizard.Volume`.
 
         Example::
 
@@ -103,6 +106,8 @@ class Sandbox:
             body["metadata"] = metadata
         if envs:
             body["envs"] = envs
+        if volume_id:
+            body["volumeId"] = volume_id
 
         res = httpx.post(
             f"{config.api_url}/api/sandboxes",
