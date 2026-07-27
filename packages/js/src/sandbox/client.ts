@@ -1,5 +1,6 @@
 import { ConnectionConfig, ConnectionOpts } from '../config'
-import { handleApiError, LizardError } from '../errors'
+import { handleApiError } from '../errors'
+import { requireProjectRef, resolveProjectId } from '../project'
 
 export interface SandboxInfo {
   sandboxId: string
@@ -11,10 +12,14 @@ export interface SandboxInfo {
 
 export interface SandboxOpts extends ConnectionOpts {
   /**
-   * ID of the project this sandbox belongs to. Required: a sandbox must be
-   * attributed to a project so its CPU, RAM, egress, and storage are billed.
+   * The project this sandbox belongs to — its ID, slug, or name. Required:
+   * a sandbox must be attributed to a project so its CPU, RAM, egress, and
+   * storage are billed. Prefer the {@link Lizard} client, which pins a project
+   * for you. Ignored when {@link SandboxOpts.projectId} is set.
    */
-  projectId: string
+  project?: string
+  /** Exact project ID — skips resolving {@link SandboxOpts.project}. */
+  projectId?: string
   template?: string
   metadata?: Record<string, string>
   envs?: Record<string, string>
@@ -32,19 +37,19 @@ export class SandboxClient {
     timeoutMs: number,
     opts?: SandboxOpts
   ): Promise<{ sandboxId: string }> {
-    if (!opts?.projectId) {
-      throw new LizardError(
-        'projectId is required: a sandbox must belong to a project so its usage is billed. Pass { projectId } to Sandbox.create().'
-      )
-    }
+    // A sandbox must belong to a project — billing is metered per project. The
+    // API rejects project-less creates with 400 PROJECT_REQUIRED; checking here
+    // first reports the missing project before the missing API key.
+    const ref = requireProjectRef(opts)
     const config = new ConnectionConfig(opts)
+    const projectId = ref.projectId ?? (await resolveProjectId(ref.project!, config))
     const res = await fetch(`${config.apiUrl}/api/sandboxes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({
-        projectId: opts.projectId,
         template,
         timeoutMs,
+        projectId,
         metadata: opts?.metadata,
         envs: opts?.envs,
         volumeId: opts?.volumeId,
