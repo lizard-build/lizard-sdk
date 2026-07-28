@@ -1,3 +1,4 @@
+import ast
 import sys
 import io
 import traceback
@@ -40,19 +41,17 @@ class PythonExecutor:
                 with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
                     import importlib
                     importlib.invalidate_caches()
-                    compiled = compile(code, "<sandbox>", "exec")
-                    exec(compiled, self.globals)
-
-                    # Capture last expression value if code ends with an expression
-                    lines = code.strip().splitlines()
-                    if lines:
-                        try:
-                            last_expr = compile(lines[-1], "<sandbox>", "eval")
-                            val = eval(last_expr, self.globals)
-                            if val is not None:
-                                result_out = _to_result(val)
-                        except SyntaxError:
-                            pass
+                    tree = ast.parse(code)
+                    val = None
+                    if tree.body and isinstance(tree.body[-1], ast.Expr):
+                        last = ast.Expression(tree.body.pop().value)
+                        ast.fix_missing_locations(last)
+                        exec(compile(tree, "<sandbox>", "exec"), self.globals)
+                        val = eval(compile(last, "<sandbox>", "eval"), self.globals)
+                    else:
+                        exec(compile(tree, "<sandbox>", "exec"), self.globals)
+                    if val is not None:
+                        result_out = _to_result(val)
 
             except Exception as e:
                 error_out = {
