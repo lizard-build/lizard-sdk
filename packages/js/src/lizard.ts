@@ -1,52 +1,91 @@
-import { ConnectionConfig, ConnectionOpts } from './config'
+import { ConnectionConfig, type ConnectionOpts } from './config'
 import { LizardError } from './errors'
 import { resolveProjectId } from './project'
 import { Sandbox } from './sandbox'
 import type { SandboxInfo, SandboxOpts } from './sandbox/client'
+import { PlatformClient } from './platform/client'
+import { ProjectsAPI } from './platform/projects'
+import { ServicesAPI } from './platform/services'
+import { AddonsAPI } from './platform/addons'
+import { SecretsAPI } from './platform/secrets'
+import { DomainsAPI } from './platform/domains'
+import { MetricsAPI } from './platform/metrics'
 
 export interface LizardOpts extends ConnectionOpts {
   /**
    * The project every sandbox created through this client belongs to — its ID,
-   * slug, or name. Required: sandboxes are billed per project, so a project-less
-   * sandbox cannot be created.
+   * slug, or name. Required for sandbox operations; optional for platform
+   * management (projects, services, addons, etc.).
    */
-  project: string
+  project?: string
 }
 
 /**
- * The Lizard client — the entry point for creating sandboxes.
+ * The Lizard client — entry point for sandboxes and platform management.
  *
- * A client is pinned to one project (billing is metered per project), so every
- * sandbox it creates is attributed correctly. The project reference — ID, slug,
- * or name — is resolved to a project ID on first use and cached.
- *
- * @example
+ * @example Sandbox usage (backward-compatible)
  * ```ts
- * import { Lizard } from '@lizard-build/sdk'
- *
- * const lizard = new Lizard({ project: 'my-project' }) // apiKey from LIZARD_API_KEY
- *
+ * const lizard = new Lizard({ project: 'my-project' })
  * const sandbox = await lizard.create('base')
  * await sandbox.process.exec('echo hello')
  * await sandbox.kill()
  * ```
+ *
+ * @example Platform management
+ * ```ts
+ * const lizard = new Lizard({ apiKey: process.env.LIZARD_API_KEY })
+ *
+ * // Deploy from git
+ * const deploy = await lizard.services.deploy({ projectId, name: 'api', repoUrl: '...', branch: 'main' })
+ * const result = await deploy.wait()
+ * console.log('Deployed to', result.url)
+ *
+ * // Add a Postgres addon and wire it to the service
+ * const pg = await lizard.addons.create({ projectId, type: 'postgres' })
+ * await lizard.secrets.set(projectId, {
+ *   serviceId: result.serviceId,
+ *   key: 'DATABASE_URL',
+ *   value: `${{${pg.name}.DATABASE_URL}}`,
+ * })
+ * ```
  */
 export class Lizard {
   private readonly config: ConnectionConfig
-  private readonly projectRef: string
+  private readonly projectRef: string | undefined
+  private _platform: PlatformClient | undefined
+
+  // ── Platform namespace APIs ───────────────────────────────────────────────
+  /** Manage projects. */
+  readonly projects: ProjectsAPI
+  /** Deploy and manage services. */
+  readonly services: ServicesAPI
+  /** Manage addons (postgres, redis, s3, mysql, mongodb). */
+  readonly addons: AddonsAPI
+  /** Manage secrets and environment variables. */
+  readonly secrets: SecretsAPI
+  /** Manage custom domains. */
+  readonly domains: DomainsAPI
+  /** Query CPU, memory, network, disk, and cost metrics. */
+  readonly metrics: MetricsAPI
 
   constructor(opts: LizardOpts) {
-    if (!opts?.project) {
-      throw new LizardError(
-        'A project is required. Pass project (its ID, slug, or name): new Lizard({ project: "my-project" }).'
-      )
-    }
     this.config = new ConnectionConfig(opts)
     this.projectRef = opts.project
+    const platform = new PlatformClient(opts)
+    this._platform = platform
+    this.projects = new ProjectsAPI(platform)
+    this.services = new ServicesAPI(platform)
+    this.addons = new AddonsAPI(platform)
+    this.secrets = new SecretsAPI(platform)
+    this.domains = new DomainsAPI(platform)
+    this.metrics = new MetricsAPI(platform)
   }
+
+  // ── Sandbox convenience methods (backward-compatible) ──────────────────
 
   /** Resolve the client's project reference to a stable project ID (cached). */
   async projectId(): Promise<string> {
+    if (!this.projectRef) throw new LizardError('No project set. Pass project in Lizard({ project }) to use sandbox APIs.')
     return resolveProjectId(this.projectRef, this.config)
   }
 
@@ -56,12 +95,7 @@ export class Lizard {
 
   /**
    * Create a new sandbox in this client's project.
-   *
-   * @example
-   * ```ts
-   * const sandbox = await lizard.create('base')
-   * const sandbox = await lizard.create('code-interpreter-v1', { timeoutMs: 600_000 })
-   * ```
+   * @requires `project` to be set in the constructor.
    */
   async create(template?: string, opts?: Omit<SandboxOpts, 'project' | 'projectId'>): Promise<Sandbox> {
     const projectId = await this.projectId()
