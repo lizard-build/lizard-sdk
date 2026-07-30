@@ -25,3 +25,14 @@ export type {
 
 export { Volume } from './volume'
 export type { VolumeInfo, CreateVolumeOpts } from './volume'
+
+// Platform management API
+export { DeployHandle } from './platform/services'
+export type {
+  Project, CreateProjectOpts,
+  Service, CreateServiceOpts, ScaleOpts, LogLine, DeployEvent,
+  Addon, AddonType, CreateAddonOpts,
+  Secret, SetSecretOpts,
+  DomainInfo,
+  MetricPoint, MetricRange, ServiceMetrics, CostMetrics,
+} from './platform'
