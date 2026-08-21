@@ -2,7 +2,7 @@
 
 Firecracker microVM sandboxes for AI agents — boot a full Linux environment in milliseconds, run code, write files, and expose ports, all from your agent or CI pipeline.
 
-Each sandbox is an isolated microVM with its own filesystem, network, and process namespace. Sandboxes can be snapshotted and resumed instantly, so long-running agent sessions survive restarts without re-running setup.
+Each sandbox is an isolated microVM with its own filesystem, network, and process namespace. Sandboxes can be paused — vCPUs frozen, memory and running processes kept — and resumed instantly, so a long-running agent session picks up without re-running setup.
 
 ## Install
 
@@ -26,7 +26,7 @@ import { Lizard } from '@lizard-build/sdk'
 // apiKey defaults to the LIZARD_API_KEY env var.
 const lizard = new Lizard({ project: 'my-project' })
 
-// Boot a microVM from the 'base' template (Debian + Node.js 20)
+// Boot a microVM from the 'base' template (Debian + Node.js 26)
 const sandbox = await lizard.create('base')
 
 // Write a file directly into the microVM filesystem
@@ -82,7 +82,9 @@ sandbox.kill()
 
 ## Pause and Resume
 
-Sandboxes can be snapshotted mid-execution and resumed exactly where they left off — including installed packages, in-memory state, and running processes. This makes Lizard sandboxes well-suited for long-running AI agent workflows where you want to checkpoint and continue across separate invocations.
+Sandboxes can be paused mid-execution and resumed exactly where they left off — including installed packages, in-memory state, and running processes. Pausing freezes the microVM's vCPUs; memory and processes stay in the host's RAM and are not written to disk, so a paused sandbox does not survive a host failure. This makes Lizard sandboxes well-suited for long-running AI agent workflows where you want to stop and continue across separate invocations.
+
+Pausing does not stop the sandbox timeout — a paused sandbox is still deleted at its original expiry (default 5 minutes). Pass `timeoutMs: 0` (`timeout_ms=0` in Python) at create time to opt out of expiry.
 
 ```ts
 // Boot and set up the environment once (reusing the `lizard` client from above)
@@ -91,7 +93,7 @@ await sandbox.process.exec('pip install numpy pandas scikit-learn')
 const id = sandbox.sandboxId
 await sandbox.pause()
 
-// Later — resume instantly from the snapshot (no reinstall needed)
+// Later — resume instantly (no reinstall needed)
 const resumed = await lizard.connect(id)
 const result = await resumed.process.exec('python -c "import sklearn; print(sklearn.__version__)"')
 console.log(result.stdout)
@@ -126,7 +128,7 @@ const sandbox = await lizard.create('code-interpreter-v1', { timeoutMs: 10 * 60 
 
 ### `Sandbox.create(template?, opts?)`
 
-Boot a new Lizard microVM. Built-in templates: `base` (Debian + Node.js 20) and `code-interpreter-v1` (Python 3.11 + Node.js 20). Custom templates can be pushed via `lizard push`. A project is required — pass `project` (ID, slug, or name) or an exact `projectId` in `opts`, or use a `Lizard` client, which pins one for you.
+Boot a new Lizard microVM. Built-in templates: `base` (Debian + Node.js 26) and `code-interpreter-v1` (Python 3.14 + Node.js 26). Custom templates can be pushed via `lizard push`. A project is required — pass `project` (ID, slug, or name) or an exact `projectId` in `opts`, or use a `Lizard` client, which pins one for you.
 
 ```ts
 const sandbox = await Sandbox.create('base', { project: 'my-project' })
@@ -135,7 +137,7 @@ const sandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-proje
 
 ### `Sandbox.connect(sandboxId, opts?)`
 
-Connect to an existing sandbox by ID. If the sandbox is paused, it is automatically resumed from its last snapshot.
+Connect to an existing sandbox by ID. If the sandbox is paused, it is automatically resumed.
 
 ### `Sandbox.list(opts?)`
 
@@ -177,7 +179,7 @@ const url = sandbox.getHost(3000)
 
 ### `sandbox.pause()` / `sandbox.resume()`
 
-Snapshot and restore the microVM state. Useful for checkpointing long agent sessions.
+Freeze and unfreeze the microVM's vCPUs. Memory and running processes are kept in the host's RAM, not written to disk. The timeout keeps running while paused.
 
 ### `sandbox.kill()`
 
