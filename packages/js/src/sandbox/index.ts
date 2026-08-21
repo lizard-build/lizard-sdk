@@ -10,12 +10,13 @@ export { SandboxOpts, SandboxInfo }
  *
  * Each sandbox is a full Linux environment with its own filesystem, network,
  * and process namespace. Sandboxes are spun up from templates and can be
- * paused to a snapshot, then resumed instantly — perfect for stateful AI
- * agent sessions or ephemeral code execution.
+ * paused — vCPUs frozen, memory and running processes kept — then resumed
+ * instantly, perfect for stateful AI agent sessions or ephemeral code
+ * execution.
  *
  * @example Basic usage:
  * ```ts
- * import { Sandbox } from 'lizard'
+ * import { Sandbox } from '@lizard-build/sdk'
  *
  * const sandbox = await Sandbox.create('base', { project: 'my-project' })
  * await sandbox.fs.write('/app/index.js', 'console.log("hello world")')
@@ -89,8 +90,8 @@ export class Sandbox extends SandboxClient {
   /**
    * Create a new Lizard sandbox from the specified template.
    *
-   * Available templates: `base` (Debian + Node.js 20) and `code-interpreter-v1`
-   * (Python 3.11 + Node.js 20). Custom templates can be built and pushed via
+   * Available templates: `base` (Debian + Node.js 26) and `code-interpreter-v1`
+   * (Python 3.14 + Node.js 26). Custom templates can be built and pushed via
    * `lizard push`.
    *
    * @param template Name of the sandbox template to boot from.
@@ -122,7 +123,7 @@ export class Sandbox extends SandboxClient {
    * Connect to an existing sandbox by its ID.
    *
    * If the sandbox is currently paused, it will be automatically resumed
-   * from its last snapshot before this call returns.
+   * before this call returns.
    *
    * @example
    * ```ts
@@ -156,10 +157,15 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Snapshot and pause the sandbox microVM.
+   * Pause the sandbox microVM by freezing its vCPUs.
    *
-   * The sandbox state — memory, filesystem, and running processes — is saved
-   * to a snapshot. Resume with `sandbox.resume()` or `Sandbox.connect(id)`.
+   * Memory, filesystem, and running processes are held in the host's RAM —
+   * nothing is written to disk, so a paused sandbox does not survive a host
+   * failure. Resume with `sandbox.resume()` or `Sandbox.connect(id)`.
+   *
+   * Pausing does not stop the timeout: a paused sandbox is still deleted at
+   * its original expiry (default 5 minutes). Pass `timeoutMs: 0` at create
+   * time to opt out of expiry.
    *
    * @returns `true` if paused successfully.
    */
@@ -168,7 +174,7 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Resume a paused sandbox from its last snapshot.
+   * Resume a paused sandbox by unfreezing its vCPUs.
    *
    * @returns `true` if resumed successfully.
    */
