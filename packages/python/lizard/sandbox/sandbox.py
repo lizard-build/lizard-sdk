@@ -21,9 +21,9 @@ class Sandbox:
     A Lizard sandbox — an isolated Firecracker microVM that boots in milliseconds.
 
     Each sandbox is a full Linux environment with its own filesystem, network,
-    and process namespace. Sandboxes are created from templates, can be paused
-    to a snapshot, and resumed instantly — ideal for stateful AI agent sessions
-    or ephemeral code execution.
+    and process namespace. Sandboxes are created from templates and can be
+    paused — vCPUs frozen, memory and running processes kept — then resumed
+    instantly, ideal for stateful AI agent sessions or ephemeral code execution.
 
     Example::
 
@@ -75,8 +75,8 @@ class Sandbox:
         """
         Boot a new Lizard sandbox from the specified template.
 
-        Available templates: ``base`` (Debian + Node.js 20) and
-        ``code-interpreter-v1`` (Python 3.11 + Node.js 20). Custom templates
+        Available templates: ``base`` (Debian + Node.js 26) and
+        ``code-interpreter-v1`` (Python 3.14 + Node.js 26). Custom templates
         can be built and pushed via ``lizard push``.
 
         Every sandbox must belong to a project — billing is metered per project.
@@ -148,8 +148,8 @@ class Sandbox:
         """
         Connect to an existing sandbox by its ID.
 
-        If the sandbox is currently paused, it is automatically resumed from
-        its last snapshot before this call returns.
+        If the sandbox is currently paused, it is automatically resumed
+        before this call returns.
 
         Example::
 
@@ -211,11 +211,15 @@ class Sandbox:
 
     def pause(self) -> bool:
         """
-        Snapshot and pause the sandbox microVM.
+        Pause the sandbox microVM by freezing its vCPUs.
 
-        The sandbox state — memory, filesystem, and running processes — is
-        saved to a snapshot. Resume with :meth:`resume` or
-        :meth:`Sandbox.connect`.
+        Memory, filesystem, and running processes are held in the host's RAM —
+        nothing is written to disk, so a paused sandbox does not survive a host
+        failure. Resume with :meth:`resume` or :meth:`Sandbox.connect`.
+
+        Pausing does not stop the timeout: a paused sandbox is still deleted at
+        its original expiry (default 5 minutes). Pass ``timeout_ms=0`` at create
+        time to opt out of expiry.
 
         :returns: ``True`` if paused successfully.
         """
@@ -234,7 +238,7 @@ class Sandbox:
 
     def resume(self) -> bool:
         """
-        Resume a paused sandbox from its last snapshot.
+        Resume a paused sandbox by unfreezing its vCPUs.
 
         :returns: ``True`` if resumed successfully.
         """
