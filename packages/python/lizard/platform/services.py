@@ -211,7 +211,7 @@ class ServicesAPI:
                 for l in rows]
 
     def exec_(self, id: str, cmd: str, *, timeout_ms: int | None = None) -> dict:
-        """Execute a command inside the running service VM."""
+        """Execute a command inside the running service container."""
         body = {"cmd": cmd}
         if timeout_ms is not None:
             body["timeoutMs"] = str(timeout_ms)
