@@ -203,7 +203,7 @@ export class ServicesAPI {
     return Array.isArray(result) ? result : (result.logs ?? [])
   }
 
-  /** Execute a command inside the running service VM. */
+  /** Execute a command inside the running service container. */
   exec(id: string, cmd: string, opts?: { timeoutMs?: number }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     return this.client.post(`/api/apps/${id}/exec`, { cmd, timeoutMs: opts?.timeoutMs })
   }
