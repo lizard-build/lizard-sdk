@@ -15,6 +15,7 @@ Run with:
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -30,7 +31,7 @@ from lizard.code_interpreter.types import Execution, ExecutionError, ResultItem
 # ---------------------------------------------------------------------------
 
 NODE_AGENT_URL = "http://localhost:7070"
-ADMIN_SECRET = "REDACTED-ROTATED-ADMIN-SECRET"
+ADMIN_SECRET = os.environ["ADMIN_SECRET"]
 TEMPLATE = "code-interpreter-v1"
 
 _agent_headers = {"X-Admin-Secret": ADMIN_SECRET, "Content-Type": "application/json"}
