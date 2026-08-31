@@ -5,13 +5,47 @@ build-backend = "hatchling.build"
 [project]
 name = "lizard-sdk"
 version = "0.1.8"
-description = "Lizard SDK — cloud sandboxes for AI agents"
+description = "Firecracker microVM sandboxes for AI agents — boot Linux in milliseconds, run code, write files, expose ports over HTTPS, then pause a session with memory intact and resume it later. Python SDK for Lizard Sandboxes (lizard.build)."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
+keywords = [
+  "sandbox",
+  "sandboxes",
+  "microvm",
+  "firecracker",
+  "ai-agents",
+  "code-interpreter",
+  "code-execution",
+  "cloud",
+  "paas",
+  "lizard",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Distributed Computing",
+  "Topic :: Internet :: WWW/HTTP",
+]
 dependencies = [
   "httpx>=0.24.0",
 ]
+
+[project.urls]
+Homepage = "https://lizard.build"
+Documentation = "https://lizard.build/docs"
+Source = "https://github.com/lizard-build/lizard-sdk"
+Issues = "https://github.com/lizard-build/lizard-sdk/issues"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "mypy"]
