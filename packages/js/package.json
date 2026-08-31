@@ -1,7 +1,7 @@
 {
   "name": "@lizard-build/sdk",
   "version": "0.1.8",
-  "description": "Lizard SDK — cloud sandboxes for AI agents",
+  "description": "Firecracker microVM sandboxes for AI agents — boot Linux in milliseconds, run code, write files, expose ports over HTTPS, then pause a session with memory intact and resume it later. TypeScript SDK for Lizard Sandboxes (lizard.build).",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -22,11 +22,16 @@
     "dist"
   ],
   "keywords": [
-    "lizard",
     "sandbox",
-    "ai",
-    "agents",
-    "firecracker"
+    "sandboxes",
+    "microvm",
+    "firecracker",
+    "ai-agents",
+    "code-interpreter",
+    "code-execution",
+    "cloud",
+    "paas",
+    "lizard"
   ],
   "license": "Apache-2.0",
   "repository": {
