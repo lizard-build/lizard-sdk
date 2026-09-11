@@ -76,6 +76,7 @@ class Lizard:
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
         volume_id: str | None = None,
+        volume_name: str | None = None,
     ) -> Sandbox:
         """Create a new sandbox in this client's project."""
         return Sandbox.create(
@@ -86,6 +87,7 @@ class Lizard:
             metadata=metadata,
             envs=envs,
             volume_id=volume_id,
+            volume_name=volume_name,
             project_id=self.project_id(),
         )
 

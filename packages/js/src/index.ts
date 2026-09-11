@@ -10,6 +10,7 @@ export {
   LizardError,
   AuthenticationError,
   NotFoundError,
+  ConflictError,
   TimeoutError,
 } from './errors'
 

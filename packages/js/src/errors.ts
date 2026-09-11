@@ -19,6 +19,18 @@ export class NotFoundError extends LizardError {
   }
 }
 
+/**
+ * The resource already exists — most often a volume whose name is already taken in
+ * the project. Volume names are the key inside a project, so `Volume.create` refuses
+ * to make a second one; catch this, or call `Volume.getOrCreate` instead.
+ */
+export class ConflictError extends LizardError {
+  constructor(message = 'Resource already exists') {
+    super(message)
+    this.name = 'ConflictError'
+  }
+}
+
 export class TimeoutError extends LizardError {
   constructor(message = 'Sandbox operation timed out') {
     super(message)
@@ -37,6 +49,7 @@ export async function handleApiError(res: Response): Promise<never> {
 
   if (res.status === 401 || res.status === 403) throw new AuthenticationError(message)
   if (res.status === 404) throw new NotFoundError(message)
+  if (res.status === 409) throw new ConflictError(message)
   if (res.status === 408 || res.status === 504) throw new TimeoutError(message)
   throw new LizardError(`API error ${res.status}: ${message}`)
 }
