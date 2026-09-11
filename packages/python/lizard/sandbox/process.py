@@ -10,6 +10,16 @@ if TYPE_CHECKING:
 class ProcessResult:
     """Result of a process executed inside a Lizard sandbox microVM."""
 
+@dataclass
+class ProcessInfo:
+    """A process the sandbox is currently running."""
+
+    pid: int
+    cmd: list[str]
+    #: When the process started, unix milliseconds.
+    started_at: int
+
+
     stdout: str
     stderr: str
     exit_code: int
@@ -36,6 +46,7 @@ class Process:
         timeout_ms: int | None = None,
         on_stdout: "Callable[[str], None] | None" = None,
         on_stderr: "Callable[[str], None] | None" = None,
+        on_pid: "Callable[[int], None] | None" = None,
     ) -> ProcessResult:
         """
         Execute a command inside the microVM and wait for it to finish.
@@ -51,6 +62,8 @@ class Process:
         :param on_stdout: Called with each stdout line as it is produced, rather
             than at the end. Passing it switches the call to a streaming read.
         :param on_stderr: Called with each stderr line as it is produced.
+        :param on_pid: Called once with the process's pid before any output, so a
+            streaming call has something to pass to :meth:`kill`.
 
         Example::
 
@@ -79,8 +92,8 @@ class Process:
 
         timeout = (timeout_ms or 60_000) / 1000
 
-        if on_stdout is not None or on_stderr is not None:
-            return self._exec_streaming(body, timeout, on_stdout, on_stderr)
+        if on_stdout is not None or on_stderr is not None or on_pid is not None:
+            return self._exec_streaming(body, timeout, on_stdout, on_stderr, on_pid)
 
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
@@ -106,6 +119,7 @@ class Process:
         timeout: float,
         on_stdout: "Callable[[str], None] | None",
         on_stderr: "Callable[[str], None] | None",
+        on_pid: "Callable[[int], None] | None" = None,
     ) -> ProcessResult:
         """Read the exec output as an SSE stream, handing each line to the caller as
         it arrives while still accumulating the full result.
@@ -152,6 +166,8 @@ class Process:
                         stdout_parts.append(line)
                         if on_stdout is not None:
                             on_stdout(line)
+                if ev.get("pid") is not None and on_pid is not None:
+                    on_pid(ev["pid"])
                 if ev.get("exitCode") is not None:
                     exit_code = ev["exitCode"]
 
@@ -160,3 +176,44 @@ class Process:
             stderr="\n".join(stderr_parts),
             exit_code=exit_code,
         )
+
+    def list(self) -> list[ProcessInfo]:
+        """List the processes this sandbox is currently running.
+
+        Only processes started through :meth:`exec_` -- not every process in the
+        guest. Those are the ones you can act on; the rest are the image's own
+        business.
+        """
+        import httpx
+
+        res = httpx.get(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes",
+            headers=self._config.headers,
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+        return [
+            ProcessInfo(pid=p["pid"], cmd=p.get("cmd", []), started_at=p.get("startedAt", 0))
+            for p in res.json()
+        ]
+
+    def kill(self, pid: int, signal: str = "SIGTERM") -> None:
+        """Signal a running process. Defaults to ``SIGTERM``.
+
+        The signal goes to the process group, so a shell's children die with it --
+        killing ``sh -c 'sleep 100'`` otherwise leaves the sleep running.
+
+        The pid comes from :meth:`list`, or from ``on_pid`` during a streaming
+        :meth:`exec_`.
+        """
+        import httpx
+
+        res = httpx.post(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes/signal",
+            headers=self._config.headers,
+            json={"pid": pid, "signal": signal},
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
