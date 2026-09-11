@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 class ProcessResult:
     """Result of a process executed inside a Lizard sandbox microVM."""
 
+    stdout: str
+    stderr: str
+    exit_code: int
+
+
 @dataclass
 class ProcessInfo:
     """A process the sandbox is currently running."""
@@ -18,11 +23,6 @@ class ProcessInfo:
     cmd: list[str]
     #: When the process started, unix milliseconds.
     started_at: int
-
-
-    stdout: str
-    stderr: str
-    exit_code: int
 
 
 class Process:
