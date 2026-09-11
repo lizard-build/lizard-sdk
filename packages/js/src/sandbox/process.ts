@@ -1,6 +1,18 @@
 import { ConnectionConfig } from '../config'
 import { handleApiError } from '../errors'
 
+/** A process this sandbox is currently running. */
+export interface ProcessInfo {
+  pid: number
+  cmd: string[]
+  /** When the process started, unix milliseconds. */
+  startedAt: number
+}
+
+/** Signals accepted by {@link Process.kill}. */
+export type ProcessSignal =
+  | 'SIGTERM' | 'SIGKILL' | 'SIGINT' | 'SIGHUP' | 'SIGQUIT' | 'SIGUSR1' | 'SIGUSR2'
+
 /**
  * The result of a process execution inside a Lizard microVM.
  */
@@ -19,6 +31,11 @@ export interface ProcessOpts {
   onStdout?: (data: string) => void
   /** Called with each stderr line as it is produced, rather than at the end. */
   onStderr?: (data: string) => void
+  /**
+   * Called once with the process's pid, before any output. Gives a streaming
+   * `exec` something to pass to {@link Process.kill}.
+   */
+  onPid?: (pid: number) => void
 }
 
 /**
@@ -61,7 +78,7 @@ export class Process {
     // never wired up — passing them did nothing and the caller waited for the whole
     // command regardless. The platform has always streamed the output; it just needs
     // to be asked for it with an SSE Accept header.
-    const streaming = Boolean(opts?.onStdout || opts?.onStderr)
+    const streaming = Boolean(opts?.onStdout || opts?.onStderr || opts?.onPid)
 
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/exec`, {
       method: 'POST',
@@ -88,6 +105,51 @@ export class Process {
    * still accumulating the full result. Events are `{stream, line}` for output and
    * `{exitCode}` at the end.
    */
+  /**
+   * List the processes this sandbox is currently running.
+   *
+   * Only processes started through `exec` — not every process in the guest.
+   * Those are the ones you can act on; the rest are the image's own business.
+   *
+   * @example
+   * ```ts
+   * for (const p of await sandbox.process.list()) {
+   *   console.log(p.pid, p.cmd.join(' '))
+   * }
+   * ```
+   */
+  async list(): Promise<ProcessInfo[]> {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes`, {
+      headers: this.config.headers,
+    })
+    if (!res.ok) await handleApiError(res)
+    return res.json() as Promise<ProcessInfo[]>
+  }
+
+  /**
+   * Signal a running process. Defaults to `SIGTERM`.
+   *
+   * The signal goes to the process group, so a shell's children die with it —
+   * killing `sh -c 'sleep 100'` otherwise leaves the sleep running.
+   *
+   * The pid comes from {@link list}, or from the `pid` event at the start of a
+   * streaming `exec`.
+   *
+   * @example Stop a long build:
+   * ```ts
+   * const [build] = await sandbox.process.list()
+   * await sandbox.process.kill(build.pid)
+   * ```
+   */
+  async kill(pid: number, signal: ProcessSignal = 'SIGTERM'): Promise<void> {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes/signal`, {
+      method: 'POST',
+      headers: this.config.headers,
+      body: JSON.stringify({ pid, signal }),
+    })
+    if (!res.ok) await handleApiError(res)
+  }
+
   private async consumeStream(res: Response, opts: ProcessOpts): Promise<ProcessResult> {
     const reader = res.body?.getReader()
     if (!reader) return { stdout: '', stderr: '', exitCode: 0 }
@@ -100,7 +162,7 @@ export class Process {
 
     const handle = (raw: string) => {
       if (!raw.startsWith('data:')) return
-      let ev: { stream?: string; line?: string; exitCode?: number }
+      let ev: { stream?: string; line?: string; exitCode?: number; pid?: number }
       try {
         ev = JSON.parse(raw.slice(5).trim())
       } catch {
@@ -115,6 +177,7 @@ export class Process {
           opts.onStdout?.(ev.line)
         }
       }
+      if (ev.pid !== undefined) opts.onPid?.(ev.pid)
       if (ev.exitCode !== undefined) exitCode = ev.exitCode
     }
 

@@ -20,6 +20,17 @@ class FileInfo:
     mod_time: int | None = None
 
 
+@dataclass
+class FsEvent:
+    """A filesystem change reported by a :class:`Watcher`."""
+
+    type: str  # create | write | remove | rename | chmod
+    #: The entry's name within its directory.
+    name: str
+    #: Full path inside the sandbox.
+    path: str
+
+
 class Fs:
     """
     Read and write files inside a Lizard sandbox microVM.
@@ -196,6 +207,75 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/move",
             headers=self._config.headers,
             json={"from": from_path, "to": to_path},
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+
+    def watch(self, path: str, *, recursive: bool = False) -> "Watcher":
+        """Watch a directory for changes.
+
+        Polling rather than a push stream: the events cross two proxy hops, and a
+        long-lived stream through both is exactly what breaks first. Call
+        :meth:`Watcher.get_events` on whatever interval suits you -- each call
+        drains everything queued since the last one, so nothing is missed between
+        polls.
+
+        Remember to :meth:`Watcher.close` it; an abandoned watcher keeps queueing
+        events in the guest until the sandbox ends (bounded, but wasted).
+
+        Sandboxes created before this shipped run a guest agent without it and
+        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
+        """
+        import httpx
+
+        res = httpx.post(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
+            headers=self._config.headers,
+            json={"path": path, "recursive": recursive},
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+        return Watcher(self._sandbox_id, self._config, res.json()["watcherId"])
+
+
+class Watcher:
+    """A handle to a directory watch inside a sandbox. Created by :meth:`Fs.watch`."""
+
+    def __init__(self, sandbox_id: str, config: "ConnectionConfig", watcher_id: str):
+        self._sandbox_id = sandbox_id
+        self._config = config
+        #: Server-side id for this watch.
+        self.watcher_id = watcher_id
+
+    def get_events(self) -> list[FsEvent]:
+        """Drain every change since the last call.
+
+        Returns an empty list when nothing has happened -- that is not an error,
+        just a quiet interval.
+        """
+        import httpx
+
+        res = httpx.get(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch/events",
+            headers=self._config.headers,
+            params={"watcherId": self.watcher_id},
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+        return [FsEvent(type=e["type"], name=e["name"], path=e["path"]) for e in res.json()]
+
+    def close(self) -> None:
+        """Stop watching and release the guest-side queue."""
+        import httpx
+
+        res = httpx.request(
+            "DELETE",
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
+            headers=self._config.headers,
+            params={"watcherId": self.watcher_id},
         )
         if not res.is_success:
             from ..errors import handle_api_error
