@@ -12,8 +12,12 @@ class FileInfo:
 
     name: str
     path: str
-    type: str  # 'file' | 'dir'
+    type: str  # 'file' | 'dir' | 'symlink'
     size: int
+    #: Permission bits as a string, e.g. ``-rw-r--r--``. None on older sandboxes.
+    mode: str | None = None
+    #: Last modification time, unix milliseconds. None on older sandboxes.
+    mod_time: int | None = None
 
 
 class Fs:
@@ -142,6 +146,56 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
             headers=self._config.headers,
             json=body,
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+
+    def stat(self, path: str, *, user: str | None = None) -> FileInfo:
+        """Metadata for a single path -- size, type, permissions, modification time.
+
+        Saves listing a parent directory and filtering it just to answer "does
+        this exist, and how big is it".
+
+        Raises :class:`~lizard.NotFoundError` if the path does not exist.
+        Sandboxes created before this shipped run a guest agent without it and
+        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
+        """
+        import httpx
+
+        params: dict = {"path": path}
+        if user:
+            params["user"] = user
+        res = httpx.get(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/stat",
+            headers=self._config.headers,
+            params=params,
+        )
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+        b = res.json()
+        return FileInfo(
+            name=b["name"],
+            path=b["path"],
+            type=b["type"],
+            size=b["size"],
+            mode=b.get("mode"),
+            mod_time=b.get("modTime"),
+        )
+
+    def move(self, from_path: str, to_path: str) -> None:
+        """Move or rename a path, creating the destination's parent directories.
+
+        Sandboxes created before this shipped run a guest agent without it and
+        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
+        """
+        import httpx
+
+        res = httpx.post(
+            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/move",
+            headers=self._config.headers,
+            json={"from": from_path, "to": to_path},
         )
         if not res.is_success:
             from ..errors import handle_api_error
