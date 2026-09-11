@@ -8,8 +8,12 @@ export interface FsOpts {
 export interface FileInfo {
   name: string
   path: string
-  type: 'file' | 'dir'
+  type: 'file' | 'dir' | 'symlink'
   size: number
+  /** Permission bits as a string, e.g. `-rw-r--r--`. Absent on older sandboxes. */
+  mode?: string
+  /** Last modification time, unix milliseconds. Absent on older sandboxes. */
+  modTime?: number
 }
 
 /**
@@ -103,6 +107,52 @@ export class Fs {
    */
   async makeDir(path: string, opts?: FsOpts): Promise<void> {
     await this.execInternal(`mkdir -p ${JSON.stringify(path)}`, opts?.user)
+  }
+
+  /**
+   * Metadata for a single path — size, type, permissions, modification time.
+   *
+   * Saves listing a parent directory and filtering it just to answer "does this
+   * exist, and how big is it".
+   *
+   * @example
+   * ```ts
+   * const info = await sandbox.fs.stat('/app/out.bin')
+   * console.log(info.size, info.type)
+   * ```
+   *
+   * Throws `NotFoundError` if the path does not exist. Sandboxes created before
+   * this shipped run a guest agent without it and throw `LizardError` (501) —
+   * recreate the sandbox to use it.
+   */
+  async stat(path: string, opts?: FsOpts): Promise<FileInfo> {
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/stat`)
+    url.searchParams.set('path', path)
+    if (opts?.user) url.searchParams.set('user', opts.user)
+
+    const res = await fetch(url.toString(), { headers: this.config.headers })
+    if (!res.ok) await handleApiError(res)
+    return res.json() as Promise<FileInfo>
+  }
+
+  /**
+   * Move or rename a path. Creates the destination's parent directories.
+   *
+   * @example
+   * ```ts
+   * await sandbox.fs.move('/tmp/build.log', '/app/logs/build.log')
+   * ```
+   *
+   * Sandboxes created before this shipped run a guest agent without it and throw
+   * `LizardError` (501) — recreate the sandbox to use it.
+   */
+  async move(from: string, to: string): Promise<void> {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/move`, {
+      method: 'POST',
+      headers: this.config.headers,
+      body: JSON.stringify({ from, to }),
+    })
+    if (!res.ok) await handleApiError(res)
   }
 
   private async execInternal(cmd: string, user?: string): Promise<void> {
