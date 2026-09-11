@@ -24,7 +24,14 @@ export interface SandboxOpts extends ConnectionOpts {
   metadata?: Record<string, string>
   envs?: Record<string, string>
   timeoutMs?: number
+  /** Attach a persistent volume by id, mounted at `/data`. */
   volumeId?: string
+  /**
+   * Attach a persistent volume by name, mounted at `/data`. A volume's name is its
+   * key inside a project, so this is usually what you want — see {@link Volume}.
+   * Requires the sandbox's project to be given as an exact `projectId`.
+   */
+  volumeName?: string
 }
 
 /**
@@ -53,6 +60,7 @@ export class SandboxClient {
         metadata: opts?.metadata,
         envs: opts?.envs,
         volumeId: opts?.volumeId,
+        volumeName: opts?.volumeName,
       }),
     })
     if (!res.ok) await handleApiError(res)

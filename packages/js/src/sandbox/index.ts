@@ -163,9 +163,16 @@ export class Sandbox extends SandboxClient {
    * nothing is written to disk, so a paused sandbox does not survive a host
    * failure. Resume with `sandbox.resume()` or `Sandbox.connect(id)`.
    *
-   * Pausing does not stop the timeout: a paused sandbox is still deleted at
-   * its original expiry (default 5 minutes). Pass `timeoutMs: 0` at create
-   * time to opt out of expiry.
+   * Pausing does not buy you time past the original deadline. Resuming pushes the
+   * expiry forward by however long the sandbox was paused — so a pause/resume cycle
+   * costs no runtime — but that adjustment only happens on `resume()`. A sandbox left
+   * paused past its original `expiresAt` is deleted there, within a minute, and
+   * `resume()` then returns `false`.
+   *
+   * In other words: pause and come back *before* the original deadline and you lose
+   * nothing; leave it paused across the deadline and it is gone. Pass `timeoutMs: 0`
+   * at create time to opt out of expiry entirely, which is the only way to park a
+   * sandbox indefinitely.
    *
    * @returns `true` if paused successfully.
    */
@@ -176,7 +183,12 @@ export class Sandbox extends SandboxClient {
   /**
    * Resume a paused sandbox by unfreezing its vCPUs.
    *
-   * @returns `true` if resumed successfully.
+   * The expiry is pushed forward by the time spent paused, so the timeout measures
+   * running time rather than wall-clock — provided the original deadline had not
+   * already passed while paused. See {@link pause}.
+   *
+   * @returns `true` if resumed successfully, `false` if the sandbox no longer exists
+   * (including because it expired while paused).
    */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.resumeSandbox(this.sandboxId, this.resolveOpts(opts))

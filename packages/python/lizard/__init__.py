@@ -1,7 +1,7 @@
 from .client import Lizard
 from .project import resolve_project_id
 from .sandbox import Sandbox, SandboxInfo, ProcessResult, FileInfo
-from .errors import LizardError, AuthenticationError, NotFoundError, TimeoutError
+from .errors import LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError
 from .code_interpreter import CodeSandbox, Execution, ExecutionError, CodeContext
 from .volume import Volume, VolumeInfo
 from .platform import (
@@ -34,6 +34,7 @@ __all__ = [
     "LizardError",
     "AuthenticationError",
     "NotFoundError",
+    "ConflictError",
     "TimeoutError",
     "CodeSandbox",
     "Execution",

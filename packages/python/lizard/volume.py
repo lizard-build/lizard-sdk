@@ -21,15 +21,23 @@ class Volume:
     """
     A persistent volume that outlives sandboxes.
 
-    Mount it to a sandbox with ``Sandbox.create(volume_id=volume.volume_id)``;
-    inside the microVM it appears at ``/data``.
+    A volume's **name** is its key inside a project: names are unique per project,
+    and every method here accepts either a name or the generated id wherever a
+    volume is addressed. Prefer the name -- it is the thing you chose and can
+    reconstruct, while the id only exists after the first create.
+
+    Names are slugs: lowercase letters, digits and dashes, starting and ending with
+    a letter or digit, up to 64 characters.
+
+    Mount it to a sandbox with ``Sandbox.create(volume_name="my-data")``; inside the
+    microVM it appears at ``/data``.
 
     Example::
 
         from lizard import Sandbox, Volume
 
-        volume = Volume.create("proj_abc123", "my-data", size_gb=5)
-        sandbox = Sandbox.create("base", project_id="proj_abc123", volume_id=volume.volume_id)
+        volume = Volume.get_or_create("proj_abc123", "my-data", size_gb=5)
+        sandbox = Sandbox.create("base", project_id="proj_abc123", volume_name="my-data")
         sandbox.process.exec_("echo hello > /data/file.txt")
         sandbox.kill()  # volume persists
     """
@@ -38,10 +46,13 @@ class Volume:
         self,
         volume_id: str,
         *,
+        name: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
     ):
         self.volume_id = volume_id
+        #: The volume's name: unique within its project, usable anywhere the id is.
+        self.name = name
         self._config = ConnectionConfig(api_key=api_key, api_url=api_url)
 
     @classmethod
@@ -54,7 +65,12 @@ class Volume:
         api_key: str | None = None,
         api_url: str | None = None,
     ) -> "Volume":
-        """Create a volume in a project."""
+        """Create a volume in a project.
+
+        Raises :class:`~lizard.ConflictError` if the project already has a volume
+        with this name -- use :meth:`get_or_create` when you want "make sure this
+        exists" instead.
+        """
         import httpx
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
@@ -67,30 +83,88 @@ class Volume:
             from .errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
-        return cls(res.json()["id"], api_key=api_key, api_url=api_url)
+        body = res.json()
+        return cls(body["id"], name=body.get("name", name), api_key=api_key, api_url=api_url)
+
+    @classmethod
+    def get_or_create(
+        cls,
+        project_id: str,
+        name: str,
+        *,
+        size_gb: int = 5,
+        api_key: str | None = None,
+        api_url: str | None = None,
+    ) -> "Volume":
+        """Return the project's volume with this name, creating it if absent.
+
+        This is the reason a volume's name is its key: an agent that wants "the
+        scratch disk for this task" no longer has to store an id between runs.
+
+        An existing volume is returned as-is -- ``size_gb`` applies only to a fresh
+        create and never resizes one that is already there.
+        """
+        import httpx
+
+        config = ConnectionConfig(api_key=api_key, api_url=api_url)
+        res = httpx.post(
+            f"{config.api_url}/api/projects/{project_id}/volumes",
+            headers=config.headers,
+            json={"name": name, "sizeGb": size_gb, "getOrCreate": True},
+        )
+        if not res.is_success:
+            from .errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+
+        body = res.json()
+        return cls(body["id"], name=body.get("name", name), api_key=api_key, api_url=api_url)
 
     @classmethod
     def get(
         cls,
         project_id: str,
-        volume_id: str,
+        name_or_id: str,
         *,
         api_key: str | None = None,
         api_url: str | None = None,
     ) -> "Volume":
-        """Look up an existing volume by ID."""
+        """Look up an existing volume by name or by id."""
         import httpx
+        from urllib.parse import quote
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.get(
-            f"{config.api_url}/api/projects/{project_id}/volumes/{volume_id}",
+            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
         )
         if not res.is_success:
             from .errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
-        return cls(volume_id, api_key=api_key, api_url=api_url)
+        body = res.json()
+        return cls(body["id"], name=body.get("name"), api_key=api_key, api_url=api_url)
+
+    @classmethod
+    def remove(
+        cls,
+        project_id: str,
+        name_or_id: str,
+        *,
+        api_key: str | None = None,
+        api_url: str | None = None,
+    ) -> None:
+        """Delete a volume by name or by id, without constructing one first."""
+        import httpx
+        from urllib.parse import quote
+
+        config = ConnectionConfig(api_key=api_key, api_url=api_url)
+        res = httpx.delete(
+            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
+            headers=config.headers,
+        )
+        if not res.is_success:
+            from .errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
 
     @classmethod
     def list(

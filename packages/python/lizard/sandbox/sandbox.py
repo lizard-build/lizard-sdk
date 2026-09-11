@@ -71,6 +71,7 @@ class Sandbox:
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
         volume_id: str | None = None,
+        volume_name: str | None = None,
     ) -> "Sandbox":
         """
         Boot a new Lizard sandbox from the specified template.
@@ -87,7 +88,10 @@ class Sandbox:
         :param template: Template name. Defaults to ``base``.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param project_id: Exact project ID — skips resolving ``project``.
-        :param volume_id: Attach a persistent volume, mounted at ``/data``
+        :param volume_name: Attach a persistent volume by name, mounted at
+            ``/data``. A volume's name is its key inside a project, so this is
+            usually what you want. Requires an exact ``project_id``.
+        :param volume_id: Attach a persistent volume by id, mounted at ``/data``
             inside the microVM. See :class:`lizard.Volume`.
 
         Example::
@@ -118,6 +122,8 @@ class Sandbox:
             body["envs"] = envs
         if volume_id:
             body["volumeId"] = volume_id
+        if volume_name:
+            body["volumeName"] = volume_name
 
         res = httpx.post(
             f"{config.api_url}/api/sandboxes",
@@ -217,9 +223,16 @@ class Sandbox:
         nothing is written to disk, so a paused sandbox does not survive a host
         failure. Resume with :meth:`resume` or :meth:`Sandbox.connect`.
 
-        Pausing does not stop the timeout: a paused sandbox is still deleted at
-        its original expiry (default 5 minutes). Pass ``timeout_ms=0`` at create
-        time to opt out of expiry.
+        Pausing does not buy you time past the original deadline. Resuming pushes
+        the expiry forward by however long the sandbox was paused -- so a
+        pause/resume cycle costs no runtime -- but that adjustment only happens on
+        :meth:`resume`. A sandbox left paused past its original ``expires_at`` is
+        deleted there, within a minute, and :meth:`resume` then returns ``False``.
+
+        In other words: pause and come back *before* the original deadline and you
+        lose nothing; leave it paused across the deadline and it is gone. Pass
+        ``timeout_ms=0`` at create time to opt out of expiry entirely, which is the
+        only way to park a sandbox indefinitely.
 
         :returns: ``True`` if paused successfully.
         """
@@ -240,7 +253,12 @@ class Sandbox:
         """
         Resume a paused sandbox by unfreezing its vCPUs.
 
-        :returns: ``True`` if resumed successfully.
+        The expiry is pushed forward by the time spent paused, so the timeout
+        measures running time rather than wall-clock -- provided the original
+        deadline had not already passed while paused. See :meth:`pause`.
+
+        :returns: ``True`` if resumed successfully, ``False`` if the sandbox no
+            longer exists (including because it expired while paused).
         """
         import httpx
 
