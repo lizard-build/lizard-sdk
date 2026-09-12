@@ -124,7 +124,19 @@ class Fs:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
-        return [FileInfo(**f) for f in res.json()]
+        # Map explicitly, not FileInfo(**f): the API returns camelCase and gained
+        # `mode`/`modTime`, which blew up `FileInfo(**f)` with an unexpected keyword.
+        return [
+            FileInfo(
+                name=f["name"],
+                path=f["path"],
+                type=f["type"],
+                size=f.get("size", 0),
+                mode=f.get("mode"),
+                mod_time=f.get("modTime"),
+            )
+            for f in res.json()
+        ]
 
     def remove(self, path: str, *, user: str | None = None) -> None:
         """Remove a file or directory from the microVM filesystem."""
