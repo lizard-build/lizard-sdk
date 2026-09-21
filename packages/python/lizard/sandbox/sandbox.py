@@ -13,17 +13,25 @@ class SandboxInfo:
     template: str
     started_at: str
     end_at: str
+    #: Region the sandbox runs in -- the volume's region when one is attached.
+    region: str | None = None
+    status: str | None = None
+    cpus: int | None = None
+    memory_mb: int | None = None
     metadata: dict[str, str] | None = None
 
 
 class Sandbox:
     """
-    A Lizard sandbox — an isolated Firecracker microVM that boots in milliseconds.
+    A Lizard sandbox — an isolated Linux environment that starts in under a second.
 
-    Each sandbox is a full Linux environment with its own filesystem, network,
-    and process namespace. Sandboxes are created from templates and can be
-    paused — vCPUs frozen, memory and running processes kept — then resumed
-    instantly, ideal for stateful AI agent sessions or ephemeral code execution.
+    Each sandbox is a full Linux environment with its own filesystem, network, and
+    process namespace, restored from a pre-warmed template snapshot.
+
+    Sandboxes are **ephemeral**: killing one, or letting it hit its timeout,
+    discards everything written inside it. State that has to outlive a sandbox
+    belongs on a :class:`~lizard.Volume`, a separate disk mounted at ``/data``
+    that a later sandbox can re-attach.
 
     Example::
 
@@ -70,6 +78,7 @@ class Sandbox:
         timeout_ms: int | None = None,
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
+        region: str | None = None,
         volume_id: str | None = None,
         volume_name: str | None = None,
         lizard_token: str | None = None,
@@ -89,6 +98,12 @@ class Sandbox:
         :param template: Template name. Defaults to ``base``.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param project_id: Exact project ID — skips resolving ``project``.
+        :param region: Region to run the sandbox in, e.g. ``"us-east-1"``. Leave
+            unset when attaching a volume: a volume is node-local, so the server
+            places the sandbox in the volume's own region. Naming a region the
+            volume is not in is rejected with a 400 rather than silently moved —
+            that combination cannot be satisfied. Defaults to the platform's
+            default sandbox region.
         :param volume_name: Attach a persistent volume by name, mounted at
             ``/data``. A volume's name is its key inside a project, so this is
             usually what you want. Requires an exact ``project_id``.
@@ -130,6 +145,8 @@ class Sandbox:
             body["metadata"] = metadata
         if envs:
             body["envs"] = envs
+        if region:
+            body["region"] = region
         if volume_id:
             body["volumeId"] = volume_id
         if volume_name:
@@ -166,8 +183,15 @@ class Sandbox:
         """
         Connect to an existing sandbox by its ID.
 
-        If the sandbox is currently paused, it is automatically resumed
-        before this call returns.
+        Verifies the sandbox exists and is reachable, then returns a handle to it.
+        Raises :class:`~lizard.NotFoundError` if it has been killed or expired.
+
+        This used to call ``resume`` first, on the assumption that a sandbox you
+        are reconnecting to might be paused. Sandboxes are pods now and
+        pause/resume is a ``501`` on every one of them, so that call turned every
+        ``connect()`` into an error against a perfectly healthy sandbox.
+        Connecting does not need to change a sandbox's state, so it no longer
+        tries to.
 
         Example::
 
@@ -176,11 +200,11 @@ class Sandbox:
         import httpx
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
-        res = httpx.post(
-            f"{config.api_url}/api/sandboxes/{sandbox_id}/resume",
+        res = httpx.get(
+            f"{config.api_url}/api/sandboxes/{sandbox_id}",
             headers=config.headers,
         )
-        if res.status_code not in (200, 404):
+        if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
@@ -229,24 +253,15 @@ class Sandbox:
 
     def pause(self) -> bool:
         """
-        Pause the sandbox microVM by freezing its vCPUs.
+        Pause the sandbox by freezing it in place.
 
-        Memory, filesystem, and running processes are held in the host's RAM —
-        nothing is written to disk, so a paused sandbox does not survive a host
-        failure. Resume with :meth:`resume` or :meth:`Sandbox.connect`.
-
-        Pausing does not buy you time past the original deadline. Resuming pushes
-        the expiry forward by however long the sandbox was paused -- so a
-        pause/resume cycle costs no runtime -- but that adjustment only happens on
-        :meth:`resume`. A sandbox left paused past its original ``expires_at`` is
-        deleted there, within a minute, and :meth:`resume` then returns ``False``.
-
-        In other words: pause and come back *before* the original deadline and you
-        lose nothing; leave it paused across the deadline and it is gone. Pass
-        ``timeout_ms=0`` at create time to opt out of expiry entirely, which is the
-        only way to park a sandbox indefinitely.
-
-        :returns: ``True`` if paused successfully.
+        .. deprecated::
+            Not implemented for the current runtime -- always raises
+            :class:`~lizard.LizardError` with HTTP 501. Sandboxes run as pods, and
+            the equivalent is a CRIU checkpoint of the pod, which is not built. To
+            park work across a gap, put it on a :class:`~lizard.Volume` and create
+            a fresh sandbox on that volume later; the volume is the part that is
+            meant to outlive a sandbox.
         """
         import httpx
 
@@ -263,14 +278,13 @@ class Sandbox:
 
     def resume(self) -> bool:
         """
-        Resume a paused sandbox by unfreezing its vCPUs.
+        Resume a paused sandbox.
 
-        The expiry is pushed forward by the time spent paused, so the timeout
-        measures running time rather than wall-clock -- provided the original
-        deadline had not already passed while paused. See :meth:`pause`.
-
-        :returns: ``True`` if resumed successfully, ``False`` if the sandbox no
-            longer exists (including because it expired while paused).
+        .. deprecated::
+            Not implemented for the current runtime -- always raises
+            :class:`~lizard.LizardError` with HTTP 501. See :meth:`pause`.
+            :meth:`Sandbox.connect` no longer calls this, so reconnecting to a
+            running sandbox works without it.
         """
         import httpx
 

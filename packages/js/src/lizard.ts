@@ -10,6 +10,12 @@ import { AddonsAPI } from './platform/addons'
 import { SecretsAPI } from './platform/secrets'
 import { DomainsAPI } from './platform/domains'
 import { MetricsAPI } from './platform/metrics'
+import { WorkspacesAPI } from './platform/workspaces'
+import { ApiKeysAPI } from './platform/api-keys'
+import { RegionsAPI } from './platform/regions'
+import { BillingAPI } from './platform/billing'
+import { Volume } from './volume'
+import type { CreateVolumeOpts, VolumeInfo } from './volume'
 
 export interface LizardOpts extends ConnectionOpts {
   /**
@@ -55,6 +61,14 @@ export class Lizard {
   private _platform: PlatformClient | undefined
 
   // ── Platform namespace APIs ───────────────────────────────────────────────
+  /** Create, list and delete workspaces — the top of the ownership tree. */
+  readonly workspaces: WorkspacesAPI
+  /** Mint and revoke API keys, including keys scoped to one workspace or project. */
+  readonly apiKeys: ApiKeysAPI
+  /** List the regions workloads can be placed in. */
+  readonly regions: RegionsAPI
+  /** Account balance, burn rate and transactions. */
+  readonly billing: BillingAPI
   /** Manage projects. */
   readonly projects: ProjectsAPI
   /** Deploy and manage services. */
@@ -73,6 +87,10 @@ export class Lizard {
     this.projectRef = opts.project
     const platform = new PlatformClient(opts)
     this._platform = platform
+    this.workspaces = new WorkspacesAPI(platform)
+    this.apiKeys = new ApiKeysAPI(platform)
+    this.regions = new RegionsAPI(platform)
+    this.billing = new BillingAPI(platform)
     this.projects = new ProjectsAPI(platform)
     this.services = new ServicesAPI(platform)
     this.addons = new AddonsAPI(platform)
@@ -103,7 +121,7 @@ export class Lizard {
     return template ? Sandbox.create(template, sandboxOpts) : Sandbox.create(sandboxOpts)
   }
 
-  /** Connect to an existing sandbox by ID (resumes it if paused). */
+  /** Connect to an existing sandbox by ID. Throws `NotFoundError` if it is gone. */
   async connect(sandboxId: string, opts?: ConnectionOpts): Promise<Sandbox> {
     return Sandbox.connect(sandboxId, await this.connectionOpts(opts))
   }
@@ -112,4 +130,62 @@ export class Lizard {
   async list(opts?: ConnectionOpts): Promise<SandboxInfo[]> {
     return Sandbox.list(await this.connectionOpts(opts))
   }
+
+  // ── Volumes, bound to this client's project ───────────────────────────────
+
+  /**
+   * Persistent volumes in this client's project.
+   *
+   * The same calls as the static {@link Volume} methods, minus the `projectId`
+   * argument — the client already knows it.
+   *
+   * @requires `project` to be set in the constructor.
+   *
+   * @example
+   * ```ts
+   * const lizard = new Lizard({ project: 'my-project' })
+   * const vol = await lizard.volumes.getOrCreate('scratch', { sizeGb: 10 })
+   * const sb  = await lizard.create('codex', { volumeName: 'scratch' })
+   * ```
+   */
+  readonly volumes = {
+    create: async (name: string, opts?: CreateVolumeOpts): Promise<Volume> =>
+      Volume.create(await this.projectId(), name, { ...(await this.connectionOpts()), ...opts }),
+    getOrCreate: async (name: string, opts?: CreateVolumeOpts): Promise<Volume> =>
+      Volume.getOrCreate(await this.projectId(), name, { ...(await this.connectionOpts()), ...opts }),
+    get: async (nameOrId: string, opts?: ConnectionOpts): Promise<Volume> =>
+      Volume.get(await this.projectId(), nameOrId, { ...(await this.connectionOpts()), ...opts }),
+    list: async (opts?: ConnectionOpts): Promise<VolumeInfo[]> =>
+      Volume.list(await this.projectId(), { ...(await this.connectionOpts()), ...opts }),
+    delete: async (nameOrId: string, opts?: ConnectionOpts): Promise<void> =>
+      Volume.delete(await this.projectId(), nameOrId, { ...(await this.connectionOpts()), ...opts }),
+  }
+
+  // ── Account ───────────────────────────────────────────────────────────────
+
+  /**
+   * The account this credential belongs to — the SDK's `lizard whoami`.
+   *
+   * Works for a scoped key as well as a full one: the identity is the account that
+   * created the key, which is what the key's usage bills to.
+   */
+  async whoami(): Promise<Account> {
+    return this.platform.get<Account>('/api/auth/me')
+  }
+
+  /** The underlying HTTP client, for endpoints this SDK does not wrap yet. */
+  get platform(): PlatformClient {
+    return this._platform!
+  }
+}
+
+/** The account behind a credential — see {@link Lizard.whoami}. */
+export interface Account {
+  id: string
+  username: string
+  email?: string | null
+  avatarUrl?: string | null
+  plan?: string
+  billingStatus?: string
+  balanceCents?: number
 }

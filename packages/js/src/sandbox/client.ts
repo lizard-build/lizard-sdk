@@ -7,6 +7,11 @@ export interface SandboxInfo {
   template: string
   startedAt: string
   endAt: string
+  /** Region the sandbox runs in — the volume's region when one is attached. */
+  region?: string
+  status?: string
+  cpus?: number
+  memoryMb?: number
   metadata?: Record<string, string>
 }
 
@@ -24,6 +29,17 @@ export interface SandboxOpts extends ConnectionOpts {
   metadata?: Record<string, string>
   envs?: Record<string, string>
   timeoutMs?: number
+  /**
+   * Region to run the sandbox in, e.g. `'us-east-1'`.
+   *
+   * Leave it unset when attaching a volume: a volume is node-local, so the server
+   * places the sandbox in the volume's own region. Setting it to a region the volume
+   * is not in is rejected with a 400 rather than silently moved — that combination
+   * cannot be satisfied.
+   *
+   * Defaults to the platform's default sandbox region.
+   */
+  region?: string
   /** Attach a persistent volume by id, mounted at `/data`. */
   volumeId?: string
   /**
@@ -80,6 +96,7 @@ export class SandboxClient {
         projectId,
         metadata: opts?.metadata,
         envs: opts?.envs,
+        region: opts?.region,
         volumeId: opts?.volumeId,
         volumeName: opts?.volumeName,
         lizardToken: opts?.lizardToken,

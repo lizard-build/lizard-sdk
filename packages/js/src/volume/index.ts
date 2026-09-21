@@ -7,6 +7,8 @@ export interface VolumeInfo {
   name: string
   sizeGb: number
   sizeMb?: number
+  /** Region the volume's node lives in. A sandbox mounting it runs here too. */
+  region?: string
   status: string
   attachedTo?: string | null
   createdAt: number
@@ -14,6 +16,15 @@ export interface VolumeInfo {
 
 export interface CreateVolumeOpts extends ConnectionOpts {
   sizeGb?: number
+  /**
+   * Region to place the volume in, e.g. `'us-east-1'`. A volume is node-local, so
+   * this also fixes where any sandbox mounting it must run — `Sandbox.create` takes
+   * the volume's region automatically when you don't name one, so you normally set
+   * the region here or nowhere.
+   *
+   * Defaults to the platform's default region.
+   */
+  region?: string
 }
 
 /**
@@ -51,7 +62,7 @@ export class Volume {
     const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
       method: 'POST',
       headers: config.headers,
-      body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5 }),
+      body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5, region: opts?.region }),
     })
     if (!res.ok) await handleApiError(res)
     const vol = await res.json() as VolumeInfo
@@ -71,7 +82,7 @@ export class Volume {
     const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
       method: 'POST',
       headers: config.headers,
-      body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5, getOrCreate: true }),
+      body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5, region: opts?.region, getOrCreate: true }),
     })
     if (!res.ok) await handleApiError(res)
     const vol = await res.json() as VolumeInfo
