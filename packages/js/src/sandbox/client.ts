@@ -32,6 +32,27 @@ export interface SandboxOpts extends ConnectionOpts {
    * Requires the sandbox's project to be given as an exact `projectId`.
    */
   volumeName?: string
+  /**
+   * A `liz_` API key to write into the sandbox, so `lizard` works inside it. The CLI is
+   * preinstalled in every template; this is what authenticates it.
+   *
+   * The key must belong to the caller — the server verifies that and silently skips the
+   * injection otherwise.
+   *
+   * SECURITY: anything running in the sandbox can read this key, and sandboxes run
+   * untrusted code. Pass a WORKSPACE-SCOPED key rather than a full-access one. Scopes are
+   * enforced end to end, so a scoped key that escapes is bounded to that one workspace.
+   *
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('codex', {
+   *   projectId: 'proj_123',
+   *   lizardToken: process.env.LIZARD_WORKSPACE_KEY, // scoped to one workspace
+   * })
+   * await sandbox.process.exec('lizard volume list')
+   * ```
+   */
+  lizardToken?: string
 }
 
 /**
@@ -61,6 +82,7 @@ export class SandboxClient {
         envs: opts?.envs,
         volumeId: opts?.volumeId,
         volumeName: opts?.volumeName,
+        lizardToken: opts?.lizardToken,
       }),
     })
     if (!res.ok) await handleApiError(res)
