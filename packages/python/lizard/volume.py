@@ -15,6 +15,8 @@ class VolumeInfo:
     status: str
     created_at: int
     attached_to: str | None = None
+    #: Region the volume's node lives in. A sandbox mounting it runs here too.
+    region: str | None = None
 
 
 class Volume:
@@ -62,6 +64,7 @@ class Volume:
         name: str,
         *,
         size_gb: int = 5,
+        region: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
     ) -> "Volume":
@@ -70,6 +73,12 @@ class Volume:
         Raises :class:`~lizard.ConflictError` if the project already has a volume
         with this name -- use :meth:`get_or_create` when you want "make sure this
         exists" instead.
+
+        ``region`` places the volume, e.g. ``"us-east-1"``. A volume is node-local,
+        so this also fixes where any sandbox mounting it must run --
+        :meth:`Sandbox.create` takes the volume's region automatically when you do
+        not name one, so you normally set the region here or nowhere. Defaults to
+        the platform's default region.
         """
         import httpx
 
@@ -77,7 +86,7 @@ class Volume:
         res = httpx.post(
             f"{config.api_url}/api/projects/{project_id}/volumes",
             headers=config.headers,
-            json={"name": name, "sizeGb": size_gb},
+            json={"name": name, "sizeGb": size_gb, "region": region},
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -93,6 +102,7 @@ class Volume:
         name: str,
         *,
         size_gb: int = 5,
+        region: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
     ) -> "Volume":
@@ -110,7 +120,7 @@ class Volume:
         res = httpx.post(
             f"{config.api_url}/api/projects/{project_id}/volumes",
             headers=config.headers,
-            json={"name": name, "sizeGb": size_gb, "getOrCreate": True},
+            json={"name": name, "sizeGb": size_gb, "region": region, "getOrCreate": True},
         )
         if not res.is_success:
             from .errors import handle_api_error

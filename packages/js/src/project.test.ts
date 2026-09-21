@@ -65,10 +65,15 @@ describe('resolveRequiredProjectId', () => {
 })
 
 describe('Lizard', () => {
-  it('requires a project up front', () => {
-    // @ts-expect-error — the point is that omitting it is both a type and a runtime error
-    expect(() => new Lizard({})).toThrow(/project is required/i)
-    expect(() => new Lizard({ project: '' })).toThrow(LizardError)
+  it('constructs without a project, and defers the error to the sandbox call', async () => {
+    // `project` is optional since the platform namespace landed: a client that only
+    // manages workspaces, keys or projects has no sandbox to bill and should not have
+    // to invent a project to be constructed. The requirement moved to the point where
+    // it actually matters — anything that creates or resolves a sandbox.
+    const lizard = new Lizard({ apiKey: 'liz_test', apiUrl: uniqueApiUrl() })
+    expect(lizard.workspaces).toBeDefined()
+    await expect(lizard.projectId()).rejects.toThrow(/no project set/i)
+    await expect(lizard.create('base')).rejects.toThrow(LizardError)
   })
 
   it('resolves its project reference to an id', async () => {

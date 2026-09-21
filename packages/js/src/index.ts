@@ -1,5 +1,5 @@
 export { Lizard } from './lizard'
-export type { LizardOpts } from './lizard'
+export type { LizardOpts, Account } from './lizard'
 export { Sandbox } from './sandbox'
 export type { SandboxOpts, SandboxInfo } from './sandbox'
 export { resolveProjectId } from './project'
@@ -29,7 +29,16 @@ export type { VolumeInfo, CreateVolumeOpts } from './volume'
 
 // Platform management API
 export { DeployHandle } from './platform/services'
+export { PlatformClient } from './platform/client'
+export {
+  WorkspacesAPI, ApiKeysAPI, RegionsAPI, BillingAPI,
+  ProjectsAPI, ServicesAPI, AddonsAPI, SecretsAPI, DomainsAPI, MetricsAPI,
+} from './platform'
 export type {
+  Workspace, CreateWorkspaceOpts,
+  ApiKey, CreatedApiKey, ApiKeyScope, CreateApiKeyOpts,
+  Region,
+  Balance, Transaction, TransactionPage, ListTransactionsOpts,
   Project, CreateProjectOpts,
   Service, CreateServiceOpts, ScaleOpts, LogLine, DeployEvent,
   Addon, AddonType, CreateAddonOpts,

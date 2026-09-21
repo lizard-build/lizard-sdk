@@ -6,13 +6,15 @@ import { SandboxClient, SandboxInfo, SandboxOpts } from './client'
 export { SandboxOpts, SandboxInfo }
 
 /**
- * A Lizard sandbox — an isolated Firecracker microVM that boots in milliseconds.
+ * A Lizard sandbox — an isolated Linux environment that starts in under a second.
  *
- * Each sandbox is a full Linux environment with its own filesystem, network,
- * and process namespace. Sandboxes are spun up from templates and can be
- * paused — vCPUs frozen, memory and running processes kept — then resumed
- * instantly, perfect for stateful AI agent sessions or ephemeral code
- * execution.
+ * Each sandbox is a full Linux environment with its own filesystem, network, and
+ * process namespace, restored from a pre-warmed template snapshot.
+ *
+ * Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards
+ * everything written inside it. State that has to outlive a sandbox belongs on a
+ * {@link Volume}, which is a separate disk you mount at `/data` and re-attach to a
+ * later sandbox.
  *
  * @example Basic usage:
  * ```ts
@@ -25,16 +27,18 @@ export { SandboxOpts, SandboxInfo }
  * await sandbox.kill()
  * ```
  *
- * @example Pause and resume a long-running session:
+ * @example Carry work across sandboxes with a volume:
  * ```ts
- * const sandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project' })
- * await sandbox.process.exec('pip install numpy')
- * const id = sandbox.sandboxId
- * await sandbox.pause()
+ * const vol = await Volume.getOrCreate(projectId, 'agent-scratch', { sizeGb: 10 })
  *
- * // Later — resume exactly where it left off:
- * const resumed = await Sandbox.connect(id)
- * await resumed.process.exec('python -c "import numpy; print(numpy.__version__)"')
+ * const first = await Sandbox.create('codex', { projectId, volumeName: 'agent-scratch' })
+ * await first.process.exec('echo "notes" > /data/notes.txt')
+ * await first.kill()
+ *
+ * // A different sandbox, the same disk. No region to thread through: the sandbox
+ * // is placed wherever the volume already lives.
+ * const second = await Sandbox.create('codex', { projectId, volumeName: 'agent-scratch' })
+ * console.log(await second.fs.read('/data/notes.txt')) // "notes"
  * ```
  */
 export class Sandbox extends SandboxClient {
@@ -122,8 +126,14 @@ export class Sandbox extends SandboxClient {
   /**
    * Connect to an existing sandbox by its ID.
    *
-   * If the sandbox is currently paused, it will be automatically resumed
-   * before this call returns.
+   * Verifies the sandbox exists and is reachable, then returns a handle to it.
+   * Throws `NotFoundError` if it has been killed or has expired.
+   *
+   * This used to call `resume` first, on the assumption that a sandbox you are
+   * reconnecting to might be paused. Sandboxes are pods now and pause/resume is a
+   * `501` on every one of them, so that call turned every `connect()` into an
+   * error against a perfectly healthy sandbox. Connecting does not need to change
+   * a sandbox's state, so it no longer tries to.
    *
    * @example
    * ```ts
@@ -131,7 +141,7 @@ export class Sandbox extends SandboxClient {
    * ```
    */
   static async connect(sandboxId: string, opts?: ConnectionOpts): Promise<Sandbox> {
-    await SandboxClient.resumeSandbox(sandboxId, opts)
+    await SandboxClient.getSandboxInfo(sandboxId, opts)
     return new this({ sandboxId, ...opts })
   }
 
@@ -157,38 +167,24 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Pause the sandbox microVM by freezing its vCPUs.
+   * Pause the sandbox by freezing it in place.
    *
-   * Memory, filesystem, and running processes are held in the host's RAM —
-   * nothing is written to disk, so a paused sandbox does not survive a host
-   * failure. Resume with `sandbox.resume()` or `Sandbox.connect(id)`.
-   *
-   * Pausing does not buy you time past the original deadline. Resuming pushes the
-   * expiry forward by however long the sandbox was paused — so a pause/resume cycle
-   * costs no runtime — but that adjustment only happens on `resume()`. A sandbox left
-   * paused past its original `expiresAt` is deleted there, within a minute, and
-   * `resume()` then returns `false`.
-   *
-   * In other words: pause and come back *before* the original deadline and you lose
-   * nothing; leave it paused across the deadline and it is gone. Pass `timeoutMs: 0`
-   * at create time to opt out of expiry entirely, which is the only way to park a
-   * sandbox indefinitely.
-   *
-   * @returns `true` if paused successfully.
+   * @deprecated Not implemented for the current runtime — always throws
+   * `LizardError` with HTTP 501. Sandboxes run as pods, and the equivalent is a CRIU
+   * checkpoint of the pod, which is not built. To park work across a gap, put it on a
+   * {@link Volume} and create a fresh sandbox on that volume later; the volume is the
+   * part that is meant to outlive a sandbox.
    */
   async pause(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
   /**
-   * Resume a paused sandbox by unfreezing its vCPUs.
+   * Resume a paused sandbox.
    *
-   * The expiry is pushed forward by the time spent paused, so the timeout measures
-   * running time rather than wall-clock — provided the original deadline had not
-   * already passed while paused. See {@link pause}.
-   *
-   * @returns `true` if resumed successfully, `false` if the sandbox no longer exists
-   * (including because it expired while paused).
+   * @deprecated Not implemented for the current runtime — always throws
+   * `LizardError` with HTTP 501. See {@link pause}. `Sandbox.connect()` no longer
+   * calls this, so reconnecting to a running sandbox works without it.
    */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.resumeSandbox(this.sandboxId, this.resolveOpts(opts))
