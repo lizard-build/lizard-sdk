@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ..config import ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT_MS
+from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_TIMEOUT_MS
 from .process import Process
 from .fs import Fs
 
@@ -19,6 +19,27 @@ class SandboxInfo:
     cpus: int | None = None
     memory_mb: int | None = None
     metadata: dict[str, str] | None = None
+
+
+def _to_sandbox_info(s: dict) -> SandboxInfo:
+    """Build a SandboxInfo from either sandbox response shape.
+
+    Every field but the id is read with .get(): a sandbox read back immediately
+    after its create is answered from the in-flight record, which carries fewer
+    fields than the stored row, and requiring startedAt there made get_info()
+    raise KeyError on a sandbox that was running perfectly well.
+    """
+    return SandboxInfo(
+        sandbox_id=s.get("sandboxId") or s["id"],
+        template=s.get("template", ""),
+        started_at=s.get("startedAt", ""),
+        end_at=s.get("endAt") or s.get("expiresAt") or "",
+        region=s.get("region"),
+        status=s.get("status"),
+        cpus=s.get("cpus"),
+        memory_mb=s.get("memoryMb"),
+        metadata=s.get("metadata"),
+    )
 
 
 class Sandbox:
@@ -158,6 +179,7 @@ class Sandbox:
             f"{config.api_url}/api/sandboxes",
             headers=config.headers,
             json=body,
+            timeout=HTTP_TIMEOUT_S,
         )
 
         if not res.is_success:
@@ -203,6 +225,7 @@ class Sandbox:
         res = httpx.get(
             f"{config.api_url}/api/sandboxes/{sandbox_id}",
             headers=config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -216,19 +239,13 @@ class Sandbox:
         import httpx
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
-        res = httpx.get(f"{config.api_url}/api/sandboxes", headers=config.headers)
+        res = httpx.get(f"{config.api_url}/api/sandboxes", headers=config.headers, timeout=HTTP_TIMEOUT_S)
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
         return [
-            SandboxInfo(
-                sandbox_id=s["sandboxId"],
-                template=s["template"],
-                started_at=s["startedAt"],
-                end_at=s["endAt"],
-                metadata=s.get("metadata"),
-            )
+            _to_sandbox_info(s)
             for s in res.json()
         ]
 
@@ -243,6 +260,7 @@ class Sandbox:
         res = httpx.delete(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
             return False
@@ -268,6 +286,7 @@ class Sandbox:
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/pause",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
             return False
@@ -291,6 +310,7 @@ class Sandbox:
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/resume",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
             return False
@@ -307,6 +327,7 @@ class Sandbox:
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/timeout",
             headers=self._config.headers,
             json={"timeoutMs": timeout_ms},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -319,19 +340,13 @@ class Sandbox:
         res = httpx.get(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
-        s = res.json()
-        return SandboxInfo(
-            sandbox_id=s["sandboxId"],
-            template=s["template"],
-            started_at=s["startedAt"],
-            end_at=s["endAt"],
-            metadata=s.get("metadata"),
-        )
+        return _to_sandbox_info(res.json())
 
     def get_host(self, port: int) -> str:
         """

@@ -5,6 +5,8 @@ from typing import Callable, Iterator, Optional
 
 import httpx
 
+from ..config import HTTP_TIMEOUT_S
+
 from ..sandbox.sandbox import Sandbox
 from .types import (
     CodeContext,
@@ -145,6 +147,7 @@ class CodeSandbox(Sandbox):
         resp = httpx.post(
             f"{self._server_url}/contexts",
             json={"language": language, "cwd": cwd},
+            timeout=HTTP_TIMEOUT_S,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -152,18 +155,18 @@ class CodeSandbox(Sandbox):
 
     def list_contexts(self) -> list[CodeContext]:
         """List all active contexts in this sandbox."""
-        resp = httpx.get(f"{self._server_url}/contexts")
+        resp = httpx.get(f"{self._server_url}/contexts", timeout=HTTP_TIMEOUT_S)
         resp.raise_for_status()
         return [CodeContext(**c) for c in resp.json()]
 
     def delete_context(self, context: CodeContext | str) -> None:
         """Delete a context and free its resources."""
         ctx_id = context if isinstance(context, str) else context.id
-        resp = httpx.delete(f"{self._server_url}/contexts/{ctx_id}")
+        resp = httpx.delete(f"{self._server_url}/contexts/{ctx_id}", timeout=HTTP_TIMEOUT_S)
         resp.raise_for_status()
 
     def restart_context(self, context: CodeContext | str) -> None:
         """Restart a context, clearing all variables and state."""
         ctx_id = context if isinstance(context, str) else context.id
-        resp = httpx.post(f"{self._server_url}/contexts/{ctx_id}/restart")
+        resp = httpx.post(f"{self._server_url}/contexts/{ctx_id}/restart", timeout=HTTP_TIMEOUT_S)
         resp.raise_for_status()

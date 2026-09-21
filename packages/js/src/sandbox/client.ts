@@ -40,10 +40,10 @@ export interface SandboxOpts extends ConnectionOpts {
    * Defaults to the platform's default sandbox region.
    */
   region?: string
-  /** Attach a persistent volume by id, mounted at `/data`. */
+  /** Attach a persistent volume by id, mounted at `/workspace`. */
   volumeId?: string
   /**
-   * Attach a persistent volume by name, mounted at `/data`. A volume's name is its
+   * Attach a persistent volume by name, mounted at `/workspace`. A volume's name is its
    * key inside a project, so this is usually what you want — see {@link Volume}.
    * Requires the sandbox's project to be given as an exact `projectId`.
    */

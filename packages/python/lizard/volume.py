@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from .config import ConnectionConfig
+from .config import ConnectionConfig, HTTP_TIMEOUT_S
 
 
 @dataclass
@@ -32,7 +32,7 @@ class Volume:
     a letter or digit, up to 64 characters.
 
     Mount it to a sandbox with ``Sandbox.create(volume_name="my-data")``; inside the
-    microVM it appears at ``/data``.
+    microVM it appears at ``/workspace``.
 
     Example::
 
@@ -40,7 +40,7 @@ class Volume:
 
         volume = Volume.get_or_create("proj_abc123", "my-data", size_gb=5)
         sandbox = Sandbox.create("base", project_id="proj_abc123", volume_name="my-data")
-        sandbox.process.exec_("echo hello > /data/file.txt")
+        sandbox.process.exec_("echo hello > /workspace/file.txt")
         sandbox.kill()  # volume persists
     """
 
@@ -86,7 +86,8 @@ class Volume:
         res = httpx.post(
             f"{config.api_url}/api/projects/{project_id}/volumes",
             headers=config.headers,
-            json={"name": name, "sizeGb": size_gb, "region": region},
+            json=_body(name, size_gb, region),
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -120,7 +121,8 @@ class Volume:
         res = httpx.post(
             f"{config.api_url}/api/projects/{project_id}/volumes",
             headers=config.headers,
-            json={"name": name, "sizeGb": size_gb, "region": region, "getOrCreate": True},
+            json={**_body(name, size_gb, region), "getOrCreate": True},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -146,6 +148,7 @@ class Volume:
         res = httpx.get(
             f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -171,6 +174,7 @@ class Volume:
         res = httpx.delete(
             f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -191,6 +195,7 @@ class Volume:
         res = httpx.get(
             f"{config.api_url}/api/projects/{project_id}/volumes",
             headers=config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -205,6 +210,7 @@ class Volume:
         res = httpx.get(
             f"{self._config.api_url}/api/projects/{project_id}/volumes/{self.volume_id}",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
@@ -219,10 +225,26 @@ class Volume:
         res = httpx.delete(
             f"{self._config.api_url}/api/projects/{project_id}/volumes/{self.volume_id}",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from .errors import handle_api_error
             handle_api_error(res.status_code, res.text)
+
+
+def _body(name: str, size_gb: int, region: str | None) -> dict:
+    """The create body, with ``region`` omitted rather than null when unset.
+
+    ``json.dumps`` renders ``None`` as a JSON ``null``, where JavaScript's
+    ``JSON.stringify`` drops an ``undefined`` key entirely. The server's schema has
+    ``region`` as optional, not nullable, so sending an explicit null was a 400 on
+    every create that did not name a region -- which is the common case, since the
+    region normally comes from the volume.
+    """
+    body: dict = {"name": name, "sizeGb": size_gb}
+    if region is not None:
+        body["region"] = region
+    return body
 
 
 def _to_info(v: dict) -> VolumeInfo:
@@ -234,4 +256,5 @@ def _to_info(v: dict) -> VolumeInfo:
         status=v["status"],
         created_at=v["createdAt"],
         attached_to=v.get("attachedTo"),
+        region=v.get("region"),
     )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .config import ConnectionConfig
+from .config import ConnectionConfig, HTTP_TIMEOUT_S
 from .errors import LizardError, handle_api_error
 
 # Resolved project IDs are cached per (api_url, ref) so repeated sandbox creates
@@ -20,7 +20,7 @@ def resolve_project_id(ref: str, config: ConnectionConfig) -> str:
     if cached:
         return cached
 
-    res = httpx.get(f"{config.api_url}/api/projects", headers=config.headers)
+    res = httpx.get(f"{config.api_url}/api/projects", headers=config.headers, timeout=HTTP_TIMEOUT_S)
     if not res.is_success:
         handle_api_error(res.status_code, res.text)
 

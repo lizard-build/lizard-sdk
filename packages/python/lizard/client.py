@@ -172,4 +172,7 @@ class _ProjectVolumes:
         return Volume.list(self._parent.project_id(), **self._kw())
 
     def delete(self, name_or_id: str) -> None:
-        Volume.delete(self._parent.project_id(), name_or_id, **self._kw())
+        # Volume.remove is the classmethod; Volume.delete is the instance method and
+        # takes a project_id, so calling it here raised "unexpected keyword argument
+        # 'api_key'". lizard.volumes.delete(name) is the name that matches the JS SDK.
+        Volume.remove(self._parent.project_id(), name_or_id, **self._kw())

@@ -13,7 +13,7 @@ export { SandboxOpts, SandboxInfo }
  *
  * Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards
  * everything written inside it. State that has to outlive a sandbox belongs on a
- * {@link Volume}, which is a separate disk you mount at `/data` and re-attach to a
+ * {@link Volume}, which is a separate disk you mount at `/workspace` and re-attach to a
  * later sandbox.
  *
  * @example Basic usage:
@@ -32,13 +32,13 @@ export { SandboxOpts, SandboxInfo }
  * const vol = await Volume.getOrCreate(projectId, 'agent-scratch', { sizeGb: 10 })
  *
  * const first = await Sandbox.create('codex', { projectId, volumeName: 'agent-scratch' })
- * await first.process.exec('echo "notes" > /data/notes.txt')
+ * await first.process.exec('echo "notes" > /workspace/notes.txt')
  * await first.kill()
  *
  * // A different sandbox, the same disk. No region to thread through: the sandbox
  * // is placed wherever the volume already lives.
  * const second = await Sandbox.create('codex', { projectId, volumeName: 'agent-scratch' })
- * console.log(await second.fs.read('/data/notes.txt')) // "notes"
+ * console.log(await second.fs.read('/workspace/notes.txt')) // "notes"
  * ```
  */
 export class Sandbox extends SandboxClient {

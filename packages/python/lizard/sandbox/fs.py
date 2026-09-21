@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import ConnectionConfig
+    from ..config import ConnectionConfig, HTTP_TIMEOUT_S
 
 
 @dataclass
@@ -67,6 +67,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
             headers=self._config.headers,
             json=body,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -93,6 +94,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
             headers=self._config.headers,
             params=params,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -119,6 +121,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/list",
             headers=self._config.headers,
             params=params,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -169,6 +172,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
             headers=self._config.headers,
             json=body,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -193,6 +197,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/stat",
             headers=self._config.headers,
             params=params,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -219,6 +224,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/move",
             headers=self._config.headers,
             json={"from": from_path, "to": to_path},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -245,6 +251,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
             headers=self._config.headers,
             json={"path": path, "recursive": recursive},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -273,6 +280,7 @@ class Watcher:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch/events",
             headers=self._config.headers,
             params={"watcherId": self.watcher_id},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
