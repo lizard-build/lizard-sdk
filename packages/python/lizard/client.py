@@ -124,8 +124,14 @@ class Lizard:
     def whoami(self) -> dict:
         """The account this credential belongs to -- the SDK's ``lizard whoami``.
 
-        Works for a scoped key as well as a full one: the identity is the account
-        that created the key, which is what the key's usage bills to.
+        A **scoped** key gets identity only: ``id``, ``username``, ``avatarUrl``,
+        ``scoped: True`` and the key's own ``scopes``. The account's email, balance,
+        plan and billing status are withheld -- they belong to the account, not to
+        the key holder, and a scoped key is meant to be handed to an end user or
+        injected into a sandbox. An unscoped key or a session sees the full account.
+
+        Reading back ``scopes`` is the cheapest way to answer "what can this key
+        reach".
         """
         return self._pc.get("/api/auth/me")
 

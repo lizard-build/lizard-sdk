@@ -148,6 +148,14 @@ sandbox.process.exec_("lizard volume list")
 
 A key with **no** scope has full access to everything the creating account can reach — pass `workspaces` or `projects` unless you mean that.
 
+### What a scoped key deliberately cannot see
+
+Billing is account-level: one balance, one ledger, one set of saved cards, shared by every workspace. There is no per-workspace view of it, so a scoped key is refused outright (403 `ACCOUNT_SCOPE_REQUIRED`) on `lizard.billing.*` and on account-wide usage, and `whoami()` returns only identity plus the key's own scopes — not the account's email, balance or plan.
+
+That matters because of where these keys end up. A key you hand to a user, or inject into a sandbox with `lizardToken`, is readable by anything running there. It should not be a way to read your card details or spend against them.
+
+For per-workspace spend, use `lizard.metrics` — that is scoped, and is what you would bill a user from.
+
 ## API
 
 ### `new Lizard({ project, apiKey?, apiUrl?, timeoutMs? })`
@@ -187,8 +195,8 @@ List all running sandboxes for the authenticated account.
 | `lizard.apiKeys` | `list()`, `create({ name, workspaces?, projects? })`, `delete(id)` |
 | `lizard.projects` | `list({ workspaceId? })`, `get(id)`, `create({ workspaceId, name })`, `update(id, { name })`, `delete(id)` |
 | `lizard.regions` | `list()` |
-| `lizard.billing` | `balance()`, `transactions({ limit?, cursor?, includeUsage? })`, `summary()`, `live()` |
-| `lizard.whoami()` | The account behind the credential — works for scoped keys too |
+| `lizard.billing` | `balance()`, `transactions({ limit?, cursor?, includeUsage? })`, `summary()`, `live()` — **unscoped keys only** |
+| `lizard.whoami()` | The account behind the credential; a scoped key gets identity and its own scopes, not the account's email or balance |
 | `lizard.platform` | The raw HTTP client, for endpoints not wrapped yet |
 
 `workspaces.delete()` is empty-only by default; the server refuses while any project, sandbox or volume remains. `{ force: true }` deletes the workspace and everything in it, irreversibly.

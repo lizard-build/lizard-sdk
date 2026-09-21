@@ -72,6 +72,12 @@ class BillingAPI:
     workspaces a safe pattern -- your users get isolation, you keep one bill -- and
     also what makes :attr:`Balance.runway_hours` worth watching before you
     provision more.
+
+    **Requires an unscoped key.** A scoped key is refused with 403
+    ``ACCOUNT_SCOPE_REQUIRED``, because there is no workspace-scoped view of one
+    shared balance, ledger and set of saved cards -- and because a scoped key is
+    meant to be handed to an end user, who should not be reading your card details
+    or spending against them. For per-workspace spend, use :class:`MetricsAPI`.
     """
 
     def __init__(self, client: "PlatformClient") -> None:
