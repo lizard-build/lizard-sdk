@@ -48,6 +48,12 @@ export interface ListTransactionsOpts {
  * a user bills to the account that owns the key. That is what makes per-user
  * workspaces a safe pattern — your users get isolation, you keep one bill — and also
  * what makes {@link Balance.runwayHours} worth watching before you provision more.
+ *
+ * **Requires an unscoped key.** A scoped key is refused with 403
+ * `ACCOUNT_SCOPE_REQUIRED`, because there is no workspace-scoped view of one shared
+ * balance, ledger and set of saved cards — and because a scoped key is meant to be
+ * handed to an end user, who should not be reading your card details or spending
+ * against them. For per-workspace spend, use {@link MetricsAPI.cost} instead.
  */
 export class BillingAPI {
   constructor(private readonly client: PlatformClient) {}

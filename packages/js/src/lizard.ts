@@ -166,8 +166,13 @@ export class Lizard {
   /**
    * The account this credential belongs to — the SDK's `lizard whoami`.
    *
-   * Works for a scoped key as well as a full one: the identity is the account that
-   * created the key, which is what the key's usage bills to.
+   * A **scoped** key gets identity only: `id`, `username`, `avatarUrl`, `scoped: true`
+   * and the key's own `scopes`. The account's email, balance, plan and billing status
+   * are withheld — they belong to the account, not to the key holder, and a scoped key
+   * is meant to be handed to an end user or injected into a sandbox. An unscoped key
+   * or a session sees the full account.
+   *
+   * Reading back `scopes` is the cheapest way to answer "what can this key reach".
    */
   async whoami(): Promise<Account> {
     return this.platform.get<Account>('/api/auth/me')
@@ -179,12 +184,21 @@ export class Lizard {
   }
 }
 
-/** The account behind a credential — see {@link Lizard.whoami}. */
+/**
+ * The account behind a credential — see {@link Lizard.whoami}.
+ *
+ * Everything past `avatarUrl` is present only for an unscoped key or a session; a
+ * scoped key gets `scoped: true` and `scopes` in their place.
+ */
 export interface Account {
   id: string
   username: string
-  email?: string | null
   avatarUrl?: string | null
+  /** True when the calling key is scoped, meaning the account fields below are absent. */
+  scoped?: boolean
+  /** What the calling key may reach. Present when `scoped` is true. */
+  scopes?: Array<{ type: 'workspace' | 'project'; id: string }>
+  email?: string | null
   plan?: string
   billingStatus?: string
   balanceCents?: number
