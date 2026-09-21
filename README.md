@@ -82,7 +82,7 @@ sandbox.kill()
 
 ## Persisting Work Across Sandboxes
 
-Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards everything written inside it. State that has to outlive a sandbox goes on a **volume** — a separate disk mounted at `/data` that a later sandbox re-attaches.
+Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards everything written inside it. State that has to outlive a sandbox goes on a **volume** — a separate disk mounted at `/workspace` that a later sandbox re-attaches.
 
 A volume is node-local, so it fixes the region too. You don't thread a region through both calls: the sandbox is placed wherever its volume already lives.
 
@@ -90,25 +90,25 @@ A volume is node-local, so it fixes the region too. You don't thread a region th
 const vol = await lizard.volumes.getOrCreate('agent-scratch', { sizeGb: 10 })
 
 const first = await lizard.create('codex', { volumeName: 'agent-scratch' })
-await first.process.exec('pip install numpy pandas && echo "notes" > /data/notes.txt')
-await first.kill()          // sandbox gone, /data survives
+await first.process.exec('pip install numpy pandas && echo "notes" > /workspace/notes.txt')
+await first.kill()          // sandbox gone, /workspace survives
 
 const second = await lizard.create('codex', { volumeName: 'agent-scratch' })
-console.log(await second.fs.read('/data/notes.txt'))   // "notes"
+console.log(await second.fs.read('/workspace/notes.txt'))   // "notes"
 ```
 
 ```python
 vol = lizard.volumes.get_or_create("agent-scratch", size_gb=10)
 
 first = lizard.create("codex", volume_name="agent-scratch")
-first.process.exec_('echo "notes" > /data/notes.txt')
-first.kill()                # sandbox gone, /data survives
+first.process.exec_('echo "notes" > /workspace/notes.txt')
+first.kill()                # sandbox gone, /workspace survives
 
 second = lizard.create("codex", volume_name="agent-scratch")
-print(second.fs.read("/data/notes.txt"))   # "notes"
+print(second.fs.read("/workspace/notes.txt"))   # "notes"
 ```
 
-Note that only `/data` survives — installed packages and in-memory state do not. Bake tooling into a template instead of reinstalling it per sandbox.
+Note that only `/workspace` survives — installed packages and in-memory state do not. Bake tooling into a template instead of reinstalling it per sandbox.
 
 > `pause()` / `resume()` exist on the client but are **not implemented** for the current runtime and always fail with HTTP 501. Use a volume.
 

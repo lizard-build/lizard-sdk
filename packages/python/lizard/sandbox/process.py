@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import ConnectionConfig
+    from ..config import ConnectionConfig, HTTP_TIMEOUT_S
 
 
 @dataclass
@@ -189,6 +189,7 @@ class Process:
         res = httpx.get(
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes",
             headers=self._config.headers,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -213,6 +214,7 @@ class Process:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes/signal",
             headers=self._config.headers,
             json={"pid": pid, "signal": signal},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error

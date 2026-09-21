@@ -4,6 +4,15 @@ DEFAULT_API_URL = "https://lizard.build"
 DEFAULT_SANDBOX_TIMEOUT_MS = 5 * 60 * 1000  # 5 minutes
 
 
+# How long any single HTTP call to the API may take, in seconds.
+#
+# httpx defaults to 5s, which is shorter than a sandbox create that waits for a
+# volume to bind (up to 20s server-side). The call timed out client-side while the
+# server went on to succeed, so the caller got an error AND an orphaned sandbox
+# whose id they never learned. 60s is comfortably above every server-side wait.
+HTTP_TIMEOUT_S = 60
+
+
 class ConnectionConfig:
     def __init__(
         self,
