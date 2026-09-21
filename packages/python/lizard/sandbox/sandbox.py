@@ -72,6 +72,7 @@ class Sandbox:
         envs: dict[str, str] | None = None,
         volume_id: str | None = None,
         volume_name: str | None = None,
+        lizard_token: str | None = None,
     ) -> "Sandbox":
         """
         Boot a new Lizard sandbox from the specified template.
@@ -93,6 +94,15 @@ class Sandbox:
             usually what you want. Requires an exact ``project_id``.
         :param volume_id: Attach a persistent volume by id, mounted at ``/data``
             inside the microVM. See :class:`lizard.Volume`.
+        :param lizard_token: A ``liz_`` API key to write into the sandbox so the
+            ``lizard`` CLI works inside it. The CLI is preinstalled in every
+            template; this is what authenticates it. The key must belong to the
+            caller — the server verifies that and skips the injection otherwise.
+
+            **Security:** anything running in the sandbox can read this key, and
+            sandboxes run untrusted code. Pass a **workspace-scoped** key rather
+            than a full-access one. Scopes are enforced end to end, so a scoped
+            key that escapes is bounded to that one workspace.
 
         Example::
 
@@ -124,6 +134,8 @@ class Sandbox:
             body["volumeId"] = volume_id
         if volume_name:
             body["volumeName"] = volume_name
+        if lizard_token:
+            body["lizardToken"] = lizard_token
 
         res = httpx.post(
             f"{config.api_url}/api/sandboxes",
