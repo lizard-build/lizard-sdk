@@ -70,6 +70,9 @@ class Volume:
     ) -> "Volume":
         """Create a volume in a project.
 
+        ``size_gb`` is a whole number of GB, default 5. New volumes allow 1–50 GB
+        unless the server config sets another maximum.
+
         Raises :class:`~lizard.ConflictError` if the project already has a volume
         with this name -- use :meth:`get_or_create` when you want "make sure this
         exists" instead.
@@ -112,6 +115,7 @@ class Volume:
         This is the reason a volume's name is its key: an agent that wants "the
         scratch disk for this task" no longer has to store an id between runs.
 
+        New volumes allow 1–50 GB (default 5), subject to server config.
         An existing volume is returned as-is -- ``size_gb`` applies only to a fresh
         create and never resizes one that is already there.
         """
