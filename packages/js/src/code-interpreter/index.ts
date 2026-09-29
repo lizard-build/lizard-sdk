@@ -24,7 +24,7 @@ const CODE_INTERPRETER_PORT = 8080
  *
  * @example
  * ```ts
- * import { CodeSandbox } from 'lizard/code-interpreter'
+ * import { CodeSandbox } from '@lizard-build/sdk'
  *
  * const sandbox = await CodeSandbox.create({ project: 'my-project' })
  *
@@ -59,8 +59,7 @@ export class CodeSandbox extends Sandbox {
    *
    * @returns Execution result with stdout, stderr, results, and any error.
    *
-   * @throws {ExecutionError} if you pass neither language nor context and no
-   *   default context exists — which cannot happen in normal usage.
+   * Code errors appear in `execution.error`; request failures throw.
    *
    * @example
    * ```ts

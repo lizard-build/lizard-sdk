@@ -38,9 +38,6 @@ jobs:
       - name: Install build tools
         run: pip install hatch
 
-      - name: Copy README into package
-        run: cp README.md packages/python/README.md
-
       - name: Set version
         run: sed -i "s/^version = .*/version = \"${{ steps.ver.outputs.version }}\"/" pyproject.toml
         working-directory: packages/python

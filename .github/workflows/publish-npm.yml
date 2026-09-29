@@ -52,9 +52,6 @@ jobs:
         run: npm pkg set version=${{ steps.ver.outputs.version }}
         working-directory: packages/js
 
-      - name: Copy README
-        run: cp README.md packages/js/README.md
-
       # No NPM_TOKEN needed: an npm trusted publisher (OIDC) is bound to this workflow,
       # so publish authenticates tokenlessly. Repo is public, so npm attaches provenance.
       - name: Publish
