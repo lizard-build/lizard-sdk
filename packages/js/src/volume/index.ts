@@ -21,7 +21,7 @@ export interface VolumeInfo {
 }
 
 export interface CreateVolumeOpts extends ConnectionOpts {
-  /** Whole GB, default 5. New volumes allow 1–50 GB unless the server config sets another maximum. Existing volumes are never resized. */
+  /** Whole GB, default 5. New volumes allow 1–50 GB unless the server config sets another maximum. Creating never changes an existing volume's size; use `Volume.resize` for that. */
   sizeGb?: number
   /**
    * Region to place the volume in, e.g. `'us-east-1'`. A volume is node-local, so
