@@ -181,6 +181,10 @@ class _ProjectVolumes:
     def list(self) -> list[VolumeInfo]:
         return Volume.list(self._parent.project_id(), **self._kw())
 
+    def resize(self, name_or_id: str, size_gb: int) -> VolumeInfo:
+        """Resize in place, online, no data copied -- see :meth:`Volume.resize`."""
+        return Volume.resize(self._parent.project_id(), name_or_id, size_gb, **self._kw())
+
     def delete(self, name_or_id: str) -> None:
         # Volume.remove is the classmethod; Volume.delete is the instance method and
         # takes a project_id, so calling it here raised "unexpected keyword argument

@@ -163,6 +163,8 @@ export class Lizard {
       Volume.get(await this.projectId(), nameOrId, { ...(await this.connectionOpts()), ...opts }),
     list: async (opts?: ConnectionOpts): Promise<VolumeInfo[]> =>
       Volume.list(await this.projectId(), { ...(await this.connectionOpts()), ...opts }),
+    resize: async (nameOrId: string, sizeGb: number, opts?: ConnectionOpts): Promise<VolumeInfo> =>
+      Volume.resize(await this.projectId(), nameOrId, sizeGb, { ...(await this.connectionOpts()), ...opts }),
     delete: async (nameOrId: string, opts?: ConnectionOpts): Promise<void> =>
       Volume.delete(await this.projectId(), nameOrId, { ...(await this.connectionOpts()), ...opts }),
   }

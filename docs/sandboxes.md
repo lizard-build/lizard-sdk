@@ -175,6 +175,22 @@ with lizard.create("base", volume_name="agent-files") as second:
 
 This example keeps the volume for future sessions. A volume's name is unique within a project. Use `volumes.list()` and `volumes.get(nameOrId)` to find it later; `volumes.delete(nameOrId)` permanently removes it and its files. Static `Volume` methods take an explicit project ID.
 
+### Resizing a volume
+
+`volumes.resize(nameOrId, sizeGb)` grows or shrinks a volume **in place and online**, even while a sandbox has it mounted. The size is a quota, so no data is copied, the call finishes in well under a second, and the running sandbox sees the new size immediately. A shrink must leave at least 10% of the new size free, otherwise it fails with `code: 'volume_too_full_to_shrink'`. `getOrCreate` never changes an existing volume's size.
+
+```ts
+const info = await lizard.volumes.resize('agent-files', 20)   // VolumeInfo, sizeGb: 20
+```
+
+```python
+info = lizard.volumes.resize("agent-files", 20)               # VolumeInfo, size_gb=20
+```
+
+In Python the classmethod is `Volume.resize(project_id, name_or_id, size_gb)` and the instance method is `volume.resize_to(project_id, size_gb)`, because a class cannot have both under one name (the same reason delete is `Volume.remove` / `volume.delete`).
+
+Error codes: `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volume_not_provisioned` (a just-created volume; retry in a few seconds) raise `ConflictError`; `volume_capacity_unavailable` (no room on the volume's node) raises `LizardError`; `volume_resize_timeout` raises `TimeoutError` and leaves the size unchanged; `invalid_volume_size` means outside the project's limits.
+
 ## Lifecycle
 
 | Task | TypeScript | Python |
@@ -191,7 +207,7 @@ The Kubernetes backend returns HTTP 501 for `pause()`, `resume()`, `fork()`, `sn
 
 ## Errors
 
-Most platform and sandbox methods map HTTP failures to these exported errors:
+Most platform and sandbox methods map HTTP failures to these exported errors. Each carries the HTTP `status` (`status_code` in Python) and, when the API sends one, a machine-readable `code`:
 
 | Error | Meaning |
 | --- | --- |

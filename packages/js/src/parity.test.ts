@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Lizard } from './lizard'
 import { Sandbox } from './sandbox'
 import { Volume } from './volume'
+import { ConflictError, LizardError, TimeoutError } from './errors'
 
 const API = 'https://api.parity.invalid'
 const opts = { apiKey: 'liz_test', apiUrl: API }
@@ -136,5 +137,65 @@ describe('project-bound volumes', () => {
     expect(vol.volumeId).toBe('v1')
     expect(calls[1].url).toBe(`${API}/api/projects/p_abc/volumes`)
     expect(calls[1].body).toMatchObject({ name: 'scratch', sizeGb: 7, getOrCreate: true })
+  })
+})
+
+describe('volume resize', () => {
+  const info = { id: 'v1', projectId: 'p1', name: 'my data', sizeGb: 20, status: 'ready', createdAt: 1, sizeEnforced: true }
+
+  it('PATCHes the volume by encoded name with the new size, and returns its info', async () => {
+    const calls = stubFetch([{ body: info }])
+    const out = await Volume.resize('p1', 'my data/x', 20, opts)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('PATCH')
+    expect(calls[0].url).toBe(`${API}/api/projects/p1/volumes/my%20data%2Fx`)
+    expect(calls[0].body).toEqual({ sizeGb: 20 })
+    expect(out.sizeGb).toBe(20)
+    expect(out.sizeEnforced).toBe(true)
+  })
+
+  it('resizes from a held Volume by its id', async () => {
+    const calls = stubFetch([{ body: info }])
+    const vol = new Volume({ volumeId: 'v1', name: 'data', ...opts })
+    const out = await vol.resize('p1', 3)
+    expect(calls[0].method).toBe('PATCH')
+    expect(calls[0].url).toBe(`${API}/api/projects/p1/volumes/v1`)
+    expect(calls[0].body).toEqual({ sizeGb: 3 })
+    expect(out.id).toBe('v1')
+  })
+
+  it('is on the project-bound lizard.volumes', async () => {
+    const calls = stubFetch([
+      { body: [{ id: 'p_rsz', name: 'rsz-proj', slug: 'rsz-proj' }] },
+      { body: info },
+    ])
+    await new Lizard({ ...opts, project: 'rsz-proj' }).volumes.resize('scratch', 12)
+    expect(calls[1].method).toBe('PATCH')
+    expect(calls[1].url).toBe(`${API}/api/projects/p_rsz/volumes/scratch`)
+    expect(calls[1].body).toEqual({ sizeGb: 12 })
+  })
+
+  it('keeps the server error code on a refused shrink', async () => {
+    stubFetch([{ status: 409, body: { error: 'Volume too full to shrink', code: 'volume_too_full_to_shrink' } }])
+    const err = await Volume.resize('p1', 'data', 1, opts).catch((e) => e)
+    expect(err).toBeInstanceOf(ConflictError)
+    expect(err.code).toBe('volume_too_full_to_shrink')
+    expect(err.status).toBe(409)
+    expect(err.message).toBe('Volume too full to shrink')
+  })
+
+  it('surfaces a resize timeout as TimeoutError with its code', async () => {
+    stubFetch([{ status: 504, body: { error: 'Resize timed out', code: 'volume_resize_timeout' } }])
+    const err = await Volume.resize('p1', 'data', 50, opts).catch((e) => e)
+    expect(err).toBeInstanceOf(TimeoutError)
+    expect(err.code).toBe('volume_resize_timeout')
+  })
+
+  it('keeps the code on errors without a dedicated class', async () => {
+    stubFetch([{ status: 503, body: { error: 'No capacity', code: 'volume_capacity_unavailable' } }])
+    const err = await Volume.resize('p1', 'data', 50, opts).catch((e) => e)
+    expect(err).toBeInstanceOf(LizardError)
+    expect(err.code).toBe('volume_capacity_unavailable')
+    expect(err.status).toBe(503)
   })
 })
