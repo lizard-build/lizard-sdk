@@ -1,4 +1,4 @@
-# Lizard Python SDK
+# Lizard SDK for Python
 
 Run commands, work with files and execute code in Linux sandboxes on Kubernetes. The SDK also manages Lizard apps, databases, storage and projects.
 
@@ -50,23 +50,22 @@ if result.exit_code != 0:
     raise RuntimeError(result.stderr)
 ```
 
-## Run code
+## Run Python
 
-`CodeSandbox` uses the `code-interpreter-v1` template by default. Code errors appear in `result.error`; request failures raise an exception.
+Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.
 
 ```python
-from lizard import CodeSandbox
+from lizard import Sandbox
 
-with CodeSandbox.create(project="my-project") as sandbox:
-    result = sandbox.run_code(
-        "print(6 * 7)",
-        language="python",
-        timeout_ms=60_000,
-        on_stdout=lambda chunk: print(chunk, end=""),
-    )
-    if result.error:
-        raise RuntimeError(result.error.message)
+sandbox = Sandbox.create("interpreter", project_id="proj_123", timeout_ms=300_000)
+try:
+    result = sandbox.process.exec_("python -c 'print(2 ** 10)'")
+    print(result.stdout, result.stderr, result.exit_code)
+finally:
+    sandbox.kill()
 ```
+
+`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
 
 ## Configuration
 
@@ -76,9 +75,15 @@ Pass `timeout_ms` to `create()` to set the sandbox lifetime. The default is five
 
 ## Runtime limits
 
-Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation and snapshot restore return HTTP 501 on the current backend.
+Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation, snapshot restore, and file watching return HTTP 501 on the current backend.
 
 `get_host()` returns a hostname without `https://`. File writes accept UTF-8 text or valid UTF-8 bytes; `read_bytes()` supports binary downloads.
+
+## Current command and lifetime limits
+
+Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The current runtime does not apply the SDK command options `envs`, `workdir`, or `user`; set the directory and environment in the shell command when needed. Create-time `envs` and `metadata` are also not applied.
+
+The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 
 ## Learn more
 

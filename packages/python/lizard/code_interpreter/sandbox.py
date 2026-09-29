@@ -24,24 +24,14 @@ _CODE_INTERPRETER_PORT = 8080
 
 class CodeSandbox(Sandbox):
     """
-    A Lizard sandbox with built-in stateful code execution.
+    Legacy client for the code-interpreter execution server.
 
-    Extends the base Sandbox with ``run_code()`` — executes code in a
-    persistent kernel so variables and imports survive between calls.
+    Current hosted templates do not provide this server. The default
+    ``code-interpreter-v1`` template is unavailable; selecting ``interpreter``
+    does not enable this API. Use ``Sandbox.create("interpreter", ...)`` and
+    ``sandbox.process.exec_()`` for Python commands instead.
 
-    Supports Python, JavaScript (Node.js), and Bash out of the box.
-
-    Example::
-
-        with CodeSandbox.create(project="my-project") as sandbox:
-            sandbox.run_code("x = 42")
-            result = sandbox.run_code("print(x * 2)")
-            print(result.stdout)  # "84\\n"
-
-    Example — JavaScript::
-
-        result = sandbox.run_code("1 + 1", language="javascript")
-        print(result.results[0].data)  # "2"
+    These methods remain for compatibility with a separately provided server.
     """
 
     _default_template = "code-interpreter-v1"
