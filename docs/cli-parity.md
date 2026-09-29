@@ -2,6 +2,8 @@
 
 Checked against CLI 4.0.8 (`92de61f`) and the backend source at the audit date. The command map in `tests/contracts/cli-coverage.json` lists every discovered command. `scripts/audit_cli.py` fails when the installed CLI adds a command without a mapping.
 
+CLI PR #13 removes `sandbox pause`, `resume`, `fork`, `snapshot`, `restore` and the `snapshot-fork` alias. The updated CLI has 99 command entries. The coverage map keeps these five commands separately as legacy entries so discovery can also check published CLI 4.0.8 until the removal ships. SDK methods remain unchanged and preserve backend 501 responses.
+
 ## Native APIs
 
 Both SDKs expose projects, project config, services, deploys, addons, secrets, domains, metrics, workspaces, API keys, regions, billing reads and Checkout, S3 objects, GitHub status and checkout, sandboxes, snapshots and volumes. Python uses snake_case where TypeScript uses camelCase.

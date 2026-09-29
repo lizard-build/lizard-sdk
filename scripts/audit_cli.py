@@ -27,7 +27,10 @@ def main():
     root = subprocess.run([args.cli, "--help", "--json"], capture_output=True, text=True, timeout=30, check=True)
     schema = json.loads(root.stdout)
     found = set(command_names(schema["command"]))
-    known = {row["command"] for row in mapping["commands"]}
+    # Published 4.0.8 still exposes the five commands removed in CLI PR #13.
+    # Only audit legacy commands when the inspected binary actually exposes them.
+    commands = mapping["commands"] + [row for row in mapping.get("legacyCommands", []) if row["command"] in found]
+    known = {row["command"] for row in commands}
 
     def check(row):
         result = subprocess.run([args.cli, *row["command"].split(), "--help", "--json"], capture_output=True, text=True, timeout=30)
@@ -40,7 +43,7 @@ def main():
                 "functionalLiveTest": "not run"}
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        rows = list(pool.map(check, mapping["commands"]))
+        rows = list(pool.map(check, commands))
     report = {"cliVersion": schema["version"], "expectedVersion": mapping["cliVersion"],
               "missingMappings": sorted(found - known), "removedCommands": sorted(known - found),
               "commands": rows, "note": "Help discovery only. Native SDK contracts run in the test suites; live effects require a separate approved run."}

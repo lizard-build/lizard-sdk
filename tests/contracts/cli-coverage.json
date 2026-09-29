@@ -273,16 +273,6 @@
       "sdk": "sandbox.kill"
     },
     {
-      "command": "sandbox pause",
-      "mode": "backend-501",
-      "sdk": "sandbox.pause"
-    },
-    {
-      "command": "sandbox resume",
-      "mode": "backend-501",
-      "sdk": "sandbox.resume"
-    },
-    {
       "command": "sandbox timeout",
       "mode": "native",
       "sdk": "sandbox.setTimeout"
@@ -308,24 +298,9 @@
       "sdk": "sandbox.unexpose"
     },
     {
-      "command": "sandbox fork",
-      "mode": "backend-501",
-      "sdk": "sandbox.fork"
-    },
-    {
-      "command": "sandbox snapshot",
-      "mode": "backend-501",
-      "sdk": "sandbox.snapshot"
-    },
-    {
       "command": "sandbox snapshots",
       "mode": "native",
       "sdk": "Sandbox.snapshots"
-    },
-    {
-      "command": "sandbox restore",
-      "mode": "backend-501",
-      "sdk": "Sandbox.restore"
     },
     {
       "command": "sandbox snapshot-rm",
@@ -522,5 +497,33 @@
       "mode": "native",
       "sdk": "workspaces.delete"
     }
-  ]
+  ],
+  "legacyCommands": [
+    {
+      "command": "sandbox pause",
+      "mode": "backend-501",
+      "sdk": "sandbox.pause"
+    },
+    {
+      "command": "sandbox resume",
+      "mode": "backend-501",
+      "sdk": "sandbox.resume"
+    },
+    {
+      "command": "sandbox fork",
+      "mode": "backend-501",
+      "sdk": "sandbox.fork"
+    },
+    {
+      "command": "sandbox snapshot",
+      "mode": "backend-501",
+      "sdk": "sandbox.snapshot"
+    },
+    {
+      "command": "sandbox restore",
+      "mode": "backend-501",
+      "sdk": "Sandbox.restore"
+    }
+  ],
+  "legacyNote": "Removed by lizard-cli PR #13. Retained only to audit published CLI 4.0.8 before that change is released."
 }
