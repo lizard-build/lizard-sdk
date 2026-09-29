@@ -99,14 +99,15 @@ export class Sandbox extends SandboxClient {
    * Create a new Lizard sandbox from the specified template.
    *
    * Template availability and installed tools depend on the platform and region.
-   * Use `base` for shell commands or `CodeSandbox` for stateful code execution.
+   * Use `base` for shell commands or `interpreter` for Python process commands.
+   * Hosted templates do not support the legacy `CodeSandbox` execution API.
    *
    * @param template Name of the sandbox template to boot from.
    *
    * @example
    * ```ts
    * const sandbox = await Sandbox.create('base', { project: 'my-project' })
-   * const pythonSandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
+   * const pythonSandbox = await Sandbox.create('interpreter', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
    * ```
    */
   static async create(template: string, opts?: SandboxOpts): Promise<Sandbox>
