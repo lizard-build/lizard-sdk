@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class ProcessResult:
-    """Result of a process executed inside a Lizard sandbox microVM."""
+    """Result of a process executed inside a Lizard sandbox."""
 
     stdout: str
     stderr: str
@@ -29,7 +29,7 @@ class ProcessInfo:
 
 class Process:
     """
-    Run processes inside a Lizard sandbox microVM.
+    Run processes inside a Lizard sandbox.
 
     Access via ``sandbox.process``.
     """
@@ -51,15 +51,15 @@ class Process:
         on_pid: "Callable[[int], None] | None" = None,
     ) -> ProcessResult:
         """
-        Execute a command inside the microVM and wait for it to finish.
+        Execute a command inside the sandbox and wait for it to finish.
 
         The command runs in a shell inside the Lizard sandbox and returns
         stdout, stderr, and the exit code when it completes.
 
-        :param cmd: Shell command to run inside the microVM.
+        :param cmd: Shell command to run inside the sandbox.
         :param envs: Additional environment variables for this execution.
         :param user: Run as this Linux user (default: ``root``).
-        :param workdir: Working directory inside the microVM.
+        :param workdir: Working directory inside the sandbox.
         :param timeout_ms: Execution timeout in milliseconds.
         :param on_stdout: Called with each stdout line as it is produced, rather
             than at the end. Passing it switches the call to a streaming read.

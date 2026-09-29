@@ -133,3 +133,20 @@ def test_config_side_effect_failure_is_not_success():
     with pytest.raises(ConfigApplyError) as exc:
         ProjectsAPI(client_for(lambda _: httpx.Response(200, json=response))).apply("p1", {})
     assert exc.value.result == response
+
+
+@pytest.mark.parametrize("template", [None, "custom-interpreter"])
+def test_code_sandbox_uses_interpreter_template(monkeypatch, template):
+    from lizard import CodeSandbox
+
+    calls = []
+
+    def post(url, **kwargs):
+        calls.append(kwargs["json"])
+        return httpx.Response(200, json={"sandboxId": "code-1"})
+
+    monkeypatch.setattr(httpx, "post", post)
+    sandbox = CodeSandbox.create(template, project_id="p1", **CONFIG)
+    assert calls[0]["template"] == (template or "code-interpreter-v1")
+    assert isinstance(sandbox, CodeSandbox)
+    assert sandbox.sandbox_id == "code-1"

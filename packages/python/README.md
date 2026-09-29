@@ -1,293 +1,90 @@
-# Lizard SDK
+# Lizard Python SDK
 
-TypeScript and Python clients for Lizard apps, managed databases, storage and Linux sandboxes.
-
-The current platform runs sandboxes on Kubernetes. Persistent volumes keep files across sandbox lifetimes. Pause, resume, fork and snapshot restore currently return HTTP 501; the SDK exposes those endpoints but does not promise state preservation.
-
-Requires Node.js 18+ or Python 3.10+. The optional `LizardCLI` adapter and `billing.payX402()` / `billing.pay_x402()` require Lizard CLI 4.0.8+ on PATH.
-
-See [CLI coverage and migration notes](https://github.com/lizard-build/lizard-sdk/blob/main/docs/cli-parity.md) for native methods, CLI-backed operations and test scope.
+Run commands, work with files and execute code in Linux sandboxes on Kubernetes. The SDK also manages Lizard apps, databases, storage and projects.
 
 ## Install
 
-```bash
-# JavaScript / TypeScript
-npm install @lizard-build/sdk
+Requires Python 3.10+. The Python client is synchronous.
 
-# Python
+```sh
 pip install lizard-sdk
 ```
 
-## Quickstart
+Create an API key and project at [lizard.build](https://lizard.build), then set:
 
-### JavaScript / TypeScript
-
-```ts
-import { Lizard } from '@lizard-build/sdk'
-
-// A client is pinned to one project — sandboxes are billed per project, so a
-// project is required. It can be the project's ID, slug, or name.
-// apiKey defaults to the LIZARD_API_KEY env var.
-const lizard = new Lizard({ project: 'my-project' })
-
-// Boot a sandbox from the 'base' template (Debian + Node.js 26)
-const sandbox = await lizard.create('base')
-
-// Write a file directly into the sandbox filesystem
-await sandbox.fs.write('/app/server.js', `
-  const http = require('http')
-  http.createServer((_, res) => res.end('hello from Lizard')).listen(3000)
-`)
-
-// Execute a process inside the sandbox
-await sandbox.process.exec('node /app/server.js &')
-
-// Get a public HTTPS URL for port 3000 inside the sandbox
-const url = await sandbox.getHost(3000)
-console.log(`Live at https://${url}`)
-
-// Tear down the sandbox when done
-await sandbox.kill()
+```sh
+export LIZARD_API_KEY="your-api-key"
 ```
 
-### Python
+## Create a sandbox
+
+Save this as `quickstart.py`. Replace `my-project` with your project's ID, slug or unique name, then run `python quickstart.py`.
 
 ```python
 from lizard import Lizard
 
-# A client is pinned to one project — sandboxes are billed per project, so a
-# project is required (its ID, slug, or name). api_key defaults to LIZARD_API_KEY.
 lizard = Lizard(project="my-project")
 
-# Boot a Python sandbox from the 'code-interpreter-v1' template
-sandbox = lizard.create("code-interpreter-v1")
-
-# Write a script into the sandbox filesystem
-sandbox.fs.write("/app/main.py", """
-import http.server, socketserver
-
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"hello from Lizard")
-
-with socketserver.TCPServer(("", 3000), Handler) as httpd:
-    httpd.serve_forever()
-""")
-
-# Execute a process inside the sandbox
-sandbox.process.exec_("python /app/main.py &")
-
-print(f"Live at https://{sandbox.get_host(3000)}")
-
-sandbox.kill()
+with lizard.create("base", timeout_ms=300_000) as sandbox:
+    sandbox.fs.write("/tmp/hello.txt", "Hello from Lizard!")
+    result = sandbox.process.exec_("cat /tmp/hello.txt")
+    if result.exit_code != 0:
+        raise RuntimeError(result.stderr)
+    print(result.stdout)
 ```
 
-## Persisting Work Across Sandboxes
+The context manager kills the sandbox when the block ends, including when it raises an error. If you create a sandbox without `with`, call `sandbox.kill()` in a `finally` block.
 
-Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards everything written inside it. State that has to outlive a sandbox goes on a **volume** — a separate disk mounted at `/workspace` that a later sandbox re-attaches.
+## Stream command output
 
-A volume is node-local, so it fixes the region too. You don't thread a region through both calls: the sandbox is placed wherever its volume already lives.
-
-```ts
-const vol = await lizard.volumes.getOrCreate('agent-scratch', { sizeGb: 10 })
-
-const first = await lizard.create('codex', { volumeName: 'agent-scratch' })
-await first.process.exec('pip install numpy pandas && echo "notes" > /workspace/notes.txt')
-await first.kill()          // sandbox gone, /workspace survives
-
-const second = await lizard.create('codex', { volumeName: 'agent-scratch' })
-console.log(await second.fs.read('/workspace/notes.txt'))   // "notes"
-```
+Inside the `with` block above:
 
 ```python
-vol = lizard.volumes.get_or_create("agent-scratch", size_gb=10)
-
-first = lizard.create("codex", volume_name="agent-scratch")
-first.process.exec_('echo "notes" > /workspace/notes.txt')
-first.kill()                # sandbox gone, /workspace survives
-
-second = lizard.create("codex", volume_name="agent-scratch")
-print(second.fs.read("/workspace/notes.txt"))   # "notes"
+result = sandbox.process.exec_(
+    'printf "hello\\n"',
+    timeout_ms=30_000,
+    on_stdout=lambda chunk: print(chunk, end=""),
+    on_stderr=lambda chunk: print(chunk, end=""),
+)
+if result.exit_code != 0:
+    raise RuntimeError(result.stderr)
 ```
 
-Note that only `/workspace` survives — installed packages and in-memory state do not. Bake tooling into a template instead of reinstalling it per sandbox.
+## Run code
 
-> `pause()` / `resume()` exist on the client but are **not implemented** for the current runtime and always fail with HTTP 501. Use a volume.
-
-## Giving Each of Your Users Their Own Workspace
-
-If you are building on top of Lizard and your users each need isolated resources, give each one a workspace and an API key scoped to it. They get isolation from each other; you keep one bill.
-
-```ts
-const lizard = new Lizard({ apiKey: process.env.LIZARD_API_KEY })
-
-const ws  = await lizard.workspaces.create({ name: `user-${userId}` })
-const prj = await lizard.projects.create({ workspaceId: ws.id, name: 'default' })
-const key = await lizard.apiKeys.create({ name: `user-${userId}`, workspaces: [ws.id] })
-
-// key.key is returned exactly once. Store it now.
-await db.users.update(userId, { lizardKey: key.key })
-```
-
-That key reaches nothing outside `ws`, and it cannot mint a broader one — the server rejects that with an exact subset check. So it is safe to hand to the user, and safe to put **inside a sandbox** so agent code can use the CLI as that user:
-
-```ts
-const sandbox = await Sandbox.create('codex', {
-  projectId: prj.id,
-  lizardToken: key.key,        // scoped — bounded if it leaks
-})
-await sandbox.process.exec('lizard volume list')   // sees only this workspace
-```
+`CodeSandbox` uses the `code-interpreter-v1` template by default. Code errors appear in `result.error`; request failures raise an exception.
 
 ```python
-ws = lizard.workspaces.create(name=f"user-{user_id}")
-prj = lizard.projects.create(workspace_id=ws.id, name="default")
-key = lizard.api_keys.create(name=f"user-{user_id}", workspaces=[ws.id])
+from lizard import CodeSandbox
 
-sandbox = Sandbox.create("codex", project_id=prj.id, lizard_token=key.key)
-sandbox.process.exec_("lizard volume list")
+with CodeSandbox.create(project="my-project") as sandbox:
+    result = sandbox.run_code(
+        "print(6 * 7)",
+        language="python",
+        timeout_ms=60_000,
+        on_stdout=lambda chunk: print(chunk, end=""),
+    )
+    if result.error:
+        raise RuntimeError(result.error.message)
 ```
 
-A key with **no** scope has full access to everything the creating account can reach — pass `workspaces` or `projects` unless you mean that.
+## Configuration
 
-### What a scoped key deliberately cannot see
+The SDK reads `LIZARD_API_KEY` and, optionally, `LIZARD_API_URL` (default: `https://lizard.build`). You can also pass `api_key` and `api_url` to the constructor or static sandbox methods.
 
-Billing is account-level: one balance, one ledger, one set of saved cards, shared by every workspace. There is no per-workspace view of it, so a scoped key is refused outright (403 `ACCOUNT_SCOPE_REQUIRED`) on `lizard.billing.*` and on account-wide usage, and `whoami()` returns only identity plus the key's own scopes — not the account's email, balance or plan.
+Pass `timeout_ms` to `create()` to set the sandbox lifetime. The default is five minutes. `timeout_ms` on `process.exec_()` or `run_code()` controls that call, not the sandbox lifetime.
 
-That matters because of where these keys end up. A key you hand to a user, or inject into a sandbox with `lizardToken`, is readable by anything running there. It should not be a way to read your card details or spend against them.
+## Runtime limits
 
-For per-workspace spend, use `lizard.metrics` — that is scoped, and is what you would bill a user from.
+Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation and snapshot restore return HTTP 501 on the current backend.
 
-## API
+`get_host()` returns a hostname without `https://`. File writes accept UTF-8 text or valid UTF-8 bytes; `read_bytes()` supports binary downloads.
 
-### `new Lizard({ project, apiKey?, apiUrl?, timeoutMs? })`
+## Learn more
 
-Create a client pinned to a project. Every sandbox is billed per project, so `project` is required — pass its ID, slug, or name (resolved to an ID on first use and cached). `apiKey` defaults to the `LIZARD_API_KEY` env var.
+- [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md)
+- [Platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md)
+- [CLI coverage and migration](https://github.com/lizard-build/lizard-sdk/blob/main/docs/cli-parity.md)
+- [Source and issues](https://github.com/lizard-build/lizard-sdk)
 
-```ts
-const lizard = new Lizard({ project: 'my-project' })
-const sandbox = await lizard.create('base')
-const sandbox = await lizard.create('code-interpreter-v1', { timeoutMs: 10 * 60 * 1000 })
-```
-
-### `Sandbox.create(template?, opts?)`
-
-Create a Lizard sandbox using a template such as `base` or `code-interpreter-v1`. Template availability depends on the platform and region. A project is required — pass `project` (ID, slug, or name) or an exact `projectId` in `opts`, or use a `Lizard` client, which pins one for you.
-
-```ts
-const sandbox = await Sandbox.create('base', { project: 'my-project' })
-const sandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
-```
-
-### `Sandbox.connect(sandboxId, opts?)`
-
-Connect to an existing sandbox by ID. Throws `NotFoundError` if it has been killed or has expired.
-
-### `Sandbox.list(opts?)`
-
-List all running sandboxes for the authenticated account.
-
----
-
-### Account and provisioning
-
-| Namespace | Methods |
-|---|---|
-| `lizard.workspaces` | `list()`, `create({ name })`, `delete(id, { force? })`, `find(nameOrSlugOrId)` |
-| `lizard.apiKeys` | `list()`, `create({ name, workspaces?, projects? })`, `delete(id)` |
-| `lizard.projects` | `list({ workspaceId? })`, `get(id)`, `create({ workspaceId, name })`, `update(id, { name })`, `delete(id)` |
-| `lizard.regions` | `list()` |
-| `lizard.billing` | `balance()`, `transactions({ limit?, cursor?, includeUsage? })`, `summary()`, `live()` — **unscoped keys only** |
-| `lizard.whoami()` | The account behind the credential; a scoped key gets identity and its own scopes, not the account's email or balance |
-| `lizard.platform` | The raw HTTP client, for endpoints not wrapped yet |
-
-`workspaces.delete()` is empty-only by default; the server refuses while any project, sandbox or volume remains. `{ force: true }` deletes the workspace and everything in it, irreversibly.
-
-In Python the namespaces are `lizard.workspaces`, `lizard.api_keys`, `lizard.regions`, `lizard.billing`, and arguments are snake_case (`workspace_id`, `include_usage`).
-
-### Volumes
-
-| Method | Description |
-|---|---|
-| `lizard.volumes.getOrCreate(name, { sizeGb?, region? })` | The volume with this name, created if absent |
-| `lizard.volumes.create(name, { sizeGb?, region? })` | Create; throws `ConflictError` if the name is taken |
-| `lizard.volumes.get(nameOrId)` | Look one up |
-| `lizard.volumes.list()` | Every volume in the client's project |
-| `lizard.volumes.delete(nameOrId)` | Delete |
-
-A volume's **name** is its key inside a project, so an agent can reconstruct it between runs without storing an id. The static `Volume.*` forms take an explicit `projectId` as their first argument.
-
-`region` places the volume (see `lizard.regions.list()` for valid ids) and, because a volume is node-local, also fixes the region of any sandbox that mounts it. You normally set it here or nowhere.
-
----
-
-### `sandbox.fs`
-
-Read and write files inside the sandbox filesystem.
-
-| Method | Description |
-|---|---|
-| `fs.write(path, data)` | Write a file (string or bytes) |
-| `fs.read(path)` | Read a file as a string |
-| `fs.list(path)` | List directory contents |
-| `fs.remove(path)` | Delete a file or directory |
-| `fs.makeDir(path)` | Create a directory and parents |
-
-### `sandbox.process`
-
-Execute commands inside the sandbox.
-
-| Method | Description |
-|---|---|
-| `process.exec(cmd, opts?)` | Run a command and wait for it to finish |
-
-`exec` returns `{ stdout, stderr, exitCode }` (JS) or `ProcessResult` (Python). In Python the method is named `exec_` because `exec` is a reserved keyword.
-
-### `sandbox.getHost(port)`
-
-Returns a public HTTPS URL for a port listening inside the sandbox — no tunneling required.
-
-```ts
-await sandbox.process.exec('npx -y serve -p 3000 &')
-const url = await sandbox.getHost(3000)
-// https://{sandboxId}-3000.sandbox.{region}.onlizard.com
-```
-
-### `sandbox.pause()` / `sandbox.resume()`
-
-**Not implemented** for the current runtime — both always fail with HTTP 501. Use a [volume](#persisting-work-across-sandboxes) to carry work across sandboxes.
-
-### `sandbox.kill()`
-
-Terminate the sandbox and release all resources.
-
-### `sandbox.setTimeout(ms)`
-
-Extend or reduce the sandbox timeout.
-
----
-
-## Environment Variables
-
-| Variable | Description |
-|---|---|
-| `LIZARD_API_KEY` | API key (required — get one at [lizard.build](https://lizard.build)) |
-| `LIZARD_API_URL` | Override the API base URL (default: `https://lizard.build`) |
-
-The `X-API-Key` header is used for all authenticated requests.
-
-## Deploy What You Build
-
-Once your agent has produced a working app inside a sandbox, deploy it as a persistent Lizard service — no Dockerfile needed:
-
-```bash
-lizard up
-```
-
-Lizard manages the sandbox runtime.
-
-## License
-
-Apache-2.0
+[Apache-2.0](https://github.com/lizard-build/lizard-sdk/blob/main/LICENSE)

@@ -5,7 +5,7 @@ export type OutputItem =
   | { type: 'result'; mime: string; data: string }
   | { type: 'error'; name: string; message: string; traceback: string }
 
-/** Error thrown when executed code raises an exception. */
+/** Error returned in Execution.error when executed code raises an exception. */
 export class ExecutionError extends Error {
   readonly name: string
   readonly traceback: string
@@ -59,7 +59,7 @@ export interface RunCodeOpts {
   context?: CodeContext
   /** Extra environment variables available to the code. */
   envs?: Record<string, string>
-  /** Max time to wait for the code to finish, in ms. Default: 60_000. */
+  /** Client timeout in milliseconds. No client timer is set when omitted. */
   timeoutMs?: number
   onStdout?: (data: string) => void
   onStderr?: (data: string) => void

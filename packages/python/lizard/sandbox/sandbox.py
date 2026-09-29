@@ -44,25 +44,25 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
 
 class Sandbox:
     """
-    A Lizard sandbox — an isolated Linux environment that starts in under a second.
+    A Linux sandbox running on Kubernetes.
 
-    Each sandbox is a full Linux environment with its own filesystem, network, and
-    process namespace, restored from a pre-warmed template snapshot.
+    Run commands, read and write files, and expose HTTP ports in a sandbox.
 
     Sandboxes are **ephemeral**: killing one, or letting it hit its timeout,
     discards everything written inside it. State that has to outlive a sandbox
-    belongs on a :class:`~lizard.Volume`, a separate disk mounted at ``/data``
+    belongs on a :class:`~lizard.Volume`, a separate disk mounted at ``/workspace``
     that a later sandbox can re-attach.
 
     Example::
 
         from lizard import Sandbox
 
-        sandbox = Sandbox.create("base", project="my-project")
-        sandbox.fs.write("/app/index.js", 'console.log("hello world")')
-        result = sandbox.process.exec_("node /app/index.js")
-        print(result.stdout)  # "hello world"
-        sandbox.kill()
+        with Sandbox.create("base", project="my-project") as sandbox:
+            sandbox.fs.write("/tmp/hello.txt", "hello world")
+            result = sandbox.process.exec_("cat /tmp/hello.txt")
+            if result.exit_code != 0:
+                raise RuntimeError(result.stderr)
+            print(result.stdout)
 
     Can also be used as a context manager::
 
@@ -107,9 +107,8 @@ class Sandbox:
         """
         Boot a new Lizard sandbox from the specified template.
 
-        Available templates: ``base`` (Debian + Node.js 26) and
-        ``code-interpreter-v1`` (Python 3.14 + Node.js 26). Custom templates
-        can be built and pushed via ``lizard push``.
+        Template availability and installed tools depend on the platform and region.
+        Use ``base`` for shell commands or ``CodeSandbox`` for stateful code execution.
 
         Every sandbox must belong to a project — billing is metered per project.
         Pass ``project`` (its ID, slug, or name) or an exact ``project_id``, or
@@ -126,10 +125,10 @@ class Sandbox:
             that combination cannot be satisfied. Defaults to the platform's
             default sandbox region.
         :param volume_name: Attach a persistent volume by name, mounted at
-            ``/data``. A volume's name is its key inside a project, so this is
+            ``/workspace``. A volume's name is its key inside a project, so this is
             usually what you want. Requires an exact ``project_id``.
-        :param volume_id: Attach a persistent volume by id, mounted at ``/data``
-            inside the microVM. See :class:`lizard.Volume`.
+        :param volume_id: Attach a persistent volume by id, mounted at ``/workspace``
+            inside the sandbox. See :class:`lizard.Volume`.
         :param lizard_token: A ``liz_`` API key to write into the sandbox so the
             ``lizard`` CLI works inside it. The CLI is preinstalled in every
             template; this is what authenticates it. The key must belong to the
@@ -208,12 +207,7 @@ class Sandbox:
         Verifies the sandbox exists and is reachable, then returns a handle to it.
         Raises :class:`~lizard.NotFoundError` if it has been killed or expired.
 
-        This used to call ``resume`` first, on the assumption that a sandbox you
-        are reconnecting to might be paused. Sandboxes are pods now and
-        pause/resume is a ``501`` on every one of them, so that call turned every
-        ``connect()`` into an error against a perfectly healthy sandbox.
-        Connecting does not need to change a sandbox's state, so it no longer
-        tries to.
+        Connecting reads sandbox metadata without changing its state.
 
         Example::
 
@@ -253,7 +247,7 @@ class Sandbox:
         """
         Kill the sandbox and release its resources immediately.
 
-        :returns: ``True`` if the microVM was terminated, ``False`` if it was already gone.
+        :returns: ``True`` if the sandbox was terminated, ``False`` if it was already gone.
         """
         import httpx
 
@@ -271,15 +265,11 @@ class Sandbox:
 
     def pause(self) -> bool:
         """
-        Pause the sandbox by freezing it in place.
+        Request sandbox pause. The Kubernetes backend returns HTTP 501.
 
         .. deprecated::
-            Not implemented for the current runtime -- always raises
-            :class:`~lizard.LizardError` with HTTP 501. Sandboxes run as pods, and
-            the equivalent is a CRIU checkpoint of the pod, which is not built. To
-            park work across a gap, put it on a :class:`~lizard.Volume` and create
-            a fresh sandbox on that volume later; the volume is the part that is
-            meant to outlive a sandbox.
+            Unsupported on Kubernetes. Save files to a :class:`~lizard.Volume`
+            and attach it to a new sandbox instead.
         """
         import httpx
 
@@ -297,13 +287,11 @@ class Sandbox:
 
     def resume(self) -> bool:
         """
-        Resume a paused sandbox.
+        Request sandbox resume. The Kubernetes backend returns HTTP 501.
 
         .. deprecated::
-            Not implemented for the current runtime -- always raises
-            :class:`~lizard.LizardError` with HTTP 501. See :meth:`pause`.
-            :meth:`Sandbox.connect` no longer calls this, so reconnecting to a
-            running sandbox works without it.
+            Unsupported on Kubernetes. Use :meth:`connect` to reconnect to a
+            running sandbox.
         """
         import httpx
 
@@ -353,13 +341,13 @@ class Sandbox:
         Register a public HTTPS route for a port inside the sandbox and return
         the hostname (without scheme).
 
-        :param port: Port number the service is listening on inside the microVM.
+        :param port: Port number the service is listening on inside the sandbox.
 
         Example::
 
-            sandbox.process.exec_("npx -y serve -p 3000 &")
-            url = sandbox.get_host(3000)
-            # {sandboxId}-3000.sandbox.{region}.onlizard.com
+            # Start an HTTP server on port 3000 before exposing it.
+            hostname = sandbox.get_host(3000)
+            print(f"https://{hostname}")
         """
         import httpx
         res = httpx.post(
@@ -377,10 +365,12 @@ class Sandbox:
         self.kill()
 
     def fork(self, *, count: int = 1, timeout_ms: int = 0):
+        """Fork is unsupported on Kubernetes; the backend returns HTTP 501."""
         from ..platform.client import PlatformClient
         return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
 
     def snapshot(self, name: str | None = None):
+        """Snapshot creation is unsupported on Kubernetes; the backend returns HTTP 501."""
         from ..platform.client import PlatformClient
         return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name} if name is not None else {})
 
@@ -399,6 +389,7 @@ class Sandbox:
 
     @classmethod
     def restore(cls, snapshot_id: str, *, timeout_ms: int = 0, api_key: str | None = None, api_url: str | None = None):
+        """Snapshot restore is unsupported on Kubernetes; the backend returns HTTP 501."""
         from ..platform.client import PlatformClient, segment
         result = PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/fork", {"timeoutMs": timeout_ms})
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
