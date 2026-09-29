@@ -66,7 +66,7 @@ class Sandbox:
 
     Can also be used as a context manager::
 
-        with Sandbox.create("code-interpreter-v1", project="my-project") as sandbox:
+        with Sandbox.create("interpreter", project="my-project") as sandbox:
             sandbox.fs.write("/app/main.py", "print('done')")
             sandbox.process.exec_("python /app/main.py")
     """
@@ -108,7 +108,8 @@ class Sandbox:
         Boot a new Lizard sandbox from the specified template.
 
         Template availability and installed tools depend on the platform and region.
-        Use ``base`` for shell commands or ``CodeSandbox`` for stateful code execution.
+        Use ``base`` for shell commands or ``interpreter`` for Python process commands.
+        Hosted templates do not support the legacy ``CodeSandbox`` execution API.
 
         Every sandbox must belong to a project — billing is metered per project.
         Pass ``project`` (its ID, slug, or name) or an exact ``project_id``, or

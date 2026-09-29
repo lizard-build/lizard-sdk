@@ -6,7 +6,7 @@
 
 **Run code, work with files, and build AI agents in Linux sandboxes on Kubernetes.**
 
-Lizard provides TypeScript and Python SDKs for sandboxes and the cloud services around them: apps, databases, storage, projects and API keys.
+Lizard (lizard.build) provides TypeScript and Python SDKs for sandboxes and the cloud services around them: apps, databases, storage, projects and API keys.
 
 [TypeScript guide](https://github.com/lizard-build/lizard-sdk/blob/main/packages/js/README.md) · [Python guide](https://github.com/lizard-build/lizard-sdk/blob/main/packages/python/README.md) · [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md) · [Platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md)
 
@@ -62,39 +62,36 @@ with lizard.create("base", timeout_ms=300_000) as sandbox:
 
 The Python context manager kills the sandbox when the block ends, including when it raises an error. TypeScript uses `try/finally` for the same cleanup.
 
-## Run code
+## Run Python
 
-Use `CodeSandbox` for Python, JavaScript and Bash execution with output callbacks and execution contexts. Variables and imports survive between calls in the same context while the sandbox runs.
+Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.
 
 ```ts
-import { CodeSandbox } from '@lizard-build/sdk'
+import { Sandbox } from '@lizard-build/sdk';
 
-const sandbox = await CodeSandbox.create({ project: 'my-project' })
+const sandbox = await Sandbox.create('interpreter', {
+  projectId: 'proj_123', timeoutMs: 300_000,
+});
 try {
-  const setup = await sandbox.runCode('total = 6 * 7', { timeoutMs: 60_000 })
-  if (setup.error) throw setup.error
-  const result = await sandbox.runCode('print(total)', { timeoutMs: 60_000 })
-  if (result.error) throw result.error
-  console.log(result.stdout) // 42
+  const result = await sandbox.process.exec("python -c 'print(2 ** 10)'");
+  console.log(result.stdout, result.stderr, result.exitCode);
 } finally {
-  await sandbox.kill()
+  await sandbox.kill();
 }
 ```
 
 ```python
-from lizard import CodeSandbox
+from lizard import Sandbox
 
-with CodeSandbox.create(project="my-project") as sandbox:
-    setup = sandbox.run_code("total = 6 * 7")
-    if setup.error:
-        raise RuntimeError(setup.error.message)
-    result = sandbox.run_code("print(total)")
-    if result.error:
-        raise RuntimeError(result.error.message)
-    print(result.stdout)  # 42
+sandbox = Sandbox.create("interpreter", project_id="proj_123", timeout_ms=300_000)
+try:
+    result = sandbox.process.exec_("python -c 'print(2 ** 10)'")
+    print(result.stdout, result.stderr, result.exit_code)
+finally:
+    sandbox.kill()
 ```
 
-Both SDKs use the `code-interpreter-v1` template by default. Template availability and installed tools depend on the platform and region.
+`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
 
 ## What you can do
 
@@ -102,7 +99,6 @@ Both SDKs use the `code-interpreter-v1` template by default. Template availabili
 | --- | --- | --- |
 | Run a shell command | `sandbox.process.exec(cmd)` | `sandbox.process.exec_(cmd)` |
 | Read or write a file | `sandbox.fs.read(path)` / `write(path, text)` | Same method names |
-| Run code | `sandbox.runCode(code)` on `CodeSandbox` | `sandbox.run_code(code)` on `CodeSandbox` |
 | Expose an HTTP port | `sandbox.getHost(port)` | `sandbox.get_host(port)` |
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
@@ -113,9 +109,9 @@ See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main
 
 ## Runtime and persistence
 
-Sandboxes run on **Kubernetes**. Files outside an attached persistent volume last only for the sandbox's lifetime. Mount a volume at `/workspace` to keep files across sessions. A volume preserves files; it does not preserve running processes or memory.
+Sandboxes run on **Kubernetes with runc and share the host kernel**. Files outside an attached persistent volume last only for the sandbox's lifetime. Mount a volume at `/workspace` to keep files across sessions. A volume preserves files; it does not preserve running processes or memory.
 
-The Kubernetes backend returns **HTTP 501** for pause, resume, fork, snapshot creation and snapshot restore. The SDK keeps these methods for API compatibility. Use `connect()` for a running sandbox and volumes for files that must outlive it.
+The Kubernetes backend returns **HTTP 501** for pause, resume, fork, snapshot creation, snapshot restore, and file watching. The SDK keeps these methods for API compatibility. Use `connect()` for a running sandbox and volumes for files that must outlive it.
 
 ## Documentation
 

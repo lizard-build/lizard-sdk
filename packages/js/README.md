@@ -1,4 +1,4 @@
-# Lizard TypeScript SDK
+# Lizard SDK for TypeScript
 
 Run commands, work with files and execute code in Linux sandboxes on Kubernetes. The SDK also manages Lizard apps, databases, storage and projects.
 
@@ -51,25 +51,25 @@ const result = await sandbox.process.exec('printf "hello\\n"', {
 if (result.exitCode !== 0) throw new Error(result.stderr)
 ```
 
-## Run code
+## Run Python
 
-`CodeSandbox` uses the `code-interpreter-v1` template by default. Code errors appear in `result.error`; request failures throw.
+Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.
 
 ```ts
-import { CodeSandbox } from '@lizard-build/sdk'
+import { Sandbox } from '@lizard-build/sdk';
 
-const sandbox = await CodeSandbox.create({ project: 'my-project' })
+const sandbox = await Sandbox.create('interpreter', {
+  projectId: 'proj_123', timeoutMs: 300_000,
+});
 try {
-  const result = await sandbox.runCode('print(6 * 7)', {
-    language: 'python',
-    timeoutMs: 60_000,
-    onStdout: chunk => process.stdout.write(chunk),
-  })
-  if (result.error) throw result.error
+  const result = await sandbox.process.exec("python -c 'print(2 ** 10)'");
+  console.log(result.stdout, result.stderr, result.exitCode);
 } finally {
-  await sandbox.kill()
+  await sandbox.kill();
 }
 ```
+
+`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
 
 ## Configuration
 
@@ -79,9 +79,15 @@ Pass `timeoutMs` to `create()` to set the sandbox lifetime. The default is five 
 
 ## Runtime limits
 
-Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation and snapshot restore return HTTP 501 on the current backend.
+Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation, snapshot restore, and file watching return HTTP 501 on the current backend.
 
 `getHost()` returns a hostname without `https://`. File writes accept UTF-8 text or valid UTF-8 bytes; `readBytes()` supports binary downloads.
+
+## Current command and lifetime limits
+
+Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The current runtime does not apply the SDK command options `envs`, `workdir`, or `user`; set the directory and environment in the shell command when needed. Create-time `envs` and `metadata` are also not applied.
+
+The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 
 ## Learn more
 
