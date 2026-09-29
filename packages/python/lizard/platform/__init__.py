@@ -17,9 +17,13 @@ __all__ = [
     "Region", "RegionsAPI",
     "Workspace", "WorkspacesAPI",
     "CostMetrics", "MetricPoint", "MetricsAPI", "ServiceMetrics",
-    "DeployHandle", "LogLine", "ScaleOpts", "Service", "ServicesAPI",
+    "DeployHandle", "LogLine", "Service", "ServicesAPI",
     "DomainInfo", "DomainsAPI",
     "PlatformClient",
     "Project", "ProjectsAPI",
     "Secret", "SecretsAPI",
 ]
+
+from .storage import StorageAPI
+from .github import GitHubAPI
+__all__ += ["StorageAPI", "GitHubAPI"]

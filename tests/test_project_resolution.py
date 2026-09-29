@@ -77,11 +77,11 @@ class TestResolveRequiredProjectId:
 
 
 class TestLizardClient:
-    def test_requires_a_project_up_front(self):
-        with pytest.raises(TypeError):
-            Lizard()  # type: ignore[call-arg]
-        with pytest.raises(LizardError, match="project is required"):
-            Lizard(project="")
+    def test_platform_client_defers_project_requirement(self):
+        client = Lizard(api_key="liz_test")
+        assert client.projects is not None
+        with pytest.raises(LizardError, match="No project"):
+            client.project_id()
 
     def test_resolves_its_project_reference(self, config):
         lizard = Lizard(project="my-project-x1", api_key="liz_test", api_url=config.api_url)

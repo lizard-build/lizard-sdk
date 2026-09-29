@@ -52,7 +52,7 @@ export class Fs {
    * ```
    */
   async write(path: string, data: string | Uint8Array, opts?: FsOpts): Promise<void> {
-    const content = typeof data === 'string' ? data : new TextDecoder().decode(data)
+    const content = typeof data === 'string' ? data : new TextDecoder('utf-8', { fatal: true }).decode(data)
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`, {
       method: 'POST',
       headers: this.config.headers,
@@ -89,6 +89,15 @@ export class Fs {
    * const entries = await sandbox.fs.list('/app')
    * ```
    */
+  async readBytes(path: string, opts?: FsOpts): Promise<Uint8Array> {
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`)
+    url.searchParams.set('path', path)
+    if (opts?.user) url.searchParams.set('user', opts.user)
+    const res = await fetch(url, { headers: this.config.headers })
+    if (!res.ok) await handleApiError(res)
+    return new Uint8Array(await res.arrayBuffer())
+  }
+
   async list(path: string, opts?: FsOpts): Promise<FileInfo[]> {
     const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/list`)
     url.searchParams.set('path', path)

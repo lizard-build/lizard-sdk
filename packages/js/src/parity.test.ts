@@ -33,8 +33,8 @@ function stubFetch(responses: Array<{ status?: number; body: unknown }>) {
   return calls
 }
 
-beforeEach(() => vi.unstubAllGlobals())
-afterEach(() => vi.unstubAllGlobals())
+beforeEach(() => { vi.unstubAllGlobals() })
+afterEach(() => { vi.unstubAllGlobals() })
 
 describe('region', () => {
   it('sends region on volume create', async () => {

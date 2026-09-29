@@ -95,15 +95,9 @@ class BillingAPI:
         include_usage: bool = False,
     ) -> TransactionPage:
         """A page of balance transactions, newest first."""
-        params = []
-        if limit is not None:
-            params.append(f"limit={limit}")
-        if cursor:
-            params.append(f"cursor={cursor}")
-        if include_usage:
-            params.append("includeUsage=1")
-        qs = f"?{'&'.join(params)}" if params else ""
-        body = self._client.get(f"/api/billing/transactions{qs}")
+        from .client import query
+        body = self._client.get(query("/api/billing/transactions", limit=limit, cursor=cursor,
+                                      includeUsage=1 if include_usage else None))
         return TransactionPage(
             items=[Transaction._from_dict(t) for t in (body.get("items") or [])],
             next_cursor=body.get("nextCursor"),
@@ -116,3 +110,56 @@ class BillingAPI:
     def live(self) -> Any:
         """Live (not-yet-invoiced) usage accumulating right now."""
         return self._client.get("/api/billing/live")
+
+    def payment_methods(self):
+        return self._client.get("/api/billing/payment-methods")
+
+    def setup_payment_method(self, return_url: str | None = None):
+        return self._client.post("/api/billing/payment-methods/setup", {"returnUrl": return_url} if return_url else {})
+
+    def remove_payment_method(self, id: str):
+        from .client import segment
+        return self._client.delete(f"/api/billing/payment-methods/{segment(id)}")
+
+    def purchase(self, credit_cents: int, *, payment_method: str = "card", return_url: str | None = None):
+        if type(credit_cents) is not int or credit_cents <= 0:
+            raise ValueError("credit_cents must be a positive integer")
+        if payment_method not in ("card", "crypto"):
+            raise ValueError("payment_method must be card or crypto")
+        body = {"creditCents": credit_cents, "paymentMethod": payment_method}
+        if return_url is not None:
+            body["returnUrl"] = return_url
+        return self._client.post("/api/billing/purchase", body)
+
+    def auto_topup(self):
+        return self._client.get("/api/billing/auto-topup")
+
+    def set_auto_topup(self, *, enabled: bool, threshold_cents: int, amount_cents: int, payment_method_ids: list[str]):
+        return self._client.put("/api/billing/auto-topup", {"enabled": enabled, "thresholdCents": threshold_cents, "amountCents": amount_cents, "paymentMethodIds": payment_method_ids})
+
+    def run_auto_topup(self):
+        return self._client.post("/api/billing/auto-topup/run", {})
+
+    def redeem_promo(self, code: str):
+        return self._client.post("/api/billing/promo/redeem", {"code": code})
+
+    def x402_quote(self, credit_cents: int):
+        return self._client.post("/api/billing/purchase/x402/quote", {"creditCents": credit_cents})
+
+    def payment_status(self, attempt_id: str):
+        from .client import segment
+        return self._client.get(f"/api/billing/purchase/x402/{segment(attempt_id)}")
+
+    def pay_x402(self, credit_cents: int, *, max_total_cents: int, request_id: str | None = None, executable: str = "lizard"):
+        """Pay using the CLI's durable x402 journal. Requires CLI >= 4.0.8."""
+        from ..cli import LizardCLI
+        if any(type(n) is not int or n <= 0 for n in (credit_cents, max_total_cents)):
+            raise ValueError("Payment amounts must be positive integer cents")
+        args = ["credits", "topup", f"{credit_cents // 100}.{credit_cents % 100:02}", "--method", "x402", "--max-total", f"{max_total_cents // 100}.{max_total_cents % 100:02}", "--yes"]
+        if request_id:
+            args += ["--request-id", request_id]
+        config = self._client._config
+        result = LizardCLI(api_key=config.api_key, api_url=config.api_url, executable=executable).run(args)
+        if result.code:
+            raise RuntimeError(f"x402 CLI exited with code {result.code}; inspect the payment journal or query payment_status before retrying")
+        return result.events[0] if result.events else None

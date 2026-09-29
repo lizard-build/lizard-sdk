@@ -1,0 +1,4225 @@
+[
+  {
+    "name": "projects.list",
+    "ts": {
+      "path": "projects.list",
+      "args": []
+    },
+    "py": {
+      "path": "projects.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects",
+        "response": [
+          {
+            "id": "p1",
+            "name": "test",
+            "slug": "test",
+            "workspaceId": "w1",
+            "configRevision": 7
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.get",
+    "ts": {
+      "path": "projects.get",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.get",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.delete",
+    "ts": {
+      "path": "projects.delete",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.delete",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.create",
+    "ts": {
+      "path": "projects.create",
+      "args": [
+        {
+          "workspaceId": "w1",
+          "name": "test"
+        }
+      ]
+    },
+    "py": {
+      "path": "projects.create",
+      "args": [],
+      "kwargs": {
+        "workspace_id": "w1",
+        "name": "test"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        },
+        "body": {
+          "workspaceId": "w1",
+          "name": "test"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.update",
+    "ts": {
+      "path": "projects.update",
+      "args": [
+        "p1",
+        {
+          "name": "renamed"
+        }
+      ]
+    },
+    "py": {
+      "path": "projects.update",
+      "args": [
+        "p1"
+      ],
+      "kwargs": {
+        "name": "renamed"
+      }
+    },
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        },
+        "body": {
+          "name": "renamed"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.services",
+    "ts": {
+      "path": "projects.services",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.services",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/services",
+        "response": {
+          "apps": [
+            {
+              "id": "s1",
+              "name": "api",
+              "projectId": "p1",
+              "status": "running",
+              "deployStatus": "idle",
+              "domain": "example.test",
+              "builds": [
+                {
+                  "id": "b1"
+                }
+              ]
+            }
+          ],
+          "addons": [
+            {
+              "id": "a1",
+              "name": "db",
+              "type": "postgres",
+              "projectId": "p1",
+              "status": "running"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.volumeLimits",
+    "ts": {
+      "path": "projects.volumeLimits",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.volume_limits",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/volume-limits",
+        "response": {
+          "apps": [
+            {
+              "id": "s1",
+              "name": "api",
+              "projectId": "p1",
+              "status": "running",
+              "deployStatus": "idle",
+              "domain": "example.test",
+              "builds": [
+                {
+                  "id": "b1"
+                }
+              ]
+            }
+          ],
+          "addons": [
+            {
+              "id": "a1",
+              "name": "db",
+              "type": "postgres",
+              "projectId": "p1",
+              "status": "running"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.apply",
+    "ts": {
+      "path": "projects.apply",
+      "args": [
+        "p1",
+        {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "containerPort": 0
+            }
+          ]
+        }
+      ]
+    },
+    "py": {
+      "path": "projects.apply",
+      "args": [
+        "p1",
+        {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "containerPort": 0
+            }
+          ]
+        }
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "containerPort": 0
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.list",
+    "ts": {
+      "path": "services.list",
+      "args": [
+        {
+          "projectId": "p1"
+        }
+      ]
+    },
+    "py": {
+      "path": "services.list",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/apps",
+        "response": [
+          {
+            "id": "s1",
+            "name": "api",
+            "projectId": "p1",
+            "status": "running",
+            "deployStatus": "idle",
+            "domain": "example.test",
+            "builds": [
+              {
+                "id": "b1"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.get",
+    "ts": {
+      "path": "services.get",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.get",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.restart",
+    "ts": {
+      "path": "services.restart",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.restart",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/restart",
+        "response": {
+          "id": "b1",
+          "status": "queued"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.delete",
+    "ts": {
+      "path": "services.delete",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.delete",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "b1",
+          "status": "queued"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.redeploy",
+    "ts": {
+      "path": "services.redeploy",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.redeploy",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/redeploy",
+        "response": {
+          "id": "b1",
+          "status": "queued"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.deploy",
+    "ts": {
+      "path": "services.deploy",
+      "args": [
+        {
+          "projectId": "p1",
+          "name": "api",
+          "repoUrl": "https://github.com/example/app",
+          "port": 0,
+          "preDeployCommand": "migrate"
+        }
+      ]
+    },
+    "py": {
+      "path": "services.deploy",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1",
+        "name": "api",
+        "repo_url": "https://github.com/example/app",
+        "port": 0,
+        "pre_deploy_command": "migrate"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/apps",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        },
+        "body": {
+          "name": "api",
+          "sourceType": "github",
+          "repoUrl": "https://github.com/example/app",
+          "branch": "main",
+          "containerPort": 0,
+          "preDeployCommand": "migrate"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.upload",
+    "ts": {
+      "path": "services.upload",
+      "args": [
+        {
+          "projectId": "p1",
+          "name": "api",
+          "source": "__BYTES__",
+          "port": 0,
+          "preDeployCommand": "echo a&b"
+        }
+      ]
+    },
+    "py": {
+      "path": "services.upload",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1",
+        "name": "api",
+        "source": "__BYTES__",
+        "port": 0,
+        "pre_deploy_command": "echo a&b"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/apps/upload?name=api&preDeployCommand=echo+a%26b&port=0",
+        "response": {
+          "id": "s1",
+          "buildId": "b1"
+        },
+        "rawBody": [
+          0,
+          255,
+          31,
+          139
+        ],
+        "contentType": "application/octet-stream"
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.update",
+    "ts": {
+      "path": "services.update",
+      "args": [
+        "s1",
+        {
+          "name": "next",
+          "rootDirectory": "app",
+          "watchPatterns": [
+            "src/**"
+          ],
+          "containerPort": 0
+        }
+      ]
+    },
+    "py": {
+      "path": "services.update",
+      "args": [
+        "s1",
+        {
+          "name": "next",
+          "rootDirectory": "app",
+          "watchPatterns": [
+            "src/**"
+          ],
+          "containerPort": 0
+        }
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "name": "next",
+              "rootDirectory": "app",
+              "watchPatterns": [
+                "src/**"
+              ],
+              "containerPort": 0
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 3
+  },
+  {
+    "name": "services.update.force",
+    "ts": {
+      "path": "services.update",
+      "args": [
+        "s1",
+        {
+          "branch": "next"
+        },
+        {
+          "force": true
+        }
+      ]
+    },
+    "py": {
+      "path": "services.update",
+      "args": [
+        "s1",
+        {
+          "branch": "next"
+        }
+      ],
+      "kwargs": {
+        "force": true
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "services": [
+            {
+              "id": "s1",
+              "name": "api",
+              "branch": "next"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "services.scale",
+    "ts": {
+      "path": "services.scale",
+      "args": [
+        "s1",
+        {
+          "replicas": 0,
+          "cpuMillis": 2000,
+          "memoryMi": 512
+        }
+      ]
+    },
+    "py": {
+      "path": "services.scale",
+      "args": [
+        "s1"
+      ],
+      "kwargs": {
+        "replicas": 0,
+        "cpu_millis": 2000,
+        "memory_mi": 512
+      }
+    },
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/apps/s1/scale",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "replicas": 0
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "name": "api",
+              "cpuLimit": "2000m",
+              "memoryLimit": "512Mi"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 4
+  },
+  {
+    "name": "services.logs",
+    "ts": {
+      "path": "services.logs",
+      "args": [
+        "s1",
+        {
+          "limit": 5,
+          "since": "123"
+        }
+      ]
+    },
+    "py": {
+      "path": "services.logs",
+      "args": [
+        "s1"
+      ],
+      "kwargs": {
+        "limit": 5,
+        "since": "123"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/logs?service=api&limit=5&since=123",
+        "response": [
+          {
+            "level": "info",
+            "message": "hello",
+            "ts": 123
+          }
+        ]
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "services.events",
+    "ts": {
+      "path": "services.events",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.events",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/deploy-events",
+        "response": []
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.pods",
+    "ts": {
+      "path": "services.pods",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.pods",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/pod-status",
+        "response": {
+          "pods": [],
+          "entries": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.history",
+    "ts": {
+      "path": "services.history",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.history",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/logs/history",
+        "response": {
+          "pods": [],
+          "entries": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.stream.runtime",
+    "ts": {
+      "path": "services.streamLogs",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.stream_logs",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/logs",
+        "response": {
+          "ok": true
+        },
+        "stream": "event: log\ndata: {\"line\":\"hello\"}\n\nevent: done\ndata: {}\n\n"
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.stream.build",
+    "ts": {
+      "path": "services.buildLogs",
+      "args": [
+        "b1"
+      ]
+    },
+    "py": {
+      "path": "services.build_logs",
+      "args": [
+        "b1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/builds/b1/logs",
+        "response": {
+          "ok": true
+        },
+        "stream": "event: log\ndata: {\"line\":\"hello\"}\n\nevent: done\ndata: {}\n\n"
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.exec",
+    "ts": {
+      "path": "services.exec",
+      "args": [
+        "s1",
+        "printf hi"
+      ]
+    },
+    "py": {
+      "path": "services.exec_",
+      "args": [
+        "s1",
+        "printf hi"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/exec",
+        "response": {
+          "ok": true
+        },
+        "stream": "data: {\"stream\":\"stdout\",\"line\":\"hi\"}\n\ndata: {\"stream\":\"stderr\",\"line\":\"oops\"}\n\nevent: exit\ndata: {\"exitCode\":2}\n\n",
+        "body": {
+          "cmd": "printf hi"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.list",
+    "ts": {
+      "path": "addons.list",
+      "args": [
+        {
+          "projectId": "p1"
+        }
+      ]
+    },
+    "py": {
+      "path": "addons.list",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons",
+        "response": [
+          {
+            "id": "a1",
+            "name": "db",
+            "type": "postgres",
+            "projectId": "p1",
+            "status": "running"
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.get",
+    "ts": {
+      "path": "addons.get",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.get",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons",
+        "response": [
+          {
+            "id": "a1",
+            "name": "db",
+            "type": "postgres",
+            "projectId": "p1",
+            "status": "running"
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.delete",
+    "ts": {
+      "path": "addons.delete",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.delete",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/projects/p1/addons/a1",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.redeploy",
+    "ts": {
+      "path": "addons.redeploy",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.redeploy",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/addons/a1/redeploy",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.create",
+    "ts": {
+      "path": "addons.create",
+      "args": [
+        {
+          "projectId": "p1",
+          "type": "mongodb",
+          "region": "us-east-1",
+          "version": "8",
+          "vcpu": 2,
+          "memoryMb": 512,
+          "storageGb": 2
+        }
+      ]
+    },
+    "py": {
+      "path": "addons.create",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1",
+        "type": "mongodb",
+        "region": "us-east-1",
+        "version": "8",
+        "cpu_millis": 2000,
+        "memory_mi": 512,
+        "storage_mi": 2048
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/addons",
+        "response": {
+          "id": "a1",
+          "name": "db",
+          "type": "postgres",
+          "projectId": "p1",
+          "status": "running"
+        },
+        "body": {
+          "type": "mongo",
+          "region": "us-east-1",
+          "config": {
+            "version": "8",
+            "cpuLimit": "2000m",
+            "memoryLimit": "512Mi",
+            "storageSize": "2Gi"
+          }
+        },
+        "pyBody": {
+          "type": "mongo",
+          "region": "us-east-1",
+          "config": {
+            "version": "8",
+            "cpuLimit": "2000m",
+            "memoryLimit": "512Mi",
+            "storageSize": "2048Mi"
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.resize",
+    "ts": {
+      "path": "addons.resize",
+      "args": [
+        "p1",
+        "a1",
+        {
+          "vcpu": 2,
+          "memoryMb": 512,
+          "storageGb": 3
+        }
+      ]
+    },
+    "py": {
+      "path": "addons.resize",
+      "args": [
+        "p1",
+        "a1"
+      ],
+      "kwargs": {
+        "cpu_millis": 2000,
+        "memory_mi": 512,
+        "storage_mi": 3072
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "pyBody": {
+          "addons": [
+            {
+              "id": "a1",
+              "limits": {
+                "vcpu": 2,
+                "memoryMb": 512
+              },
+              "storageSize": "3072Mi"
+            }
+          ]
+        },
+        "body": {
+          "addons": [
+            {
+              "id": "a1",
+              "limits": {
+                "vcpu": 2,
+                "memoryMb": 512
+              },
+              "storageSize": "3Gi"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons",
+        "response": [
+          {
+            "id": "a1",
+            "name": "db",
+            "type": "postgres",
+            "projectId": "p1",
+            "status": "running"
+          }
+        ]
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "addons.rename",
+    "ts": {
+      "path": "addons.rename",
+      "args": [
+        "p1",
+        "a1",
+        "new"
+      ]
+    },
+    "py": {
+      "path": "addons.rename",
+      "args": [
+        "p1",
+        "a1",
+        "new"
+      ]
+    },
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/projects/p1/addons/a1",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "name": "new"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.secrets",
+    "ts": {
+      "path": "addons.secrets",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.secrets",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons/a1/secrets",
+        "response": []
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.logs",
+    "ts": {
+      "path": "addons.logs",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.logs",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons/a1/logs",
+        "response": []
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.list.project",
+    "ts": {
+      "path": "secrets.list",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "secrets.list",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/secrets",
+        "response": [
+          {
+            "key": "A",
+            "value": "B"
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.set.project",
+    "ts": {
+      "path": "secrets.set",
+      "args": [
+        "p1",
+        {
+          "key": "A",
+          "value": "B"
+        }
+      ]
+    },
+    "py": {
+      "path": "secrets.set",
+      "args": [
+        "p1",
+        {
+          "A": "B"
+        }
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "secrets": {
+            "shared": {
+              "A": "B"
+            },
+            "services": {}
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.delete.project",
+    "ts": {
+      "path": "secrets.delete",
+      "args": [
+        "p1",
+        {
+          "key": "A"
+        }
+      ]
+    },
+    "py": {
+      "path": "secrets.delete",
+      "args": [
+        "p1",
+        "A"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "pyBody": {
+          "secrets": {
+            "shared": {
+              "A": null
+            },
+            "services": {}
+          }
+        },
+        "body": {
+          "secrets": {
+            "shared": {
+              "A": null
+            }
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.refs.project",
+    "ts": {
+      "path": "secrets.refs",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "secrets.refs",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/variables:refs",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.list.service",
+    "ts": {
+      "path": "secrets.list",
+      "args": [
+        "p1",
+        {
+          "serviceId": "s1"
+        }
+      ]
+    },
+    "py": {
+      "path": "secrets.list",
+      "args": [
+        "p1"
+      ],
+      "kwargs": {
+        "service_id": "s1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/secrets",
+        "response": [
+          {
+            "key": "A",
+            "value": "B"
+          }
+        ]
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "secrets.set.service",
+    "ts": {
+      "path": "secrets.set",
+      "args": [
+        "p1",
+        {
+          "key": "A",
+          "value": "B",
+          "serviceId": "s1"
+        }
+      ]
+    },
+    "py": {
+      "path": "secrets.set",
+      "args": [
+        "p1",
+        {
+          "A": "B"
+        }
+      ],
+      "kwargs": {
+        "service_id": "s1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "secrets": {
+            "shared": {},
+            "services": {
+              "api": {
+                "A": "B"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "secrets.delete.service",
+    "ts": {
+      "path": "secrets.delete",
+      "args": [
+        "p1",
+        {
+          "key": "A",
+          "serviceId": "s1"
+        }
+      ]
+    },
+    "py": {
+      "path": "secrets.delete",
+      "args": [
+        "p1",
+        "A"
+      ],
+      "kwargs": {
+        "service_id": "s1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "pyBody": {
+          "secrets": {
+            "shared": {},
+            "services": {
+              "api": {
+                "A": null
+              }
+            }
+          }
+        },
+        "body": {
+          "secrets": {
+            "services": {
+              "api": {
+                "A": null
+              }
+            }
+          }
+        }
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "secrets.refs.service",
+    "ts": {
+      "path": "secrets.refs",
+      "args": [
+        "p1",
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "secrets.refs",
+      "args": [
+        "p1"
+      ],
+      "kwargs": {
+        "service_id": "s1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/variables:refs",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.info",
+    "ts": {
+      "path": "domains.info",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "domains.info",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/domains",
+        "response": {
+          "domain": "example.test",
+          "domains": [
+            "example.test"
+          ],
+          "dnsOk": {
+            "example.test": true
+          },
+          "pending": [
+            {
+              "hostname": "pending.test",
+              "txtRecord": "_verify",
+              "txtValue": "proof",
+              "cnameTarget": "target"
+            }
+          ],
+          "generatedDomain": null,
+          "cnameTarget": "target"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.list",
+    "ts": {
+      "path": "domains.list",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "domains.list",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/domains",
+        "response": {
+          "domain": "example.test",
+          "domains": [
+            "example.test"
+          ],
+          "dnsOk": {
+            "example.test": true
+          },
+          "pending": [
+            {
+              "hostname": "pending.test",
+              "txtRecord": "_verify",
+              "txtValue": "proof",
+              "cnameTarget": "target"
+            }
+          ],
+          "generatedDomain": null,
+          "cnameTarget": "target"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.add",
+    "ts": {
+      "path": "domains.add",
+      "args": [
+        "s1",
+        "example.test",
+        {
+          "force": true
+        }
+      ]
+    },
+    "py": {
+      "path": "domains.add",
+      "args": [
+        "s1",
+        "example.test"
+      ],
+      "kwargs": {
+        "force": true
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/domains",
+        "response": {
+          "hostname": "example.test",
+          "verified": false,
+          "txtValue": "proof"
+        },
+        "body": {
+          "hostname": "example.test",
+          "force": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.verify",
+    "ts": {
+      "path": "domains.verify",
+      "args": [
+        "s1",
+        "example.test"
+      ]
+    },
+    "py": {
+      "path": "domains.verify",
+      "args": [
+        "s1",
+        "example.test"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/domains/verify",
+        "response": {
+          "hostname": "example.test",
+          "verified": true
+        },
+        "body": {
+          "hostname": "example.test"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.generate",
+    "ts": {
+      "path": "domains.generate",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "domains.generate",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/domains",
+        "response": {
+          "hostname": "generated.test",
+          "generated": true
+        },
+        "body": {
+          "generate": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "domains.delete",
+    "ts": {
+      "path": "domains.delete",
+      "args": [
+        "s1",
+        "example.test"
+      ]
+    },
+    "py": {
+      "path": "domains.delete",
+      "args": [
+        "s1",
+        "example.test"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/apps/s1/domains/example.test",
+        "response": {
+          "ok": true
+        },
+        "status": 204
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.service",
+    "ts": {
+      "path": "metrics.service",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.service",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.cpu",
+    "ts": {
+      "path": "metrics.cpu",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.cpu",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.memory",
+    "ts": {
+      "path": "metrics.memory",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.memory",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.network",
+    "ts": {
+      "path": "metrics.network",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.network",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.disk",
+    "ts": {
+      "path": "metrics.disk",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.disk",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.all",
+    "ts": {
+      "path": "metrics.all",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "metrics.all",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.addon",
+    "ts": {
+      "path": "metrics.addon",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "metrics.addon",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons/a1/metrics?range=1h",
+        "response": {
+          "timestamps": [
+            100,
+            200
+          ],
+          "series": [
+            {
+              "metric": "cpu",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "memory",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_rx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "network_tx",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_read",
+              "values": [
+                1,
+                2
+              ]
+            },
+            {
+              "metric": "disk_write",
+              "values": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.project",
+    "ts": {
+      "path": "metrics.project",
+      "args": [
+        "p1",
+        {
+          "range": "6h",
+          "live": true
+        }
+      ]
+    },
+    "py": {
+      "path": "metrics.project",
+      "args": [
+        "p1"
+      ],
+      "kwargs": {
+        "range": "6h",
+        "live": true
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/metrics?range=6h&live=true",
+        "response": {
+          "services": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "metrics.cost",
+    "ts": {
+      "path": "metrics.cost",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "metrics.cost",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/billing/summary?workspaceId=w1&range=30d",
+        "response": {
+          "projects": [
+            {
+              "projectId": "p1",
+              "costUsd": 1.25
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 2
+  },
+  {
+    "name": "billing.paymentMethods",
+    "ts": {
+      "path": "billing.paymentMethods",
+      "args": []
+    },
+    "py": {
+      "path": "billing.payment_methods",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/payment-methods",
+        "response": {
+          "items": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.autoTopup",
+    "ts": {
+      "path": "billing.autoTopup",
+      "args": []
+    },
+    "py": {
+      "path": "billing.auto_topup",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/auto-topup",
+        "response": {
+          "items": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.summary",
+    "ts": {
+      "path": "billing.summary",
+      "args": []
+    },
+    "py": {
+      "path": "billing.summary",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/summary",
+        "response": {
+          "items": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.live",
+    "ts": {
+      "path": "billing.live",
+      "args": []
+    },
+    "py": {
+      "path": "billing.live",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/live",
+        "response": {
+          "items": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.setupPaymentMethod",
+    "ts": {
+      "path": "billing.setupPaymentMethod",
+      "args": [
+        "https://example.test"
+      ]
+    },
+    "py": {
+      "path": "billing.setup_payment_method",
+      "args": [
+        "https://example.test"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/payment-methods/setup",
+        "response": {
+          "url": "https://checkout.test"
+        },
+        "body": {
+          "returnUrl": "https://example.test"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.removePaymentMethod",
+    "ts": {
+      "path": "billing.removePaymentMethod",
+      "args": [
+        "a/b"
+      ]
+    },
+    "py": {
+      "path": "billing.remove_payment_method",
+      "args": [
+        "a/b"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/billing/payment-methods/a%2Fb",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.purchase",
+    "ts": {
+      "path": "billing.purchase",
+      "args": [
+        2000,
+        {
+          "paymentMethod": "crypto",
+          "returnUrl": "https://example.test"
+        }
+      ]
+    },
+    "py": {
+      "path": "billing.purchase",
+      "args": [
+        2000
+      ],
+      "kwargs": {
+        "payment_method": "crypto",
+        "return_url": "https://example.test"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/purchase",
+        "response": {
+          "url": "https://checkout.test"
+        },
+        "body": {
+          "creditCents": 2000,
+          "paymentMethod": "crypto",
+          "returnUrl": "https://example.test"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.setAutoTopup",
+    "ts": {
+      "path": "billing.setAutoTopup",
+      "args": [
+        {
+          "enabled": false,
+          "thresholdCents": 500,
+          "amountCents": 2000,
+          "paymentMethodIds": [
+            "pm1"
+          ]
+        }
+      ]
+    },
+    "py": {
+      "path": "billing.set_auto_topup",
+      "args": [],
+      "kwargs": {
+        "enabled": false,
+        "threshold_cents": 500,
+        "amount_cents": 2000,
+        "payment_method_ids": [
+          "pm1"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/billing/auto-topup",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "enabled": false,
+          "thresholdCents": 500,
+          "amountCents": 2000,
+          "paymentMethodIds": [
+            "pm1"
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.runAutoTopup",
+    "ts": {
+      "path": "billing.runAutoTopup",
+      "args": []
+    },
+    "py": {
+      "path": "billing.run_auto_topup",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/auto-topup/run",
+        "response": {
+          "ok": true
+        },
+        "body": {}
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.redeemPromo",
+    "ts": {
+      "path": "billing.redeemPromo",
+      "args": [
+        "TEST"
+      ]
+    },
+    "py": {
+      "path": "billing.redeem_promo",
+      "args": [
+        "TEST"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/promo/redeem",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "code": "TEST"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.x402Quote",
+    "ts": {
+      "path": "billing.x402Quote",
+      "args": [
+        2000
+      ]
+    },
+    "py": {
+      "path": "billing.x402_quote",
+      "args": [
+        2000
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/purchase/x402/quote",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "creditCents": 2000
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.paymentStatus",
+    "ts": {
+      "path": "billing.paymentStatus",
+      "args": [
+        "attempt"
+      ]
+    },
+    "py": {
+      "path": "billing.payment_status",
+      "args": [
+        "attempt"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/purchase/x402/attempt",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "storage.list",
+    "ts": {
+      "path": "storage.list",
+      "args": [
+        "p1",
+        "a1",
+        {
+          "bucket": "a b",
+          "prefix": "folder/x&y"
+        }
+      ]
+    },
+    "py": {
+      "path": "storage.list",
+      "args": [
+        "p1",
+        "a1"
+      ],
+      "kwargs": {
+        "bucket": "a b",
+        "prefix": "folder/x&y"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons/a1/s3/buckets/a%20b/objects?prefix=folder%2Fx%26y",
+        "response": {
+          "objects": []
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "storage.upload",
+    "ts": {
+      "path": "storage.upload",
+      "args": [
+        "p1",
+        "a1",
+        {
+          "key": "folder/a b.bin",
+          "source": "__BYTES__"
+        }
+      ]
+    },
+    "py": {
+      "path": "storage.upload",
+      "args": [
+        "p1",
+        "a1"
+      ],
+      "kwargs": {
+        "key": "folder/a b.bin",
+        "source": "__BYTES__"
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/projects/p1/addons/a1/s3/objects/default/folder/a%20b.bin",
+        "response": {
+          "ok": true
+        },
+        "rawBody": [
+          0,
+          255,
+          31,
+          139
+        ],
+        "contentType": "application/octet-stream"
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "github.status",
+    "ts": {
+      "path": "github.status",
+      "args": []
+    },
+    "py": {
+      "path": "github.status",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/github/status",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "github.checkout",
+    "ts": {
+      "path": "github.checkout",
+      "args": [
+        "s1",
+        "next"
+      ]
+    },
+    "py": {
+      "path": "github.checkout",
+      "args": [
+        "s1",
+        "next"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1",
+        "response": {
+          "id": "s1",
+          "name": "api",
+          "projectId": "p1",
+          "status": "running",
+          "deployStatus": "idle",
+          "domain": "example.test",
+          "builds": [
+            {
+              "id": "b1"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/p1",
+        "response": {
+          "id": "p1",
+          "name": "test",
+          "slug": "test",
+          "workspaceId": "w1",
+          "configRevision": 7
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/config:apply",
+        "response": {
+          "revision": 8,
+          "services": [],
+          "addons": [],
+          "sideEffectFailures": []
+        },
+        "body": {
+          "revision": 7,
+          "services": [
+            {
+              "id": "s1",
+              "name": "api",
+              "branch": "next"
+            }
+          ]
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/redeploy",
+        "response": {
+          "id": "b1"
+        }
+      }
+    ],
+    "expectRequests": 4
+  },
+  {
+    "name": "sandbox.fork",
+    "ts": {
+      "path": "sandbox.fork",
+      "args": [
+        {
+          "count": 2,
+          "timeoutMs": 0
+        }
+      ]
+    },
+    "py": {
+      "path": "sandbox.fork",
+      "args": [],
+      "kwargs": {
+        "count": 2,
+        "timeout_ms": 0
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/fork",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "count": 2,
+          "timeoutMs": 0
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.snapshot",
+    "ts": {
+      "path": "sandbox.snapshot",
+      "args": [
+        "snap"
+      ]
+    },
+    "py": {
+      "path": "sandbox.snapshot",
+      "args": [
+        "snap"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/snapshot",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "name": "snap"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.unexpose",
+    "ts": {
+      "path": "sandbox.unexpose",
+      "args": [
+        3000
+      ]
+    },
+    "py": {
+      "path": "sandbox.unexpose",
+      "args": [
+        3000
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/sandboxes/sb1/expose/3000",
+        "response": {
+          "ok": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.logs",
+    "ts": {
+      "path": "sandbox.logs",
+      "args": [
+        {
+          "tail": 5
+        }
+      ]
+    },
+    "py": {
+      "path": "sandbox.logs",
+      "args": [],
+      "kwargs": {
+        "tail": 5
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/logs?tail=5",
+        "response": {
+          "ok": true
+        },
+        "stream": "event: log\ndata: {\"line\":\"hello\"}\n\nevent: done\ndata: {}\n\n"
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.snapshots",
+    "ts": {
+      "path": "Sandbox.snapshots",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.snapshots",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/snapshots",
+        "response": []
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.restore",
+    "ts": {
+      "path": "Sandbox.restore",
+      "args": [
+        "snap1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.restore",
+      "args": [
+        "snap1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandbox-snapshots/snap1/fork",
+        "response": {
+          "id": "sb2"
+        },
+        "body": {
+          "timeoutMs": 0
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.deleteSnapshot",
+    "ts": {
+      "path": "Sandbox.deleteSnapshot",
+      "args": [
+        "snap1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.delete_snapshot",
+      "args": [
+        "snap1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/sandbox-snapshots/snap1",
+        "response": {}
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.fork.unsupported",
+    "ts": {
+      "path": "sandbox.fork",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.fork",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/fork",
+        "response": {
+          "error": "Not supported for k8s"
+        },
+        "status": 501,
+        "body": {
+          "count": 1,
+          "timeoutMs": 0
+        }
+      }
+    ],
+    "error": "501"
+  },
+  {
+    "name": "sandbox.snapshot.unsupported",
+    "ts": {
+      "path": "sandbox.snapshot",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.snapshot",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/snapshot",
+        "response": {
+          "error": "Not supported for k8s"
+        },
+        "status": 501,
+        "body": {}
+      }
+    ],
+    "error": "501"
+  },
+  {
+    "name": "workspaces.list",
+    "ts": {
+      "path": "workspaces.list",
+      "args": []
+    },
+    "py": {
+      "path": "workspaces.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/workspaces",
+        "response": [
+          {
+            "id": "w1",
+            "name": "test",
+            "slug": "test"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "workspaces.create",
+    "ts": {
+      "path": "workspaces.create",
+      "args": [
+        {
+          "name": "test"
+        }
+      ]
+    },
+    "py": {
+      "path": "workspaces.create",
+      "args": [],
+      "kwargs": {
+        "name": "test"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/workspaces",
+        "response": {
+          "id": "w1",
+          "name": "test",
+          "slug": "test"
+        },
+        "body": {
+          "name": "test"
+        }
+      }
+    ]
+  },
+  {
+    "name": "workspaces.delete",
+    "ts": {
+      "path": "workspaces.delete",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.delete",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/workspaces/w1?requireEmpty=true",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "workspaces.find",
+    "ts": {
+      "path": "workspaces.find",
+      "args": [
+        "test"
+      ]
+    },
+    "py": {
+      "path": "workspaces.find",
+      "args": [
+        "test"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/workspaces",
+        "response": [
+          {
+            "id": "w1",
+            "name": "test",
+            "slug": "test"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "regions.list",
+    "ts": {
+      "path": "regions.list",
+      "args": []
+    },
+    "py": {
+      "path": "regions.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/regions",
+        "response": [
+          {
+            "id": "us-east-1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "billing.balance",
+    "ts": {
+      "path": "billing.balance",
+      "args": []
+    },
+    "py": {
+      "path": "billing.balance",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/balance",
+        "response": {
+          "balanceCents": 100,
+          "plan": "payg",
+          "status": "active"
+        }
+      }
+    ]
+  },
+  {
+    "name": "billing.transactions",
+    "ts": {
+      "path": "billing.transactions",
+      "args": [
+        {
+          "limit": 5,
+          "includeUsage": true
+        }
+      ]
+    },
+    "py": {
+      "path": "billing.transactions",
+      "args": [],
+      "kwargs": {
+        "limit": 5,
+        "include_usage": true
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/transactions?limit=5&includeUsage=1",
+        "response": {
+          "items": [],
+          "nextCursor": null
+        }
+      }
+    ]
+  },
+  {
+    "name": "apiKeys.list",
+    "ts": {
+      "path": "apiKeys.list",
+      "args": []
+    },
+    "py": {
+      "path": "api_keys.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/account/api-keys",
+        "response": [
+          {
+            "id": "k1",
+            "name": "test",
+            "scopes": [],
+            "key": "liz_not_real"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "apiKeys.create",
+    "ts": {
+      "path": "apiKeys.create",
+      "args": [
+        {
+          "name": "test",
+          "projects": [
+            "p1"
+          ]
+        }
+      ]
+    },
+    "py": {
+      "path": "api_keys.create",
+      "args": [],
+      "kwargs": {
+        "name": "test",
+        "projects": [
+          "p1"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/account/api-keys",
+        "response": {
+          "id": "k1",
+          "name": "test",
+          "scopes": [],
+          "key": "liz_not_real"
+        },
+        "body": {
+          "name": "test",
+          "scopes": [
+            {
+              "type": "project",
+              "id": "p1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "apiKeys.delete",
+    "ts": {
+      "path": "apiKeys.delete",
+      "args": [
+        "k1"
+      ]
+    },
+    "py": {
+      "path": "api_keys.delete",
+      "args": [
+        "k1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/account/api-keys/k1",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "Volume.create",
+    "ts": {
+      "path": "Volume.create",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "py": {
+      "path": "Volume.create",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/volumes",
+        "response": {
+          "id": "v1",
+          "name": "data",
+          "projectId": "p1",
+          "sizeGb": 5,
+          "status": "ready",
+          "createdAt": 123
+        },
+        "body": {
+          "name": "data",
+          "sizeGb": 5
+        }
+      }
+    ]
+  },
+  {
+    "name": "Volume.getOrCreate",
+    "ts": {
+      "path": "Volume.getOrCreate",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "py": {
+      "path": "Volume.get_or_create",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/volumes",
+        "response": {
+          "id": "v1",
+          "name": "data",
+          "projectId": "p1",
+          "sizeGb": 5,
+          "status": "ready",
+          "createdAt": 123
+        },
+        "body": {
+          "name": "data",
+          "sizeGb": 5,
+          "getOrCreate": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Volume.get",
+    "ts": {
+      "path": "Volume.get",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "py": {
+      "path": "Volume.get",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/volumes/data",
+        "response": {
+          "id": "v1",
+          "name": "data",
+          "projectId": "p1",
+          "sizeGb": 5,
+          "status": "ready",
+          "createdAt": 123
+        }
+      }
+    ]
+  },
+  {
+    "name": "Volume.list",
+    "ts": {
+      "path": "Volume.list",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "Volume.list",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/volumes",
+        "response": [
+          {
+            "id": "v1",
+            "name": "data",
+            "projectId": "p1",
+            "sizeGb": 5,
+            "status": "ready",
+            "createdAt": 123
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Volume.delete",
+    "ts": {
+      "path": "Volume.delete",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "py": {
+      "path": "Volume.remove",
+      "args": [
+        "p1",
+        "data"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/projects/p1/volumes/data",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "Sandbox.create",
+    "ts": {
+      "path": "Sandbox.create",
+      "args": [
+        "base",
+        {
+          "projectId": "p1",
+          "timeoutMs": 0
+        }
+      ]
+    },
+    "py": {
+      "path": "Sandbox.create",
+      "args": [
+        "base"
+      ],
+      "kwargs": {
+        "project_id": "p1",
+        "timeout_ms": 0
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes",
+        "response": {
+          "sandboxId": "sb1",
+          "id": "sb1",
+          "template": "base",
+          "startedAt": "",
+          "endAt": ""
+        },
+        "body": {
+          "template": "base",
+          "projectId": "p1",
+          "timeoutMs": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "Sandbox.connect",
+    "ts": {
+      "path": "Sandbox.connect",
+      "args": [
+        "sb1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.connect",
+      "args": [
+        "sb1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1",
+        "response": {
+          "sandboxId": "sb1",
+          "id": "sb1",
+          "template": "base",
+          "startedAt": "",
+          "endAt": ""
+        }
+      }
+    ]
+  },
+  {
+    "name": "Sandbox.list",
+    "ts": {
+      "path": "Sandbox.list",
+      "args": []
+    },
+    "py": {
+      "path": "Sandbox.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes",
+        "response": [
+          {
+            "sandboxId": "sb1",
+            "id": "sb1",
+            "template": "base",
+            "startedAt": "",
+            "endAt": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sandbox.list.project",
+    "ts": {
+      "path": "Sandbox.list",
+      "args": [
+        {
+          "projectId": "p1"
+        }
+      ]
+    },
+    "py": {
+      "path": "Sandbox.list",
+      "args": [],
+      "kwargs": {
+        "project_id": "p1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/sandboxes",
+        "response": [
+          {
+            "sandboxId": "sb1",
+            "id": "sb1",
+            "template": "base",
+            "startedAt": "",
+            "endAt": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sandbox.kill",
+    "ts": {
+      "path": "sandbox.kill",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.kill",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/sandboxes/sb1",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "sandbox.pause",
+    "ts": {
+      "path": "sandbox.pause",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.pause",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/pause",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "sandbox.resume",
+    "ts": {
+      "path": "sandbox.resume",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.resume",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/resume",
+        "response": {}
+      }
+    ]
+  },
+  {
+    "name": "sandbox.getInfo",
+    "ts": {
+      "path": "sandbox.getInfo",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.get_info",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1",
+        "response": {
+          "sandboxId": "sb1",
+          "id": "sb1",
+          "template": "base",
+          "startedAt": "",
+          "endAt": ""
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.setTimeout",
+    "ts": {
+      "path": "sandbox.setTimeout",
+      "args": [
+        1000
+      ]
+    },
+    "py": {
+      "path": "sandbox.set_timeout",
+      "args": [
+        1000
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/timeout",
+        "response": {},
+        "body": {
+          "timeoutMs": 1000
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.getHost",
+    "ts": {
+      "path": "sandbox.getHost",
+      "args": [
+        3000
+      ]
+    },
+    "py": {
+      "path": "sandbox.get_host",
+      "args": [
+        3000
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/expose/3000",
+        "response": {
+          "hostname": "host.test"
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.write",
+    "ts": {
+      "path": "sandbox.fs.write",
+      "args": [
+        "/tmp/a b",
+        "hello"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.write",
+      "args": [
+        "/tmp/a b",
+        "hello"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/files",
+        "response": {},
+        "body": {
+          "path": "/tmp/a b",
+          "content": "hello"
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.list",
+    "ts": {
+      "path": "sandbox.fs.list",
+      "args": [
+        "/tmp"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.list",
+      "args": [
+        "/tmp"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/files/list?path=%2Ftmp",
+        "response": []
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.remove",
+    "ts": {
+      "path": "sandbox.fs.remove",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.remove",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/sandboxes/sb1/files",
+        "response": {},
+        "body": {
+          "path": "/tmp/a"
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.move",
+    "ts": {
+      "path": "sandbox.fs.move",
+      "args": [
+        "/tmp/a",
+        "/tmp/b"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.move",
+      "args": [
+        "/tmp/a",
+        "/tmp/b"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/files/move",
+        "response": {},
+        "body": {
+          "from": "/tmp/a",
+          "to": "/tmp/b"
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.stat",
+    "ts": {
+      "path": "sandbox.fs.stat",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.stat",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/files/stat?path=%2Ftmp%2Fa",
+        "response": {
+          "name": "a",
+          "path": "/tmp/a",
+          "type": "file",
+          "size": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.read",
+    "ts": {
+      "path": "sandbox.fs.read",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.read",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/files?path=%2Ftmp%2Fa",
+        "response": {
+          "ok": true
+        },
+        "rawResponse": "hello"
+      }
+    ]
+  },
+  {
+    "name": "sandbox.fs.readBytes",
+    "ts": {
+      "path": "sandbox.fs.readBytes",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "py": {
+      "path": "sandbox.fs.read_bytes",
+      "args": [
+        "/tmp/a"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/files?path=%2Ftmp%2Fa",
+        "response": {
+          "ok": true
+        },
+        "binaryResponse": [
+          0,
+          255,
+          31,
+          139
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sandbox.process.exec",
+    "ts": {
+      "path": "sandbox.process.exec",
+      "args": [
+        "echo hi"
+      ]
+    },
+    "py": {
+      "path": "sandbox.process.exec_",
+      "args": [
+        "echo hi"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/exec",
+        "response": {
+          "stdout": "hi",
+          "stderr": "",
+          "exitCode": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "sandbox.process.list",
+    "ts": {
+      "path": "sandbox.process.list",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.process.list",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/processes",
+        "response": []
+      }
+    ]
+  },
+  {
+    "name": "sandbox.process.kill",
+    "ts": {
+      "path": "sandbox.process.kill",
+      "args": [
+        42
+      ]
+    },
+    "py": {
+      "path": "sandbox.process.kill",
+      "args": [
+        42
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/processes/signal",
+        "response": {
+          "ok": true
+        },
+        "body": {
+          "pid": 42,
+          "signal": "SIGTERM"
+        }
+      }
+    ]
+  },
+  {
+    "name": "projects.logs",
+    "ts": {
+      "path": "projects.logs",
+      "args": [
+        "p1",
+        {
+          "service": "api",
+          "limit": 5
+        }
+      ]
+    },
+    "py": {
+      "path": "projects.logs",
+      "args": [
+        "p1"
+      ],
+      "kwargs": {
+        "service": "api",
+        "limit": 5
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/logs?service=api&limit=5",
+        "response": []
+      }
+    ]
+  },
+  {
+    "name": "projects.streamLogs",
+    "ts": {
+      "path": "projects.streamLogs",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.stream_logs",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/logs/stream",
+        "response": {
+          "ok": true
+        },
+        "stream": "data: {\"message\":\"hello\"}\n\n"
+      }
+    ]
+  }
+]

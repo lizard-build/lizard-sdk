@@ -28,35 +28,27 @@ class SecretsAPI:
         self._client = client
 
     def list(self, project_id: str, *, service_id: str | None = None) -> list[Secret]:
-        """List secrets for a project (optionally filtered to a service)."""
-        qs = f"?appId={service_id}" if service_id else ""
-        result = self._client.get(f"/api/projects/{project_id}/secrets{qs}")
-        return [Secret._from_dict(s) for s in (result if isinstance(result, list) else result.get("secrets", []))]
+        path = f"/api/apps/{service_id}/secrets" if service_id else f"/api/projects/{project_id}/secrets"
+        return [Secret._from_dict(s) for s in self._client.get(path)]
 
-    def set(
-        self,
-        project_id: str,
-        secrets: dict[str, str] | list[dict],
-        *,
-        service_id: str | None = None,
-    ) -> None:
-        """
-        Set one or more secrets. Accepts a plain dict or a list of
-        ``{"key": "K", "value": "V", "serviceId": "..."}`` objects.
-        """
-        if isinstance(secrets, dict):
-            items = [{"key": k, "value": v, **({"appId": service_id} if service_id else {})}
-                     for k, v in secrets.items()]
-        else:
-            items = [
-                {**s, **({"appId": service_id} if service_id and "serviceId" not in s else {})}
-                for s in secrets
-            ]
-        self._client.post(f"/api/projects/{project_id}/secrets", {"secrets": items})
+    def set(self, project_id: str, secrets: dict[str, str] | list[dict], *, service_id: str | None = None) -> None:
+        items = [{"key": k, "value": v} for k, v in secrets.items()] if isinstance(secrets, dict) else secrets
+        shared, services, names = {}, {}, {}
+        for item in items:
+            target = None if item.get("global") else item.get("serviceId", item.get("appId", service_id))
+            if target:
+                if target not in names:
+                    svc = self._client.get(f"/api/apps/{target}")
+                    if svc["projectId"] != project_id:
+                        raise ValueError("Service does not belong to this project")
+                    names[target] = svc["name"]
+                services.setdefault(names[target], {})[item["key"]] = item["value"]
+            else:
+                shared[item["key"]] = item["value"]
+        self._client.apply_config(project_id, {"secrets": {"shared": shared, "services": services}})
 
     def delete(self, project_id: str, key: str, *, service_id: str | None = None) -> None:
-        """Delete a secret by key."""
-        body: dict = {"key": key}
-        if service_id:
-            body["appId"] = service_id
-        self._client.delete(f"/api/projects/{project_id}/secrets", body)
+        self.set(project_id, [{"key": key, "value": None}], service_id=service_id)
+
+    def refs(self, project_id: str, *, service_id: str | None = None):
+        return self._client.get(f"/api/apps/{service_id}/variables:refs" if service_id else f"/api/projects/{project_id}/variables:refs")

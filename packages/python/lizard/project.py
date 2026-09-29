@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from hashlib import sha256
+
 from .config import ConnectionConfig, HTTP_TIMEOUT_S
 from .errors import LizardError, handle_api_error
 
-# Resolved project IDs are cached per (api_url, ref) so repeated sandbox creates
+# Resolved project IDs are cached per (api_url, credential hash, ref) so repeated sandbox creates
 # on the same Lizard client don't re-list projects on every call.
 _project_id_cache: dict[str, str] = {}
 
@@ -15,7 +17,7 @@ def resolve_project_id(ref: str, config: ConnectionConfig) -> str:
     """
     import httpx
 
-    cache_key = f"{config.api_url} {ref}"
+    cache_key = f"{config.api_url} {sha256(config.api_key.encode()).hexdigest()} {ref}"
     cached = _project_id_cache.get(cache_key)
     if cached:
         return cached
@@ -26,14 +28,14 @@ def resolve_project_id(ref: str, config: ConnectionConfig) -> str:
 
     projects = res.json()
     lower = ref.lower()
-    for p in projects:
-        if (
-            p.get("id", "").lower() == lower
-            or (p.get("slug") or "").lower() == lower
-            or (p.get("name") or "").lower() == lower
-        ):
-            _project_id_cache[cache_key] = p["id"]
-            return p["id"]
+    matches = [p for p in projects if lower in (
+        p.get("id", "").lower(), (p.get("slug") or "").lower(), (p.get("name") or "").lower()
+    )]
+    if len(matches) > 1:
+        raise LizardError("Project reference is ambiguous; pass the project ID")
+    if matches:
+        _project_id_cache[cache_key] = matches[0]["id"]
+        return matches[0]["id"]
 
     available = ", ".join(p.get("slug") or p["id"] for p in projects) or "(none)"
     raise LizardError(

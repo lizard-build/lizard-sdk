@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from .config import ConnectionConfig
+from .platform.storage import StorageAPI
+from .platform.github import GitHubAPI
 from .errors import LizardError
 from .platform import (
     AddonsAPI,
@@ -77,6 +79,8 @@ class Lizard:
         self.secrets = SecretsAPI(_pc)
         self.domains = DomainsAPI(_pc)
         self.metrics = MetricsAPI(_pc)
+        self.storage = StorageAPI(_pc)
+        self.github = GitHubAPI(_pc)
 
     def project_id(self) -> str:
         """Resolve the client's project reference to a stable project ID (cached)."""

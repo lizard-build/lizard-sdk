@@ -1,6 +1,6 @@
 import type { PlatformClient } from './client'
 
-export type AddonType = 'postgres' | 'mysql' | 'mongodb' | 'redis' | 's3'
+export type AddonType = 'postgres' | 'mysql' | 'mongodb' | 'mongo' | 'redis' | 's3'
 
 export interface Addon {
   id: string
@@ -19,6 +19,7 @@ export interface CreateAddonOpts {
   type: AddonType
   name?: string
   version?: string
+  region?: string
   /** vCPU count */
   vcpu?: number
   /** Memory in MB */
@@ -37,7 +38,11 @@ export class AddonsAPI {
 
   /** Get an addon by ID. */
   get(projectId: string, addonId: string): Promise<Addon> {
-    return this.client.get(`/api/projects/${projectId}/addons/${addonId}`)
+    return this.list({ projectId }).then(items => {
+      const addon = items.find(a => a.id === addonId)
+      if (!addon) throw new Error('Addon not found')
+      return addon
+    })
   }
 
   /**
@@ -52,12 +57,11 @@ export class AddonsAPI {
    */
   create(opts: CreateAddonOpts): Promise<Addon> {
     return this.client.post(`/api/projects/${opts.projectId}/addons`, {
-      type: opts.type,
-      name: opts.name,
-      version: opts.version,
-      vcpu: opts.vcpu,
-      memoryMb: opts.memoryMb,
-      storageGb: opts.storageGb,
+      type: opts.type === 'mongodb' ? 'mongo' : opts.type, name: opts.name, region: opts.region,
+      config: { version: opts.version,
+        cpuLimit: opts.vcpu === undefined ? undefined : `${opts.vcpu * 1000}m`,
+        memoryLimit: opts.memoryMb === undefined ? undefined : `${opts.memoryMb}Mi`,
+        storageSize: opts.storageGb === undefined ? undefined : `${opts.storageGb}Gi` },
     })
   }
 
@@ -67,12 +71,26 @@ export class AddonsAPI {
   }
 
   /** Resize an addon (CPU / memory / storage). */
-  resize(projectId: string, addonId: string, opts: { vcpu?: number; memoryMb?: number; storageGb?: number }): Promise<Addon> {
-    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/resize`, opts)
+  async resize(projectId: string, addonId: string, opts: { vcpu?: number; memoryMb?: number; storageGb?: number }): Promise<Addon> {
+    await this.client.applyConfig(projectId, {
+      addons: [{ id: addonId, limits: { vcpu: opts.vcpu, memoryMb: opts.memoryMb },
+        storageSize: opts.storageGb === undefined ? undefined : `${opts.storageGb}Gi` }],
+    })
+    return this.get(projectId, addonId)
   }
 
   /** Restart an addon VM. */
   redeploy(projectId: string, addonId: string): Promise<void> {
     return this.client.post(`/api/projects/${projectId}/addons/${addonId}/redeploy`, {})
   }
+  rename(projectId: string, addonId: string, name: string): Promise<unknown> {
+    return this.client.patch(`/api/projects/${projectId}/addons/${addonId}`, { name })
+  }
+  secrets(projectId: string, addonId: string): Promise<Array<{ key: string; value: string }>> {
+    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/secrets`)
+  }
+  logs(projectId: string, addonId: string): Promise<unknown> {
+    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/logs`)
+  }
+
 }

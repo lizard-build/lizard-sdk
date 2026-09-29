@@ -2,8 +2,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
+from ..config import HTTP_TIMEOUT_S
+
 if TYPE_CHECKING:
-    from ..config import ConnectionConfig, HTTP_TIMEOUT_S
+    from ..config import ConnectionConfig
 
 
 @dataclass
