@@ -44,7 +44,7 @@ class CodeSandbox(Sandbox):
         print(result.results[0].data)  # "2"
     """
 
-    _DEFAULT_TEMPLATE = "code-interpreter-v1"
+    _default_template = "code-interpreter-v1"
 
     @property
     def _server_url(self) -> str:

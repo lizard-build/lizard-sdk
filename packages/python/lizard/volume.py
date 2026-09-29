@@ -32,7 +32,7 @@ class Volume:
     a letter or digit, up to 64 characters.
 
     Mount it to a sandbox with ``Sandbox.create(volume_name="my-data")``; inside the
-    microVM it appears at ``/workspace``.
+    sandbox it appears at ``/workspace``.
 
     Example::
 

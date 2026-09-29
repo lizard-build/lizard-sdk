@@ -79,7 +79,7 @@ export class AddonsAPI {
     return this.get(projectId, addonId)
   }
 
-  /** Restart an addon VM. */
+  /** Restart an addon. */
   redeploy(projectId: string, addonId: string): Promise<void> {
     return this.client.post(`/api/projects/${projectId}/addons/${addonId}/redeploy`, {})
   }

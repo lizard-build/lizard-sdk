@@ -7,10 +7,9 @@ import { SandboxClient, SandboxInfo, SandboxOpts } from './client'
 export { SandboxOpts, SandboxInfo }
 
 /**
- * A Lizard sandbox — an isolated Linux environment that starts in under a second.
+ * A Linux sandbox running on Kubernetes.
  *
- * Each sandbox is a full Linux environment with its own filesystem, network, and
- * process namespace, restored from a pre-warmed template snapshot.
+ * Run commands, read and write files, and expose HTTP ports in a sandbox.
  *
  * Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards
  * everything written inside it. State that has to outlive a sandbox belongs on a
@@ -22,10 +21,14 @@ export { SandboxOpts, SandboxInfo }
  * import { Sandbox } from '@lizard-build/sdk'
  *
  * const sandbox = await Sandbox.create('base', { project: 'my-project' })
- * await sandbox.fs.write('/app/index.js', 'console.log("hello world")')
- * const result = await sandbox.process.exec('node /app/index.js')
- * console.log(result.stdout) // "hello world"
- * await sandbox.kill()
+ * try {
+ *   await sandbox.fs.write('/tmp/hello.txt', 'hello world')
+ *   const result = await sandbox.process.exec('cat /tmp/hello.txt')
+ *   if (result.exitCode !== 0) throw new Error(result.stderr)
+ *   console.log(result.stdout)
+ * } finally {
+ *   await sandbox.kill()
+ * }
  * ```
  *
  * @example Carry work across sandboxes with a volume:
@@ -47,12 +50,12 @@ export class Sandbox extends SandboxClient {
   protected static readonly defaultTimeoutMs = DEFAULT_SANDBOX_TIMEOUT_MS
 
   /**
-   * Unique identifier of this sandbox microVM.
+   * Unique identifier of this sandbox.
    */
   readonly sandboxId: string
 
   /**
-   * Read and write files inside the microVM filesystem.
+   * Read and write files inside the sandbox filesystem.
    *
    * @example
    * ```ts
@@ -63,7 +66,7 @@ export class Sandbox extends SandboxClient {
   readonly fs: Fs
 
   /**
-   * Execute processes inside the microVM.
+   * Execute processes inside the sandbox.
    *
    * @example
    * ```ts
@@ -95,16 +98,15 @@ export class Sandbox extends SandboxClient {
   /**
    * Create a new Lizard sandbox from the specified template.
    *
-   * Available templates: `base` (Debian + Node.js 26) and `code-interpreter-v1`
-   * (Python 3.14 + Node.js 26). Custom templates can be built and pushed via
-   * `lizard push`.
+   * Template availability and installed tools depend on the platform and region.
+   * Use `base` for shell commands or `CodeSandbox` for stateful code execution.
    *
    * @param template Name of the sandbox template to boot from.
    *
    * @example
    * ```ts
    * const sandbox = await Sandbox.create('base', { project: 'my-project' })
-   * const sandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
+   * const pythonSandbox = await Sandbox.create('code-interpreter-v1', { project: 'my-project', timeoutMs: 10 * 60 * 1000 })
    * ```
    */
   static async create(template: string, opts?: SandboxOpts): Promise<Sandbox>
@@ -130,11 +132,7 @@ export class Sandbox extends SandboxClient {
    * Verifies the sandbox exists and is reachable, then returns a handle to it.
    * Throws `NotFoundError` if it has been killed or has expired.
    *
-   * This used to call `resume` first, on the assumption that a sandbox you are
-   * reconnecting to might be paused. Sandboxes are pods now and pause/resume is a
-   * `501` on every one of them, so that call turned every `connect()` into an
-   * error against a perfectly healthy sandbox. Connecting does not need to change
-   * a sandbox's state, so it no longer tries to.
+   * Connecting reads sandbox metadata without changing its state.
    *
    * @example
    * ```ts
@@ -161,31 +159,27 @@ export class Sandbox extends SandboxClient {
   /**
    * Kill the sandbox and release its resources immediately.
    *
-   * @returns `true` if the microVM was terminated, `false` if it was already gone.
+   * @returns `true` if the sandbox was terminated, `false` if it was already gone.
    */
   async kill(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.killSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
   /**
-   * Pause the sandbox by freezing it in place.
+   * Request sandbox pause. The Kubernetes backend returns HTTP 501.
    *
-   * @deprecated Not implemented for the current runtime — always throws
-   * `LizardError` with HTTP 501. Sandboxes run as pods, and the equivalent is a CRIU
-   * checkpoint of the pod, which is not built. To park work across a gap, put it on a
-   * {@link Volume} and create a fresh sandbox on that volume later; the volume is the
-   * part that is meant to outlive a sandbox.
+   * @deprecated Unsupported on Kubernetes. Save files to a {@link Volume}
+   * and attach it to a new sandbox instead.
    */
   async pause(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
   /**
-   * Resume a paused sandbox.
+   * Request sandbox resume. The Kubernetes backend returns HTTP 501.
    *
-   * @deprecated Not implemented for the current runtime — always throws
-   * `LizardError` with HTTP 501. See {@link pause}. `Sandbox.connect()` no longer
-   * calls this, so reconnecting to a running sandbox works without it.
+   * @deprecated Unsupported on Kubernetes. Use {@link Sandbox.connect} to
+   * reconnect to a running sandbox.
    */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.resumeSandbox(this.sandboxId, this.resolveOpts(opts))
@@ -208,16 +202,16 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Get the public HTTPS URL for a port exposed inside the sandbox.
+   * Register a public HTTPS route and return its hostname without a scheme.
    *
-   * Useful for accessing HTTP servers started inside the microVM from your
+   * Useful for accessing HTTP servers started inside the sandbox from your
    * agent or tests without additional tunneling.
    *
    * @example
    * ```ts
-   * await sandbox.process.exec('npx -y serve -p 3000 &')
-   * const url = sandbox.getHost(3000)
-   * // https://{sandboxId}-3000.sandbox.{region}.onlizard.com
+   * // Start an HTTP server on port 3000 before exposing it.
+   * const hostname = await sandbox.getHost(3000)
+   * console.log(`https://${hostname}`)
    * ```
    */
   async getHost(port: number, opts?: ConnectionOpts): Promise<string> {
@@ -225,9 +219,11 @@ export class Sandbox extends SandboxClient {
     return hostname
   }
 
+  /** Fork is unsupported on Kubernetes; the backend returns HTTP 501. */
   fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<unknown> {
     return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
   }
+  /** Snapshot creation is unsupported on Kubernetes; the backend returns HTTP 501. */
   snapshot(name?: string): Promise<unknown> {
     return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name })
   }
@@ -240,6 +236,7 @@ export class Sandbox extends SandboxClient {
   static snapshots(projectId: string, opts?: ConnectionOpts): Promise<unknown[]> {
     return new PlatformClient(opts ?? {}).get(`/api/projects/${projectId}/snapshots`)
   }
+  /** Snapshot restore is unsupported on Kubernetes; the backend returns HTTP 501. */
   static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number }): Promise<Sandbox> {
     const result = await new PlatformClient(opts ?? {}).post<{ id?: string; sandboxId?: string }>(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/fork`, { timeoutMs: opts?.timeoutMs ?? 0 })
     return new this({ ...opts, sandboxId: result.sandboxId ?? result.id! })

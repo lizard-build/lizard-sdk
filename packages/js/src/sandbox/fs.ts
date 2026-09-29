@@ -26,7 +26,7 @@ export interface FileInfo {
 }
 
 /**
- * Read and write files inside a Lizard sandbox microVM.
+ * Read and write files inside a Lizard sandbox.
  *
  * Access via `sandbox.fs`.
  */
@@ -37,18 +37,19 @@ export class Fs {
   ) {}
 
   /**
-   * Write a file into the microVM filesystem.
+   * Write a file into the sandbox filesystem.
    *
    * Creates parent directories automatically if they don't exist.
+   * Byte input must contain valid UTF-8; arbitrary binary uploads are unsupported.
    *
    * @example
    * ```ts
    * await sandbox.fs.write('/app/index.js', 'console.log("hello")')
    * ```
    *
-   * @example Write binary data:
+   * @example Write UTF-8 bytes:
    * ```ts
-   * await sandbox.fs.write('/app/data.bin', buffer)
+   * await sandbox.fs.write('/app/notes.txt', new TextEncoder().encode('hello'))
    * ```
    */
   async write(path: string, data: string | Uint8Array, opts?: FsOpts): Promise<void> {
@@ -62,7 +63,7 @@ export class Fs {
   }
 
   /**
-   * Read a file from the microVM filesystem.
+   * Read a file from the sandbox filesystem.
    *
    * @returns The file contents as a UTF-8 string.
    *
@@ -81,14 +82,7 @@ export class Fs {
     return res.text()
   }
 
-  /**
-   * List files and directories at the given path inside the microVM.
-   *
-   * @example
-   * ```ts
-   * const entries = await sandbox.fs.list('/app')
-   * ```
-   */
+  /** Read a file as bytes. */
   async readBytes(path: string, opts?: FsOpts): Promise<Uint8Array> {
     const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`)
     url.searchParams.set('path', path)
@@ -98,6 +92,14 @@ export class Fs {
     return new Uint8Array(await res.arrayBuffer())
   }
 
+  /**
+   * List files and directories at the given path inside the sandbox.
+   *
+   * @example
+   * ```ts
+   * const entries = await sandbox.fs.list('/app')
+   * ```
+   */
   async list(path: string, opts?: FsOpts): Promise<FileInfo[]> {
     const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/list`)
     url.searchParams.set('path', path)
@@ -109,7 +111,7 @@ export class Fs {
   }
 
   /**
-   * Remove a file or directory from the microVM filesystem.
+   * Remove a file or directory from the sandbox filesystem.
    */
   async remove(path: string, opts?: FsOpts): Promise<void> {
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`, {
@@ -121,7 +123,7 @@ export class Fs {
   }
 
   /**
-   * Create a directory (and any missing parents) inside the microVM.
+   * Create a directory (and any missing parents) inside the sandbox.
    */
   async makeDir(path: string, opts?: FsOpts): Promise<void> {
     await this.execInternal(`mkdir -p ${JSON.stringify(path)}`, opts?.user)
