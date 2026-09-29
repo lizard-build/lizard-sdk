@@ -1,3 +1,4 @@
+import { PlatformClient, query } from '../platform/client'
 import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '../config'
 import { Process } from './process'
 import { Fs } from './fs'
@@ -153,7 +154,7 @@ export class Sandbox extends SandboxClient {
    * const sandboxes = await Sandbox.list()
    * ```
    */
-  static async list(opts?: ConnectionOpts): Promise<SandboxInfo[]> {
+  static async list(opts?: ConnectionOpts & { projectId?: string }): Promise<SandboxInfo[]> {
     return SandboxClient.listSandboxes(opts)
   }
 
@@ -222,6 +223,29 @@ export class Sandbox extends SandboxClient {
   async getHost(port: number, opts?: ConnectionOpts): Promise<string> {
     const { hostname } = await SandboxClient.exposeSandboxPort(this.sandboxId, port, this.resolveOpts(opts))
     return hostname
+  }
+
+  fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<unknown> {
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
+  }
+  snapshot(name?: string): Promise<unknown> {
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name })
+  }
+  unexpose(port: number): Promise<void> {
+    return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
+  }
+  logs(opts: { tail?: number; signal?: AbortSignal } = {}) {
+    return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${this.sandboxId}/logs`, { tail: opts.tail }), { signal: opts.signal })
+  }
+  static snapshots(projectId: string, opts?: ConnectionOpts): Promise<unknown[]> {
+    return new PlatformClient(opts ?? {}).get(`/api/projects/${projectId}/snapshots`)
+  }
+  static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number }): Promise<Sandbox> {
+    const result = await new PlatformClient(opts ?? {}).post<{ id?: string; sandboxId?: string }>(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/fork`, { timeoutMs: opts?.timeoutMs ?? 0 })
+    return new this({ ...opts, sandboxId: result.sandboxId ?? result.id! })
+  }
+  static deleteSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<void> {
+    return new PlatformClient(opts ?? {}).delete(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
   }
 
   private resolveOpts(opts?: ConnectionOpts): ConnectionOpts {

@@ -1,3 +1,5 @@
+import { StorageAPI } from './platform/storage'
+import { GitHubAPI } from './platform/github'
 import { ConnectionConfig, type ConnectionOpts } from './config'
 import { LizardError } from './errors'
 import { resolveProjectId } from './project'
@@ -81,6 +83,8 @@ export class Lizard {
   readonly domains: DomainsAPI
   /** Query CPU, memory, network, disk, and cost metrics. */
   readonly metrics: MetricsAPI
+  readonly storage: StorageAPI
+  readonly github: GitHubAPI
 
   constructor(opts: LizardOpts) {
     this.config = new ConnectionConfig(opts)
@@ -97,6 +101,8 @@ export class Lizard {
     this.secrets = new SecretsAPI(platform)
     this.domains = new DomainsAPI(platform)
     this.metrics = new MetricsAPI(platform)
+    this.storage = new StorageAPI(platform)
+    this.github = new GitHubAPI(platform)
   }
 
   // ── Sandbox convenience methods (backward-compatible) ──────────────────

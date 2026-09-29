@@ -5,6 +5,14 @@ export class LizardError extends Error {
   }
 }
 
+/** Config was saved, but one or more deploy/restart actions failed. Never retry blindly. */
+export class ConfigApplyError extends LizardError {
+  constructor(readonly result: unknown) {
+    super('Config was saved, but one or more side effects failed; inspect result before retrying')
+    this.name = 'ConfigApplyError'
+  }
+}
+
 export class AuthenticationError extends LizardError {
   constructor(message = 'Invalid or missing API key') {
     super(message)

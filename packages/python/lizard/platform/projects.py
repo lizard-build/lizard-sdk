@@ -42,3 +42,20 @@ class ProjectsAPI:
     def delete(self, id: str) -> None:
         """Delete a project."""
         self._client.delete(f"/api/projects/{id}")
+
+    def apply(self, id: str, config: dict) -> dict:
+        """Apply config; pass revision to reject concurrent changes."""
+        return self._client.apply_config(id, config)
+
+    def services(self, id: str) -> dict:
+        return self._client.get(f"/api/projects/{id}/services")
+
+    def volume_limits(self, id: str) -> dict:
+        return self._client.get(f"/api/projects/{id}/volume-limits")
+
+    def logs(self, id: str, *, service: str | None = None, level: str | None = None, limit: int = 200, since: str | None = None, until: str | None = None):
+        from .client import query
+        return self._client.get(query(f"/api/projects/{id}/logs", service=service, level=level, limit=limit, since=since, until=until))
+
+    def stream_logs(self, id: str):
+        return self._client.events(f"/api/projects/{id}/logs/stream")

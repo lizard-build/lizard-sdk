@@ -12,11 +12,13 @@ export class ConnectionConfig {
   readonly apiKey: string
   readonly apiUrl: string
   readonly timeoutMs: number
+  readonly requestTimeoutMs: number
 
   constructor(opts?: ConnectionOpts) {
     this.apiKey = opts?.apiKey ?? process.env.LIZARD_API_KEY ?? ''
     this.apiUrl = opts?.apiUrl ?? process.env.LIZARD_API_URL ?? DEFAULT_API_URL
     this.timeoutMs = opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
+    this.requestTimeoutMs = opts?.requestTimeoutMs ?? 120_000
 
     if (!this.apiKey) {
       throw new Error(
