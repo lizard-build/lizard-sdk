@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class FileInfo:
-    """Metadata for a file or directory inside a Lizard sandbox microVM."""
+    """Metadata for a file or directory inside a Lizard sandbox."""
 
     name: str
     path: str
@@ -35,7 +35,7 @@ class FsEvent:
 
 class Fs:
     """
-    Read and write files inside a Lizard sandbox microVM.
+    Read and write files inside a Lizard sandbox.
 
     Access via ``sandbox.fs``.
     """
@@ -46,12 +46,13 @@ class Fs:
 
     def write(self, path: str, data: str | bytes, *, user: str | None = None) -> None:
         """
-        Write a file into the microVM filesystem.
+        Write a file into the sandbox filesystem.
 
         Parent directories are created automatically if they don't exist.
 
-        :param path: Absolute path inside the microVM.
-        :param data: File contents — string or bytes.
+        :param path: Absolute path inside the sandbox.
+        :param data: UTF-8 text or valid UTF-8 bytes. Arbitrary binary uploads
+            are unsupported.
         :param user: Write as this Linux user (default: ``root``).
 
         Example::
@@ -77,9 +78,9 @@ class Fs:
 
     def read(self, path: str, *, user: str | None = None) -> str:
         """
-        Read a file from the microVM filesystem.
+        Read a file from the sandbox filesystem.
 
-        :param path: Absolute path inside the microVM.
+        :param path: Absolute path inside the sandbox.
         :returns: File contents as a UTF-8 string.
 
         Example::
@@ -114,7 +115,7 @@ class Fs:
 
     def list(self, path: str, *, user: str | None = None) -> list[FileInfo]:
         """
-        List files and directories at a path inside the microVM.
+        List files and directories at a path inside the sandbox.
 
         :param path: Directory path to list.
 
@@ -153,7 +154,7 @@ class Fs:
         ]
 
     def remove(self, path: str, *, user: str | None = None) -> None:
-        """Remove a file or directory from the microVM filesystem."""
+        """Remove a file or directory from the sandbox filesystem."""
         import httpx
 
         body: dict = {"path": path}
@@ -171,7 +172,7 @@ class Fs:
             handle_api_error(res.status_code, res.text)
 
     def make_dir(self, path: str, *, user: str | None = None) -> None:
-        """Create a directory (and any missing parents) inside the microVM."""
+        """Create a directory (and any missing parents) inside the sandbox."""
         import httpx
         import json
 

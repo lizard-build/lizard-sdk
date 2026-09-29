@@ -5,15 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "lizard-sdk"
 version = "0.1.8"
-description = "TypeScript and Python clients for Lizard apps, managed databases, storage and Linux sandboxes."
+description = "Python SDK for Lizard: Kubernetes sandboxes, code execution and cloud apps."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 keywords = [
   "sandbox",
   "sandboxes",
-  "microvm",
-  "firecracker",
+  "kubernetes",
+  "containers",
   "ai-agents",
   "code-interpreter",
   "code-execution",

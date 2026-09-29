@@ -14,7 +14,7 @@ export type ProcessSignal =
   | 'SIGTERM' | 'SIGKILL' | 'SIGINT' | 'SIGHUP' | 'SIGQUIT' | 'SIGUSR1' | 'SIGUSR2'
 
 /**
- * The result of a process execution inside a Lizard microVM.
+ * The result of a process execution inside a Lizard sandbox.
  */
 export interface ProcessResult {
   stdout: string
@@ -39,7 +39,7 @@ export interface ProcessOpts {
 }
 
 /**
- * Runs processes inside a Lizard sandbox microVM.
+ * Runs processes inside a Lizard sandbox.
  *
  * Access via `sandbox.process`.
  */
@@ -50,12 +50,12 @@ export class Process {
   ) {}
 
   /**
-   * Execute a command inside the microVM and wait for it to complete.
+   * Execute a command inside the sandbox and wait for it to complete.
    *
    * The command runs in a shell inside the Lizard sandbox and returns
    * stdout, stderr, and the exit code when it finishes.
    *
-   * @param cmd Shell command to run inside the microVM.
+   * @param cmd Shell command to run inside the sandbox.
    * @param opts Optional execution options — environment variables, working
    *   directory, user, and timeout.
    *

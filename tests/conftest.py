@@ -1,9 +1,9 @@
 """
 Session-scoped sandbox fixtures shared by all test modules.
 
-A single code-interpreter-v1 VM is created once per pytest session and
+A single code-interpreter-v1 sandbox is created once per pytest session and
 reused by both test_code_interpreter.py (uses `sandbox` fixture) and
-test_firecracker_parity.py (uses `sb` fixture). Running two simultaneous VMs in
+test_firecracker_parity.py (uses `sb` fixture). Running two simultaneous sandboxes in
 the combined test run caused one to be evicted under memory pressure.
 
 Both fixture names yield the SAME underlying sandbox object.
