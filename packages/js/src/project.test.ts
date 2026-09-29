@@ -25,7 +25,7 @@ beforeEach(() => {
     vi.fn(async () => new Response(JSON.stringify(PROJECTS), { status: 200 }))
   )
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals() })
 
 describe('resolveProjectId', () => {
   it('matches on id, slug, and name, ignoring case', async () => {
@@ -80,4 +80,22 @@ describe('Lizard', () => {
     const lizard = new Lizard({ project: 'my-project-x1', apiKey: 'liz_test', apiUrl: uniqueApiUrl() })
     expect(await lizard.projectId()).toBe('p_abc')
   })
+})
+
+it('does not share project resolution across credentials', async () => {
+  const apiUrl = uniqueApiUrl()
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify([
+    { id: new Headers(init?.headers).get('X-API-Key') === 'first' ? 'p_first' : 'p_second', name: 'shared', slug: 'shared' },
+  ])))
+  vi.stubGlobal('fetch', fetch)
+  expect(await resolveProjectId('shared', new ConnectionConfig({ apiUrl, apiKey: 'first' }))).toBe('p_first')
+  expect(await resolveProjectId('shared', new ConnectionConfig({ apiUrl, apiKey: 'second' }))).toBe('p_second')
+  expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it('rejects ambiguous names instead of choosing another workspace', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([
+    { id: 'p1', name: 'shared' }, { id: 'p2', name: 'shared' },
+  ]))))
+  await expect(resolveProjectId('shared', config())).rejects.toThrow('ambiguous')
 })

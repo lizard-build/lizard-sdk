@@ -58,22 +58,24 @@ export class SecretsAPI {
         byService.get(s.serviceId)![s.key] = s.value
       }
     }
-    const tasks: Promise<unknown>[] = []
-    if (Object.keys(projectScoped).length > 0) {
-      tasks.push(this.client.post(`/api/projects/${projectId}/secrets`, projectScoped))
+    const services: Record<string, Record<string, string | null>> = {}
+    for (const [id, values] of byService) {
+      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${id}`)
+      if (svc.projectId !== projectId) throw new Error('Service does not belong to this project')
+      services[svc.name] = values
     }
-    for (const [serviceId, kv] of byService) {
-      tasks.push(this.client.post(`/api/apps/${serviceId}/secrets`, kv))
-    }
-    await Promise.all(tasks)
+    await this.client.applyConfig(projectId, { secrets: { shared: projectScoped, services } })
   }
-
-  /** Delete a secret by key. */
   async delete(projectId: string, opts: { key: string; serviceId?: string }): Promise<void> {
+    const secrets: { shared?: Record<string, null>; services?: Record<string, Record<string, null>> } = {}
     if (opts.serviceId) {
-      await this.client.delete(`/api/apps/${opts.serviceId}/secrets`, { key: opts.key })
-    } else {
-      await this.client.delete(`/api/projects/${projectId}/secrets`, { key: opts.key })
-    }
+      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${opts.serviceId}`)
+      if (svc.projectId !== projectId) throw new Error('Service does not belong to this project')
+      secrets.services = { [svc.name]: { [opts.key]: null } }
+    } else secrets.shared = { [opts.key]: null }
+    await this.client.applyConfig(projectId, { secrets })
+  }
+  refs(projectId: string, serviceId?: string): Promise<unknown> {
+    return this.client.get(serviceId ? `/api/apps/${serviceId}/variables:refs` : `/api/projects/${projectId}/variables:refs`)
   }
 }

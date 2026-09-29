@@ -19,3 +19,6 @@ export { RegionsAPI } from './regions'
 export type { Region } from './regions'
 export { BillingAPI } from './billing'
 export type { Balance, Transaction, TransactionPage, ListTransactionsOpts } from './billing'
+
+export { StorageAPI } from './storage'
+export { GitHubAPI } from './github'

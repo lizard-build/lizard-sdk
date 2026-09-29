@@ -154,7 +154,7 @@ class Sandbox:
         exact_id, project_ref = require_project_ref(project=project, project_id=project_id)
         config = ConnectionConfig(api_key=api_key, api_url=api_url, timeout_ms=timeout_ms)
         effective_template = template or cls._default_template
-        effective_timeout = timeout_ms or cls._default_timeout_ms
+        effective_timeout = timeout_ms if timeout_ms is not None else cls._default_timeout_ms
         resolved_project_id = exact_id or resolve_project_id(project_ref, config)
 
         body: dict[str, Any] = {
@@ -234,12 +234,12 @@ class Sandbox:
         return cls(sandbox_id, api_key=api_key, api_url=api_url)
 
     @classmethod
-    def list(cls, *, api_key: str | None = None, api_url: str | None = None) -> list[SandboxInfo]:
+    def list(cls, *, project_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> list[SandboxInfo]:
         """List all running sandboxes for the authenticated account."""
         import httpx
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
-        res = httpx.get(f"{config.api_url}/api/sandboxes", headers=config.headers, timeout=HTTP_TIMEOUT_S)
+        res = httpx.get(f"{config.api_url}/api/projects/{project_id}/sandboxes" if project_id else f"{config.api_url}/api/sandboxes", headers=config.headers, timeout=HTTP_TIMEOUT_S)
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
@@ -375,3 +375,35 @@ class Sandbox:
 
     def __exit__(self, *_: Any) -> None:
         self.kill()
+
+    def fork(self, *, count: int = 1, timeout_ms: int = 0):
+        from ..platform.client import PlatformClient
+        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
+
+    def snapshot(self, name: str | None = None):
+        from ..platform.client import PlatformClient
+        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name} if name is not None else {})
+
+    def unexpose(self, port: int) -> None:
+        from ..platform.client import PlatformClient
+        PlatformClient(self._config).delete(f"/api/sandboxes/{self.sandbox_id}/expose/{port}")
+
+    def logs(self, *, tail: int | None = None):
+        from ..platform.client import PlatformClient, query
+        return PlatformClient(self._config).events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
+
+    @classmethod
+    def snapshots(cls, project_id: str, *, api_key: str | None = None, api_url: str | None = None):
+        from ..platform.client import PlatformClient
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/projects/{project_id}/snapshots")
+
+    @classmethod
+    def restore(cls, snapshot_id: str, *, timeout_ms: int = 0, api_key: str | None = None, api_url: str | None = None):
+        from ..platform.client import PlatformClient, segment
+        result = PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/fork", {"timeoutMs": timeout_ms})
+        return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
+
+    @classmethod
+    def delete_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None):
+        from ..platform.client import PlatformClient, segment
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).delete(f"/api/sandbox-snapshots/{segment(snapshot_id)}")

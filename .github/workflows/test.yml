@@ -1,0 +1,42 @@
+name: SDK checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install -g npm@11.18.0
+      - run: npm install
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npm install -g @lizard-build/cli@4.0.8
+      - run: python3 scripts/audit_cli.py --output cli-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-discovery-audit
+          path: cli-audit.json
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install -e './packages/python[dev]' build
+      - run: python -m pytest packages/python/tests tests
+      - run: python -m build packages/python
