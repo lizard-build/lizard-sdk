@@ -27,6 +27,9 @@ class _Res:
     def is_success(self) -> bool:
         return self.status_code < 400
 
+    def read(self) -> bytes:
+        return self.content
+
     def json(self):
         return self._body
 
@@ -163,3 +166,63 @@ def test_transactions_query_is_built_from_options(calls):
     seed(calls, {"items": [], "nextCursor": None})
     lz.Lizard(**KW).billing.transactions(limit=5, include_usage=True)
     assert calls[0]["url"] == "/api/billing/transactions?limit=5&includeUsage=1"
+
+
+# ── volume resize ─────────────────────────────────────────────────────────────
+
+_VOL = {"id": "v1", "projectId": "p1", "name": "my data", "sizeGb": 20,
+        "status": "ready", "createdAt": 1, "sizeEnforced": True}
+
+
+def test_volume_resize_patches_by_encoded_name(calls):
+    seed(calls, _VOL)
+    info = lz.Volume.resize("p1", "my data/x", 20, **KW)
+    assert len(calls) == 1
+    assert calls[0]["method"] == "PATCH"
+    assert calls[0]["url"] == f"{API}/api/projects/p1/volumes/my%20data%2Fx"
+    assert calls[0]["body"] == {"sizeGb": 20}
+    assert isinstance(info, lz.VolumeInfo)
+    assert info.size_gb == 20
+    assert info.size_enforced is True
+
+
+def test_volume_resize_to_on_a_held_volume(calls):
+    seed(calls, _VOL)
+    info = lz.Volume("v1", name="data", **KW).resize_to("p1", 3)
+    assert calls[0]["method"] == "PATCH"
+    assert calls[0]["url"] == f"{API}/api/projects/p1/volumes/v1"
+    assert calls[0]["body"] == {"sizeGb": 3}
+    assert info.id == "v1"
+
+
+def test_project_bound_volumes_resize(calls):
+    seed(calls, [{"id": "p_rsz", "name": "rsz-proj", "slug": "rsz-proj"}], _VOL)
+    lz.Lizard(project="rsz-proj", **KW).volumes.resize("scratch", 12)
+    assert calls[-1]["method"] == "PATCH"
+    assert calls[-1]["url"] == f"{API}/api/projects/p_rsz/volumes/scratch"
+    assert calls[-1]["body"] == {"sizeGb": 12}
+
+
+def test_volume_resize_keeps_the_error_code(calls):
+    seed(calls, ({"error": "Volume too full to shrink", "code": "volume_too_full_to_shrink"}, 409))
+    with pytest.raises(lz.ConflictError) as ei:
+        lz.Volume.resize("p1", "data", 1, **KW)
+    assert ei.value.code == "volume_too_full_to_shrink"
+    assert ei.value.status_code == 409
+    assert str(ei.value) == "Volume too full to shrink"
+
+
+def test_volume_resize_timeout_is_timeout_error_with_code(calls):
+    seed(calls, ({"error": "Resize timed out", "code": "volume_resize_timeout"}, 504))
+    with pytest.raises(lz.TimeoutError) as ei:
+        lz.Volume.resize("p1", "data", 50, **KW)
+    assert ei.value.code == "volume_resize_timeout"
+
+
+def test_platform_client_errors_keep_the_code_too(calls):
+    seed(calls, ({"error": "No capacity", "code": "volume_capacity_unavailable"}, 503))
+    with pytest.raises(lz.LizardError) as ei:
+        lz.Lizard(**KW).regions.list()
+    assert ei.value.code == "volume_capacity_unavailable"
+    assert ei.value.status_code == 503
+    assert "No capacity" in str(ei.value)

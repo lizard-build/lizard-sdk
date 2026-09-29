@@ -26,11 +26,8 @@ class PlatformClient:
     def _check(self, res: httpx.Response) -> None:
         if not res.is_success:
             res.read()
-            try:
-                msg = res.json().get("error", res.text)
-            except Exception:
-                msg = res.text
-            handle_api_error(res.status_code, str(msg))
+            # The raw body: handle_api_error pulls both `error` and `code` out of it.
+            handle_api_error(res.status_code, res.text)
 
     def _json(self, res):
         self._check(res)

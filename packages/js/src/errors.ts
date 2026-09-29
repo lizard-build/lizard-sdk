@@ -1,4 +1,12 @@
 export class LizardError extends Error {
+  /** HTTP status of the failed API call, when the error came from one. */
+  status?: number
+  /**
+   * The server's machine-readable error code, when it sent one — e.g.
+   * `'volume_too_full_to_shrink'`. Branch on this rather than on `message`.
+   */
+  code?: string
+
   constructor(message: string) {
     super(message)
     this.name = 'LizardError'
@@ -48,16 +56,22 @@ export class TimeoutError extends LizardError {
 
 export async function handleApiError(res: Response): Promise<never> {
   let message: string
+  let code: string | undefined
   try {
-    const body = await res.json() as { error?: string }
+    const body = await res.json() as { error?: string; code?: unknown }
     message = body.error ?? res.statusText
+    if (typeof body.code === 'string') code = body.code
   } catch {
     message = res.statusText
   }
 
-  if (res.status === 401 || res.status === 403) throw new AuthenticationError(message)
-  if (res.status === 404) throw new NotFoundError(message)
-  if (res.status === 409) throw new ConflictError(message)
-  if (res.status === 408 || res.status === 504) throw new TimeoutError(message)
-  throw new LizardError(`API error ${res.status}: ${message}`)
+  let err: LizardError
+  if (res.status === 401 || res.status === 403) err = new AuthenticationError(message)
+  else if (res.status === 404) err = new NotFoundError(message)
+  else if (res.status === 409) err = new ConflictError(message)
+  else if (res.status === 408 || res.status === 504) err = new TimeoutError(message)
+  else err = new LizardError(`API error ${res.status}: ${message}`)
+  err.status = res.status
+  err.code = code
+  throw err
 }

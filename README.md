@@ -106,6 +106,7 @@ Both SDKs use the `code-interpreter-v1` template by default. Template availabili
 | Expose an HTTP port | `sandbox.getHost(port)` | `sandbox.get_host(port)` |
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
+| Resize a volume in place | `lizard.volumes.resize(name, sizeGb)` | `lizard.volumes.resize(name, size_gb)` |
 | Manage cloud apps | `lizard.services`, `projects`, `addons` | Same namespaces |
 
 See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md) for configuration, streaming, ports, volumes, errors and method names in both languages.

@@ -17,6 +17,10 @@ class VolumeInfo:
     attached_to: str | None = None
     #: Region the volume's node lives in. A sandbox mounting it runs here too.
     region: str | None = None
+    #: Whether ``size_gb`` is enforced as a hard limit. Returned by
+    #: :meth:`Volume.resize`; ``False`` means the size was recorded but the volume's
+    #: storage does not enforce it, so writes past it are not refused.
+    size_enforced: bool | None = None
 
 
 class Volume:
@@ -117,7 +121,7 @@ class Volume:
 
         New volumes allow 1–50 GB (default 5), subject to server config.
         An existing volume is returned as-is -- ``size_gb`` applies only to a fresh
-        create and never resizes one that is already there.
+        create, so an existing volume keeps its size. Call :meth:`resize` to change it.
         """
         import httpx
 
@@ -185,6 +189,49 @@ class Volume:
             handle_api_error(res.status_code, res.text)
 
     @classmethod
+    def resize(
+        cls,
+        project_id: str,
+        name_or_id: str,
+        size_gb: int,
+        *,
+        api_key: str | None = None,
+        api_url: str | None = None,
+    ) -> VolumeInfo:
+        """Resize a volume, by name or by id, to ``size_gb``.
+
+        The change is in place and online: the size is a quota, so no data is
+        copied, it completes in well under a second, and a sandbox that has the
+        volume mounted keeps running and sees the new size immediately. Both growing
+        and shrinking are allowed, but a shrink must leave at least 10% of the new
+        size free -- otherwise it raises :class:`~lizard.ConflictError` with
+        ``code == "volume_too_full_to_shrink"``.
+
+        Other failures carry a ``code`` too: ``invalid_volume_size``,
+        ``volume_not_resizable``, ``volume_resize_in_progress``,
+        ``volume_not_provisioned``, ``volume_capacity_unavailable``, and
+        ``volume_resize_timeout`` (a :class:`~lizard.TimeoutError`; the size is left
+        unchanged).
+
+        On a :class:`Volume` you already hold, :meth:`resize_to` is the same call.
+        """
+        import httpx
+        from urllib.parse import quote
+
+        config = ConnectionConfig(api_key=api_key, api_url=api_url)
+        res = httpx.patch(
+            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
+            headers=config.headers,
+            json={"sizeGb": size_gb},
+            timeout=HTTP_TIMEOUT_S,
+        )
+        if not res.is_success:
+            from .errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+
+        return _to_info(res.json())
+
+    @classmethod
     def list(
         cls,
         project_id: str,
@@ -221,6 +268,21 @@ class Volume:
             handle_api_error(res.status_code, res.text)
 
         return _to_info(res.json())
+
+    def resize_to(self, project_id: str, size_gb: int) -> VolumeInfo:
+        """Resize this volume in place -- see :meth:`resize`.
+
+        Named ``resize_to`` because ``resize`` is the classmethod: a Python class
+        cannot carry a classmethod and an instance method under one name (the same
+        reason the by-name delete is :meth:`remove`).
+        """
+        return Volume.resize(
+            project_id,
+            self.volume_id,
+            size_gb,
+            api_key=self._config.api_key,
+            api_url=self._config.api_url,
+        )
 
     def delete(self, project_id: str) -> None:
         """Delete this volume and the data on it."""
@@ -261,4 +323,5 @@ def _to_info(v: dict) -> VolumeInfo:
         created_at=v["createdAt"],
         attached_to=v.get("attachedTo"),
         region=v.get("region"),
+        size_enforced=v.get("sizeEnforced"),
     )

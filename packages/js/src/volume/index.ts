@@ -12,6 +12,12 @@ export interface VolumeInfo {
   status: string
   attachedTo?: string | null
   createdAt: number
+  /**
+   * Whether `sizeGb` is actually enforced as a hard limit on the volume's node.
+   * Returned by {@link Volume.resize}; `false` means the size was recorded but the
+   * node cannot enforce it, so writes past it are not refused.
+   */
+  sizeEnforced?: boolean
 }
 
 export interface CreateVolumeOpts extends ConnectionOpts {
@@ -75,8 +81,8 @@ export class Volume {
    * exist yet. This is the reason a volume's name is its key: an agent that wants
    * "the scratch disk for this task" no longer has to store an id between runs.
    *
-   * An existing volume is returned as-is — `sizeGb` applies only to a fresh create
-   * and never resizes one that is already there.
+   * An existing volume is returned as-is — `sizeGb` applies only to a fresh create,
+   * so an existing volume keeps its size. Call {@link Volume.resize} to change it.
    */
   static async getOrCreate(projectId: string, name: string, opts?: CreateVolumeOpts): Promise<Volume> {
     const config = new ConnectionConfig(opts)
@@ -120,12 +126,47 @@ export class Volume {
     if (!res.ok) await handleApiError(res)
   }
 
+  /**
+   * Resize a volume, by name or by id, to `sizeGb`.
+   *
+   * The change is in place and online: the size is a quota, so no data is copied,
+   * it completes in well under a second, and a sandbox that has the volume mounted
+   * keeps running and sees the new size immediately. Both growing and shrinking are
+   * allowed, but a shrink must leave at least 10% of the new size free — otherwise
+   * it throws `ConflictError` with `code: 'volume_too_full_to_shrink'`.
+   *
+   * Other failures carry a `code` too: `invalid_volume_size`, `volume_not_resizable`,
+   * `volume_resize_in_progress`, `volume_not_provisioned`,
+   * `volume_capacity_unavailable`, and `volume_resize_timeout` (a `TimeoutError`;
+   * the size is left unchanged).
+   *
+   * @returns The volume's updated info, including `sizeEnforced`.
+   */
+  static async resize(projectId: string, nameOrId: string, sizeGb: number, opts?: ConnectionOpts): Promise<VolumeInfo> {
+    const config = new ConnectionConfig(opts)
+    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
+      method: 'PATCH',
+      headers: config.headers,
+      body: JSON.stringify({ sizeGb }),
+    })
+    if (!res.ok) await handleApiError(res)
+    return res.json() as Promise<VolumeInfo>
+  }
+
   async getInfo(projectId: string): Promise<VolumeInfo> {
     const res = await fetch(`${this.config.apiUrl}/api/projects/${projectId}/volumes/${this.volumeId}`, {
       headers: this.config.headers,
     })
     if (!res.ok) await handleApiError(res)
     return res.json() as Promise<VolumeInfo>
+  }
+
+  /** Resize this volume in place — see the static {@link Volume.resize}. */
+  async resize(projectId: string, sizeGb: number): Promise<VolumeInfo> {
+    return Volume.resize(projectId, this.volumeId, sizeGb, {
+      apiKey: this.config.apiKey,
+      apiUrl: this.config.apiUrl,
+    })
   }
 
   async delete(projectId: string): Promise<void> {
