@@ -2,7 +2,7 @@
 
 [TypeScript quickstart](../packages/js/README.md) · [Python quickstart](../packages/python/README.md) · [Platform guide](platform.md)
 
-Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell commands, files and ports. `CodeSandbox` adds stateful code execution. Both need an API key and a project when you create a sandbox.
+Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell commands, files and ports. Each sandbox needs an API key and a project. The hosted runtime uses runc and shares the host kernel. The legacy `CodeSandbox` API is not supported by the current hosted templates.
 
 ## Configuration
 
@@ -13,17 +13,17 @@ Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell
 | `apiKey` | `api_key` | API key; defaults to `LIZARD_API_KEY` |
 | `apiUrl` | `api_url` | API base URL; defaults to `LIZARD_API_URL` or `https://lizard.build` |
 | `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
-| `envs` | `envs` | Environment variables inside the sandbox |
-| `metadata` | `metadata` | String key/value labels |
+| `envs` | `envs` | Accepted by the SDK but not applied by the current create API |
+| `metadata` | `metadata` | Accepted by the SDK but not applied by the current create API |
 | `region` | `region` | Region ID; omit to use the platform default |
 | `volumeName` / `volumeId` | `volume_name` / `volume_id` | Attach a persistent volume at `/workspace` |
 | `lizardToken` | `lizard_token` | Inject a Lizard key for tools inside the sandbox |
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
-The default template is `base` for `Sandbox` and `code-interpreter-v1` for `CodeSandbox`. Installed tools and template availability depend on the platform and region. Use a template that contains the runtime your command needs.
+The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, and `interpreter`; availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
-Set sandbox lifetime options on `create()`. Timeouts on command or code calls do not extend that lifetime. `setTimeout()` / `set_timeout()` changes the sandbox lifetime; `0` requests no automatic expiry, subject to platform policy. Explicitly kill sandboxes when finished.
+The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 
 ## Commands and output
 
@@ -31,8 +31,6 @@ These snippets assume a running `sandbox`. Use them inside the `try/finally` or 
 
 ```ts
 const result = await sandbox.process.exec('printf "hello\\n"', {
-  workdir: '/tmp',
-  envs: { APP_ENV: 'test' },
   timeoutMs: 30_000,
   onStdout: chunk => process.stdout.write(chunk),
   onStderr: chunk => process.stderr.write(chunk),
@@ -43,8 +41,6 @@ if (result.exitCode !== 0) throw new Error(result.stderr)
 ```python
 result = sandbox.process.exec_(
     'printf "hello\\n"',
-    workdir="/tmp",
-    envs={"APP_ENV": "test"},
     timeout_ms=30_000,
     on_stdout=lambda chunk: print(chunk, end=""),
     on_stderr=lambda chunk: print(chunk, end=""),
@@ -53,7 +49,9 @@ if result.exit_code != 0:
     raise RuntimeError(result.stderr)
 ```
 
-Both return stdout, stderr and an exit code. A nonzero command exit code is a result you must check; request failures throw or raise. Adding an output callback enables streaming while the method still waits for completion. `onPid` / `on_pid` supplies the process ID, which you can pass to `process.kill()`.
+Both return stdout, stderr and an exit code. A nonzero command exit code is a result you must check; request failures throw or raise. Adding an output callback enables streaming while the method still waits for completion. Do not rely on `onPid` / `on_pid` being emitted by the current runtime.
+
+Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The current runtime does not apply the SDK command options `envs`, `workdir`, or `user`; set the directory and environment in the shell command when needed. Create-time `envs` and `metadata` are also not applied.
 
 ## Files
 
@@ -68,52 +66,40 @@ Both return stdout, stderr and an exit code. A nonzero command exit code is a re
 | Move a path | `fs.move(from, to)` | `fs.move(src, dst)` |
 | Remove a path | `fs.remove(path)` | `fs.remove(path)` |
 
-Use absolute paths. Writes accept text or valid UTF-8 bytes; arbitrary binary uploads are unsupported. Binary downloads use `readBytes()` / `read_bytes()`. File watchers use polling through `getEvents()` / `get_events()`; call `close()` when done.
+Use absolute paths. Writes accept text or valid UTF-8 bytes; arbitrary binary uploads are unsupported. Binary downloads use `readBytes()` / `read_bytes()`. File watching returns HTTP 501 on the current runtime.
 
-## Stateful code execution
+## Python execution
 
-Create a `CodeSandbox` to run Python, JavaScript or Bash. The default language is Python. Variables and imports survive between calls in the same execution context while the sandbox runs.
+Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.
 
 ```ts
-import { CodeSandbox } from '@lizard-build/sdk'
+import { Sandbox } from '@lizard-build/sdk';
 
-const sandbox = await CodeSandbox.create({ project: 'my-project' })
+const sandbox = await Sandbox.create('interpreter', {
+  projectId: 'proj_123', timeoutMs: 300_000,
+});
 try {
-  const context = await sandbox.createContext({ language: 'python' })
-  try {
-    const setup = await sandbox.runCode('value = 42', { context, timeoutMs: 60_000 })
-    if (setup.error) throw setup.error
-    const result = await sandbox.runCode('print(value)', { context, timeoutMs: 60_000 })
-    if (result.error) throw result.error
-    console.log(result.stdout)
-  } finally {
-    await sandbox.deleteContext(context)
-  }
+  const result = await sandbox.process.exec("python -c 'print(2 ** 10)'");
+  console.log(result.stdout, result.stderr, result.exitCode);
 } finally {
-  await sandbox.kill()
+  await sandbox.kill();
 }
 ```
 
 ```python
-from lizard import CodeSandbox
+from lizard import Sandbox
 
-with CodeSandbox.create(project="my-project") as sandbox:
-    context = sandbox.create_context(language="python")
-    try:
-        setup = sandbox.run_code("value = 42", context=context)
-        if setup.error:
-            raise RuntimeError(setup.error.message)
-        result = sandbox.run_code("print(value)", context=context)
-        if result.error:
-            raise RuntimeError(result.error.message)
-        print(result.stdout)
-    finally:
-        sandbox.delete_context(context)
+sandbox = Sandbox.create("interpreter", project_id="proj_123", timeout_ms=300_000)
+try:
+    result = sandbox.process.exec_("python -c 'print(2 ** 10)'")
+    print(result.stdout, result.stderr, result.exit_code)
+finally:
+    sandbox.kill()
 ```
 
-Pass `language` or `context`, not both. A context separates interpreter state within one sandbox; use separate sandboxes for separate workloads. `result.results` contains rich output items, and `result.error` contains an error from the executed code. Transport failures throw or raise separately.
+### Legacy code-interpreter API
 
-Use `onStdout` / `on_stdout`, `onStderr` / `on_stderr`, `onResult` / `on_result` and `onError` / `on_error` to receive output as it arrives. Set `timeoutMs` in TypeScript when you need a client deadline; it has no timer by default. Python's `timeout_ms` defaults to 60,000 ms.
+`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
 
 ## HTTP ports
 
@@ -137,7 +123,7 @@ These methods return a **hostname without a scheme**, not a full URL. Keep the s
 
 ## Persistent files
 
-Volumes mount at `/workspace`. Files there survive the sandbox that wrote them; other paths and in-memory state do not. A volume is node-local, so the platform places the sandbox in the volume's region. Omit `region` when attaching a volume.
+Attached volumes mount at `/workspace`. Only files on that attached volume survive the sandbox; without a volume, `/workspace` is temporary. Each volume allows one sandbox attachment at a time. Other paths and in-memory state do not survive a stopped sandbox. A volume is node-local, so the platform places the sandbox in the volume's region. Omit `region` when attaching a volume.
 
 ```ts
 import { Lizard } from '@lizard-build/sdk'

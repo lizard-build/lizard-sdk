@@ -15,31 +15,14 @@ export type { RunCodeLanguage } from './types'
 const CODE_INTERPRETER_PORT = 8080
 
 /**
- * A Lizard sandbox with built-in stateful code execution.
+ * Legacy client for the code-interpreter execution server.
  *
- * Extends the base Sandbox with `runCode()` — executes code in a persistent
- * kernel so variables and imports survive between calls.
+ * Current hosted templates do not provide this server. The default
+ * `code-interpreter-v1` template is unavailable; selecting `interpreter`
+ * does not enable this API. Use `Sandbox.create('interpreter', options)`
+ * and `sandbox.process.exec()` for Python commands instead.
  *
- * Supports Python, JavaScript (Node.js), and Bash out of the box.
- *
- * @example
- * ```ts
- * import { CodeSandbox } from '@lizard-build/sdk'
- *
- * const sandbox = await CodeSandbox.create({ project: 'my-project' })
- *
- * await sandbox.runCode('x = 42')
- * const result = await sandbox.runCode('print(x * 2)')
- * console.log(result.stdout) // "84\n"
- *
- * await sandbox.kill()
- * ```
- *
- * @example Run JavaScript:
- * ```ts
- * const result = await sandbox.runCode('1 + 1', { language: 'javascript' })
- * console.log(result.results[0].data) // "2"
- * ```
+ * The methods remain for compatibility with a separately provided server.
  */
 export class CodeSandbox extends Sandbox {
   protected static override readonly defaultTemplate = 'code-interpreter-v1'
