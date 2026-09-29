@@ -1,7 +1,7 @@
 {
   "name": "@lizard-build/sdk",
   "version": "0.1.8",
-  "description": "Firecracker microVM sandboxes for AI agents — boot Linux in milliseconds, run code, write files, expose ports over HTTPS, then pause a session with memory intact and resume it later. TypeScript SDK for Lizard Sandboxes (lizard.build).",
+  "description": "TypeScript SDK for Lizard apps, managed databases, storage and Linux sandboxes.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run",
-    "lint": "eslint src"
+    "lint": "tsc --noEmit"
   },
   "files": [
     "dist"
@@ -44,6 +44,9 @@
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.5",
-    "vitest": "^1.0.0"
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -1,7 +1,7 @@
 from .client import Lizard
 from .project import resolve_project_id
 from .sandbox import Sandbox, SandboxInfo, ProcessResult, FileInfo
-from .errors import LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError
+from .errors import ConfigApplyError, LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError
 from .code_interpreter import CodeSandbox, Execution, ExecutionError, CodeContext
 from .volume import Volume, VolumeInfo
 from .platform import (
@@ -43,6 +43,7 @@ __all__ = [
     "ProcessResult",
     "FileInfo",
     "LizardError",
+    "ConfigApplyError",
     "AuthenticationError",
     "NotFoundError",
     "ConflictError",
@@ -63,3 +64,9 @@ __all__ = [
     "LogLine", "MetricPoint", "MetricsAPI", "Project", "ProjectsAPI",
     "Secret", "SecretsAPI", "Service", "ServicesAPI", "ServiceMetrics",
 ]
+
+from .cli import LizardCLI, CLIResult
+
+from .platform.storage import StorageAPI
+from .platform.github import GitHubAPI
+__all__ += ["LizardCLI", "CLIResult", "StorageAPI", "GitHubAPI"]

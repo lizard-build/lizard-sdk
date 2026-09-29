@@ -24,6 +24,11 @@ from dataclasses import dataclass, field
 import httpx
 import pytest
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get("LIZARD_LIVE_TESTS") != "1" or not os.environ.get("ADMIN_SECRET"),
+    reason="Requires LIZARD_LIVE_TESTS=1 and ADMIN_SECRET on an approved test host",
+)
+
 from lizard.code_interpreter.types import Execution, ExecutionError, ResultItem
 
 # ---------------------------------------------------------------------------
@@ -31,7 +36,7 @@ from lizard.code_interpreter.types import Execution, ExecutionError, ResultItem
 # ---------------------------------------------------------------------------
 
 NODE_AGENT_URL = "http://localhost:7070"
-ADMIN_SECRET = os.environ["ADMIN_SECRET"]
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 TEMPLATE = "code-interpreter-v1"
 
 _agent_headers = {"X-Admin-Secret": ADMIN_SECRET, "Content-Type": "application/json"}

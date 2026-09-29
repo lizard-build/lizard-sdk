@@ -8,6 +8,7 @@ export type { FileInfo, FsOpts } from './sandbox/fs'
 export type { ConnectionOpts } from './config'
 export {
   LizardError,
+  ConfigApplyError,
   AuthenticationError,
   NotFoundError,
   ConflictError,
@@ -46,3 +47,14 @@ export type {
   DomainInfo,
   MetricPoint, MetricRange, ServiceMetrics, CostMetrics,
 } from './platform'
+
+export { StorageAPI } from './platform/storage'
+export { GitHubAPI } from './platform/github'
+export type { ServiceUpdate } from './platform/services'
+export type { ProjectConfig, ConfigResult } from './platform/projects'
+export type { DomainStatus } from './platform/domains'
+export type { RawMetrics, ProjectCost } from './platform/metrics'
+export type { StreamEvent } from './platform/client'
+
+export { LizardCLI } from './cli'
+export type { CLIResult, CLIOptions } from './cli'

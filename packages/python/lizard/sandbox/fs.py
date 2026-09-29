@@ -2,8 +2,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..config import HTTP_TIMEOUT_S
+
 if TYPE_CHECKING:
-    from ..config import ConnectionConfig, HTTP_TIMEOUT_S
+    from ..config import ConnectionConfig
 
 
 @dataclass
@@ -100,6 +102,15 @@ class Fs:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
         return res.text
+
+    def read_bytes(self, path: str, *, user: str | None = None) -> bytes:
+        import httpx
+        from ..errors import handle_api_error
+        params = {"path": path}
+        if user: params["user"] = user
+        res = httpx.get(f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files", headers=self._config.headers, params=params, timeout=HTTP_TIMEOUT_S)
+        if not res.is_success: handle_api_error(res.status_code, res.text)
+        return res.content
 
     def list(self, path: str, *, user: str | None = None) -> list[FileInfo]:
         """

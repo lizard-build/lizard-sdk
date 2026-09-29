@@ -1,0 +1,529 @@
+{
+  "cliVersion": "4.0.8",
+  "cliCommit": "92de61f4ecebb56a192a0316dfbccd2842cb6a93",
+  "commands": [
+    {
+      "command": "add",
+      "mode": "native",
+      "sdk": "services.deploy; addons.create"
+    },
+    {
+      "command": "config",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "config apply",
+      "mode": "native",
+      "sdk": "projects.apply"
+    },
+    {
+      "command": "credits",
+      "mode": "native",
+      "sdk": "billing.balance"
+    },
+    {
+      "command": "credits balance",
+      "mode": "native",
+      "sdk": "billing.balance"
+    },
+    {
+      "command": "credits transactions",
+      "mode": "native",
+      "sdk": "billing.transactions"
+    },
+    {
+      "command": "credits payment-methods",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "credits payment-methods list",
+      "mode": "native",
+      "sdk": "billing.paymentMethods"
+    },
+    {
+      "command": "credits payment-methods add",
+      "mode": "native",
+      "sdk": "billing.setupPaymentMethod"
+    },
+    {
+      "command": "credits payment-methods remove",
+      "mode": "native",
+      "sdk": "billing.removePaymentMethod"
+    },
+    {
+      "command": "credits topup",
+      "mode": "native-and-cli-adapter",
+      "sdk": "billing.purchase; billing.x402Quote; billing.payX402"
+    },
+    {
+      "command": "credits payment-status",
+      "mode": "native",
+      "sdk": "billing.paymentStatus"
+    },
+    {
+      "command": "credits auto-topup",
+      "mode": "native",
+      "sdk": "billing.autoTopup"
+    },
+    {
+      "command": "credits auto-topup set",
+      "mode": "native",
+      "sdk": "billing.setAutoTopup"
+    },
+    {
+      "command": "credits auto-topup run",
+      "mode": "native",
+      "sdk": "billing.runAutoTopup"
+    },
+    {
+      "command": "credits promo",
+      "mode": "native",
+      "sdk": "billing.redeemPromo"
+    },
+    {
+      "command": "docs",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "domain",
+      "mode": "native",
+      "sdk": "domains.info; domains.add"
+    },
+    {
+      "command": "domain generate",
+      "mode": "native",
+      "sdk": "domains.generate"
+    },
+    {
+      "command": "domain verify",
+      "mode": "native",
+      "sdk": "domains.verify"
+    },
+    {
+      "command": "domain delete",
+      "mode": "native",
+      "sdk": "domains.delete"
+    },
+    {
+      "command": "events",
+      "mode": "native",
+      "sdk": "services.events; services.pods"
+    },
+    {
+      "command": "git",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git connect",
+      "mode": "native",
+      "sdk": "github.installUrl"
+    },
+    {
+      "command": "git checkout",
+      "mode": "native",
+      "sdk": "github.checkout"
+    },
+    {
+      "command": "git status",
+      "mode": "native",
+      "sdk": "github.status; projects.services"
+    },
+    {
+      "command": "init",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "keys",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "keys create",
+      "mode": "native",
+      "sdk": "apiKeys.create"
+    },
+    {
+      "command": "keys list",
+      "mode": "native",
+      "sdk": "apiKeys.list"
+    },
+    {
+      "command": "keys rm",
+      "mode": "native",
+      "sdk": "apiKeys.delete"
+    },
+    {
+      "command": "link",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "login",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "logout",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "logs",
+      "mode": "native",
+      "sdk": "projects.logs; projects.streamLogs; services.buildLogs; services.events"
+    },
+    {
+      "command": "metrics",
+      "mode": "native",
+      "sdk": "metrics.project; metrics.service; metrics.addon; metrics.cost"
+    },
+    {
+      "command": "open",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "port",
+      "mode": "native",
+      "sdk": "services.get; services.update"
+    },
+    {
+      "command": "project",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "project list",
+      "mode": "native",
+      "sdk": "projects.list"
+    },
+    {
+      "command": "project create",
+      "mode": "native",
+      "sdk": "projects.create"
+    },
+    {
+      "command": "project delete",
+      "mode": "native",
+      "sdk": "projects.delete"
+    },
+    {
+      "command": "ps",
+      "mode": "native",
+      "sdk": "projects.services"
+    },
+    {
+      "command": "redeploy",
+      "mode": "native",
+      "sdk": "services.redeploy; addons.redeploy"
+    },
+    {
+      "command": "regions",
+      "mode": "native",
+      "sdk": "regions.list"
+    },
+    {
+      "command": "restart",
+      "mode": "native",
+      "sdk": "services.restart; addons.redeploy"
+    },
+    {
+      "command": "run",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "s3",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "s3 upload",
+      "mode": "native",
+      "sdk": "storage.upload"
+    },
+    {
+      "command": "s3 list",
+      "mode": "native",
+      "sdk": "storage.list"
+    },
+    {
+      "command": "sandbox",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "sandbox create",
+      "mode": "native",
+      "sdk": "Sandbox.create"
+    },
+    {
+      "command": "sandbox list",
+      "mode": "native",
+      "sdk": "Sandbox.list"
+    },
+    {
+      "command": "sandbox rm",
+      "mode": "native",
+      "sdk": "sandbox.kill"
+    },
+    {
+      "command": "sandbox timeout",
+      "mode": "native",
+      "sdk": "sandbox.setTimeout"
+    },
+    {
+      "command": "sandbox exec",
+      "mode": "native",
+      "sdk": "sandbox.process.exec"
+    },
+    {
+      "command": "sandbox logs",
+      "mode": "native",
+      "sdk": "sandbox.logs"
+    },
+    {
+      "command": "sandbox expose",
+      "mode": "native",
+      "sdk": "sandbox.getHost"
+    },
+    {
+      "command": "sandbox unexpose",
+      "mode": "native",
+      "sdk": "sandbox.unexpose"
+    },
+    {
+      "command": "sandbox snapshots",
+      "mode": "native",
+      "sdk": "Sandbox.snapshots"
+    },
+    {
+      "command": "sandbox snapshot-rm",
+      "mode": "native",
+      "sdk": "Sandbox.deleteSnapshot"
+    },
+    {
+      "command": "sandbox files",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "sandbox files ls",
+      "mode": "native",
+      "sdk": "sandbox.fs.list"
+    },
+    {
+      "command": "sandbox files cat",
+      "mode": "native",
+      "sdk": "sandbox.fs.read"
+    },
+    {
+      "command": "sandbox files put",
+      "mode": "native",
+      "sdk": "sandbox.fs.write"
+    },
+    {
+      "command": "sandbox files get",
+      "mode": "native",
+      "sdk": "sandbox.fs.readBytes"
+    },
+    {
+      "command": "sandbox files rm",
+      "mode": "native",
+      "sdk": "sandbox.fs.remove"
+    },
+    {
+      "command": "scale",
+      "mode": "native",
+      "sdk": "services.scale; addons.resize"
+    },
+    {
+      "command": "secrets",
+      "mode": "native",
+      "sdk": "secrets.list"
+    },
+    {
+      "command": "secrets list",
+      "mode": "native",
+      "sdk": "secrets.list"
+    },
+    {
+      "command": "secrets set",
+      "mode": "native",
+      "sdk": "secrets.set"
+    },
+    {
+      "command": "secrets delete",
+      "mode": "native",
+      "sdk": "secrets.delete"
+    },
+    {
+      "command": "secrets import",
+      "mode": "native",
+      "sdk": "secrets.set (parsed dotenv); LizardCLI.run"
+    },
+    {
+      "command": "service",
+      "mode": "native",
+      "sdk": "projects.services"
+    },
+    {
+      "command": "service set",
+      "mode": "native",
+      "sdk": "services.update; projects.apply"
+    },
+    {
+      "command": "service show",
+      "mode": "native",
+      "sdk": "services.get; projects.services"
+    },
+    {
+      "command": "service link",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "service delete",
+      "mode": "native",
+      "sdk": "services.delete; addons.delete"
+    },
+    {
+      "command": "service rename",
+      "mode": "native",
+      "sdk": "services.update; addons.rename"
+    },
+    {
+      "command": "service logs",
+      "mode": "native",
+      "sdk": "services.history; services.buildLogs"
+    },
+    {
+      "command": "skills",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "skills list",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "skills get",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "skills path",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "ssh",
+      "mode": "native",
+      "sdk": "services.exec"
+    },
+    {
+      "command": "status",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "unlink",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "up",
+      "mode": "native",
+      "sdk": "services.upload (tar.gz bytes); LizardCLI.run (directory packing)"
+    },
+    {
+      "command": "up status",
+      "mode": "native",
+      "sdk": "services.get"
+    },
+    {
+      "command": "upgrade",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "volume",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "volume list",
+      "mode": "native",
+      "sdk": "Volume.list"
+    },
+    {
+      "command": "volume create",
+      "mode": "native",
+      "sdk": "Volume.create; projects.volumeLimits"
+    },
+    {
+      "command": "volume rm",
+      "mode": "native",
+      "sdk": "Volume.delete"
+    },
+    {
+      "command": "whoami",
+      "mode": "native",
+      "sdk": "whoami"
+    },
+    {
+      "command": "workspace",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "workspace create",
+      "mode": "native",
+      "sdk": "workspaces.create"
+    },
+    {
+      "command": "workspace list",
+      "mode": "native",
+      "sdk": "workspaces.list"
+    },
+    {
+      "command": "workspace rm",
+      "mode": "native",
+      "sdk": "workspaces.delete"
+    }
+  ],
+  "legacyCommands": [
+    {
+      "command": "sandbox pause",
+      "mode": "backend-501",
+      "sdk": "sandbox.pause"
+    },
+    {
+      "command": "sandbox resume",
+      "mode": "backend-501",
+      "sdk": "sandbox.resume"
+    },
+    {
+      "command": "sandbox fork",
+      "mode": "backend-501",
+      "sdk": "sandbox.fork"
+    },
+    {
+      "command": "sandbox snapshot",
+      "mode": "backend-501",
+      "sdk": "sandbox.snapshot"
+    },
+    {
+      "command": "sandbox restore",
+      "mode": "backend-501",
+      "sdk": "Sandbox.restore"
+    }
+  ],
+  "legacyNote": "Removed by lizard-cli PR #13. Retained only to audit published CLI 4.0.8 before that change is released."
+}

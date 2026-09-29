@@ -1,6 +1,13 @@
 class LizardError(Exception):
     pass
 
+class ConfigApplyError(LizardError):
+    """Config was saved, but one or more deploy/restart actions failed."""
+    def __init__(self, result):
+        super().__init__("Config was saved, but one or more side effects failed; inspect result before retrying")
+        self.result = result
+
+
 class AuthenticationError(LizardError):
     pass
 

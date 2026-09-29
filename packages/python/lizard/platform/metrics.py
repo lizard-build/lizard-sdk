@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+from .client import query
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -45,47 +46,42 @@ class MetricsAPI:
     def __init__(self, client: "PlatformClient") -> None:
         self._client = client
 
-    def cpu(self, service_id: str, *, since: str | None = None, until: str | None = None) -> list[MetricPoint]:
-        """CPU usage over time (0–100% per vCPU)."""
-        return _parse_points(self._client.get(self._qs(f"/api/apps/{service_id}/metrics/cpu", since, until)))
+    def service(self, id: str, *, range: str = "1h") -> dict:
+        return self._client.get(query(f"/api/apps/{id}/metrics", range=range))
 
-    def memory(self, service_id: str, *, since: str | None = None, until: str | None = None) -> list[MetricPoint]:
-        """Memory usage over time (MiB)."""
-        return _parse_points(self._client.get(self._qs(f"/api/apps/{service_id}/metrics/memory", since, until)))
+    def addon(self, project_id: str, addon_id: str, *, range: str = "1h") -> dict:
+        return self._client.get(query(f"/api/projects/{project_id}/addons/{addon_id}/metrics", range=range))
 
-    def network(self, service_id: str, *, since: str | None = None, until: str | None = None) -> dict:
-        """Network I/O over time. Returns ``{"rx": [...], "tx": [...]}``."""
-        result = self._client.get(self._qs(f"/api/apps/{service_id}/metrics/network", since, until))
-        return {"rx": _parse_points(result.get("rx")), "tx": _parse_points(result.get("tx"))}
-
-    def disk(self, service_id: str, *, since: str | None = None, until: str | None = None) -> dict:
-        """Disk I/O over time. Returns ``{"read": [...], "write": [...]}``."""
-        result = self._client.get(self._qs(f"/api/apps/{service_id}/metrics/disk", since, until))
-        return {"read": _parse_points(result.get("read")), "write": _parse_points(result.get("write"))}
-
-    def cost(self, project_id: str, *, since: str | None = None, until: str | None = None) -> CostMetrics:
-        """Project cost breakdown."""
-        result = self._client.get(self._qs(f"/api/projects/{project_id}/metrics/cost", since, until))
-        return CostMetrics(
-            total_usd=float(result.get("totalUsd", 0)),
-            cpu_usd=float(result.get("cpuUsd", 0)),
-            memory_usd=float(result.get("memoryUsd", 0)),
-            storage_usd=float(result.get("storageUsd", 0)),
-            egress_usd=float(result.get("egressUsd", 0)),
-        )
-
-    def all(self, service_id: str, *, since: str | None = None, until: str | None = None) -> ServiceMetrics:
-        """All metrics for a service in one call."""
-        return ServiceMetrics(
-            cpu=self.cpu(service_id, since=since, until=until),
-            memory=self.memory(service_id, since=since, until=until),
-        )
+    def project(self, id: str, *, range: str = "1h", live: bool = False) -> dict:
+        return self._client.get(query(f"/api/projects/{id}/metrics", range=range, live=live))
 
     @staticmethod
-    def _qs(path: str, since: str | None, until: str | None) -> str:
-        params = []
-        if since:
-            params.append(f"since={since}")
-        if until:
-            params.append(f"until={until}")
-        return f"{path}?{'&'.join(params)}" if params else path
+    def _points(raw: dict, name: str) -> list[MetricPoint]:
+        series = next((s for s in raw.get("series", []) if s["metric"] == name), {})
+        available = series.get("available", [])
+        return [MetricPoint(raw["timestamps"][i], value) for i, value in enumerate(series.get("values", [])) if i >= len(available) or available[i]]
+
+    def cpu(self, id: str, *, range: str = "1h") -> list[MetricPoint]:
+        return self._points(self.service(id, range=range), "cpu")
+
+    def memory(self, id: str, *, range: str = "1h") -> list[MetricPoint]:
+        return self._points(self.service(id, range=range), "memory")
+
+    def network(self, id: str, *, range: str = "1h") -> dict:
+        raw = self.service(id, range=range)
+        return {"rx": self._points(raw, "network_rx"), "tx": self._points(raw, "network_tx")}
+
+    def disk(self, id: str, *, range: str = "1h") -> dict:
+        raw = self.service(id, range=range)
+        return {"read": self._points(raw, "disk_read"), "write": self._points(raw, "disk_write")}
+
+    def all(self, id: str, *, range: str = "1h") -> ServiceMetrics:
+        raw = self.service(id, range=range)
+        return ServiceMetrics(cpu=self._points(raw, "cpu"), memory=self._points(raw, "memory"),
+            network_rx=self._points(raw, "network_rx"), network_tx=self._points(raw, "network_tx"),
+            disk_read=self._points(raw, "disk_read"), disk_write=self._points(raw, "disk_write"))
+
+    def cost(self, project_id: str, *, range: str = "30d") -> dict | None:
+        project = self._client.get(f"/api/projects/{project_id}")
+        summary = self._client.get(query("/api/billing/summary", workspaceId=project["workspaceId"], range=range))
+        return next((p for p in summary["projects"] if p["projectId"] == project_id), None)

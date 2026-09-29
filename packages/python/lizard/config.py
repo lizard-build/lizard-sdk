@@ -22,7 +22,7 @@ class ConnectionConfig:
     ):
         self.api_key = api_key or os.environ.get("LIZARD_API_KEY", "")
         self.api_url = api_url or os.environ.get("LIZARD_API_URL", DEFAULT_API_URL)
-        self.timeout_ms = timeout_ms or DEFAULT_SANDBOX_TIMEOUT_MS
+        self.timeout_ms = timeout_ms if timeout_ms is not None else DEFAULT_SANDBOX_TIMEOUT_MS
 
         if not self.api_key:
             raise ValueError(

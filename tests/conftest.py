@@ -22,7 +22,7 @@ import pytest
 from lizard.code_interpreter.types import Execution, ExecutionError, ResultItem
 
 NODE_AGENT_URL = "http://localhost:7070"
-ADMIN_SECRET = os.environ["ADMIN_SECRET"]
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 TEMPLATE = "code-interpreter-v1"
 
 _agent_headers = {"X-Admin-Secret": ADMIN_SECRET, "Content-Type": "application/json"}
@@ -158,6 +158,8 @@ def _wait(guest_ip: str, timeout: float = 5.0) -> None:
 @pytest.fixture(scope="session")
 def sandbox():
     """Single code-interpreter sandbox shared across the full test session."""
+    if os.environ.get("LIZARD_LIVE_TESTS") != "1" or not ADMIN_SECRET:
+        pytest.skip("Requires LIZARD_LIVE_TESTS=1 and ADMIN_SECRET on an approved test host")
     sb = NodeSandbox.create(timeout_ms=3_600_000)  # 1-hour timeout
     _wait(sb.guest_ip)
     yield sb

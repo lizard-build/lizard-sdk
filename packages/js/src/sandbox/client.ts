@@ -139,9 +139,10 @@ export class SandboxClient {
     return true
   }
 
-  protected static async listSandboxes(opts?: ConnectionOpts): Promise<SandboxInfo[]> {
+  protected static async listSandboxes(opts?: ConnectionOpts & { projectId?: string }): Promise<SandboxInfo[]> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes`, {
+    const path = opts?.projectId ? `/api/projects/${encodeURIComponent(opts.projectId)}/sandboxes` : '/api/sandboxes'
+    const res = await fetch(`${config.apiUrl}${path}`, {
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
