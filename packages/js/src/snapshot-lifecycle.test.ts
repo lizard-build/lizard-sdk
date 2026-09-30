@@ -12,6 +12,10 @@ describe('asynchronous snapshot lifecycle', () => {
     response({status, error: 'Cannot restore'})
     await expect(Sandbox.waitForSnapshot('snap-1', config)).rejects.toBeInstanceOf(ConflictError)
   })
+  it('waits for usable capacity even when stored status is ready', async () => {
+    response({status: 'ready', poolSize: 5, readyCount: 0})
+    await expect(Sandbox.waitForSnapshot('snap-1', {...config, waitTimeoutMs: 0})).rejects.toBeInstanceOf(TimeoutError)
+  })
   it('bounds snapshot waiting', async () => {
     response({status: 'warming'})
     await expect(Sandbox.waitForSnapshot('snap-1', {...config, waitTimeoutMs: 0})).rejects.toBeInstanceOf(TimeoutError)
