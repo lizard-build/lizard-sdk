@@ -62,6 +62,18 @@ with lizard.create("base", timeout_ms=300_000) as sandbox:
 
 The Python context manager kills the sandbox when the block ends, including when it raises an error. TypeScript uses `try/finally` for the same cleanup.
 
+## Machine size
+
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.009/h), `medium` (4 vCPU / 8 GB, $0.018/h, the default) and `large` (8 vCPU / 16 GB, $0.036/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+
+```ts
+const sandbox = await lizard.create('base', { size: 'large' })
+```
+
+```python
+sandbox = lizard.create("base", size="large")
+```
+
 ## Run Python
 
 Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.

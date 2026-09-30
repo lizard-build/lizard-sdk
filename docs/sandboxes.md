@@ -12,6 +12,8 @@ Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell
 | `projectId` | `project_id` | Exact ID for static `Sandbox.create()`; takes precedence over `project` |
 | `apiKey` | `api_key` | API key; defaults to `LIZARD_API_KEY` |
 | `apiUrl` | `api_url` | API base URL; defaults to `LIZARD_API_URL` or `https://lizard.build` |
+| `size` | `size` | `'small'` (2 vCPU / 4 GB, $0.009/h), `'medium'` (4 vCPU / 8 GB, $0.018/h) or `'large'` (8 vCPU / 16 GB, $0.036/h); default `'medium'`. Cannot be combined with a private snapshot |
+| `snapshotId` | `snapshot_id` | Create from a private saved snapshot; see [Snapshots](#snapshots-and-criu-pause-resume) |
 | `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
 | `envs` | `envs` | Accepted by the SDK but not applied by the current create API |
 | `metadata` | `metadata` | Accepted by the SDK but not applied by the current create API |
@@ -20,6 +22,8 @@ Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell
 | `lizardToken` | `lizard_token` | Inject a Lizard key for tools inside the sandbox |
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
+
+Pricing is flat by size: the hourly price above, billed per second while the sandbox runs. Measured CPU and RAM are not charged, and sandbox egress is free. Attached volumes bill separately. A sandbox created from a private snapshot runs on the machine the snapshot was captured on and is billed by measured usage; `size` is ignored there. There are no `cpus` / `memoryMb` options.
 
 The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, and `interpreter`; availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
