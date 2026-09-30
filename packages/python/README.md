@@ -35,6 +35,14 @@ with lizard.create("base", timeout_ms=300_000) as sandbox:
 
 The context manager kills the sandbox when the block ends, including when it raises an error. If you create a sandbox without `with`, call `sandbox.kill()` in a `finally` block.
 
+## Machine size
+
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.009/h), `medium` (4 vCPU / 8 GB, $0.018/h, the default) and `large` (8 vCPU / 16 GB, $0.036/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+
+```python
+sandbox = lizard.create("base", size="large")
+```
+
 ## Stream command output
 
 Inside the `with` block above:

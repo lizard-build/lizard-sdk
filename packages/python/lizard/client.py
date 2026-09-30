@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from .config import ConnectionConfig
 from .platform.storage import StorageAPI
 from .platform.github import GitHubAPI
@@ -93,7 +95,7 @@ class Lizard:
         template: str | None = None,
         *,
         snapshot_id: str | None = None,
-        size: str | None = None,
+        size: Literal["small", "medium", "large"] | None = None,
         timeout_ms: int | None = None,
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
@@ -102,7 +104,14 @@ class Lizard:
         volume_name: str | None = None,
         lizard_token: str | None = None,
     ) -> Sandbox:
-        """Create a new sandbox in this client's project."""
+        """Create a new sandbox in this client's project.
+
+        :param size: ``"small"`` (2 vCPU / 4 GB, $0.009/h), ``"medium"``
+            (4 vCPU / 8 GB, $0.018/h, the default) or ``"large"`` (8 vCPU /
+            16 GB, $0.036/h). Billed flat per second of running time; ignored
+            with ``snapshot_id``, which runs on the snapshot's machine and is
+            billed by measured usage.
+        """
         return Sandbox.create(
             template,
             snapshot_id=snapshot_id,

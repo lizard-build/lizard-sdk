@@ -38,6 +38,14 @@ try {
 
 The package includes TypeScript declarations and ESM and CommonJS builds. For CommonJS, use `const { Lizard } = require('@lizard-build/sdk')` inside a program with an async entry point.
 
+## Machine size
+
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.009/h), `medium` (4 vCPU / 8 GB, $0.018/h, the default) and `large` (8 vCPU / 16 GB, $0.036/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+
+```ts
+const sandbox = await lizard.create('base', { size: 'large' })
+```
+
 ## Stream command output
 
 Inside the `try` block above:

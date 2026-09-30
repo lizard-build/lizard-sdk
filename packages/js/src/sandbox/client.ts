@@ -11,7 +11,9 @@ export interface SandboxInfo {
   region?: string
   status?: string
   pauseError?: string | null
+  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox created from a private snapshot. */
   size?: 'small' | 'medium' | 'large' | null
+  /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage (private snapshot). */
   pricePerHour?: number | null
   cpus?: number
   memoryMb?: number
@@ -21,15 +23,28 @@ export interface SandboxInfo {
 export interface SandboxOpts extends ConnectionOpts {
   /**
    * The project this sandbox belongs to — its ID, slug, or name. Required:
-   * a sandbox must be attributed to a project so its CPU, RAM, egress, and
-   * storage are billed. Prefer the {@link Lizard} client, which pins a project
+   * a sandbox must be attributed to a project so its usage is billed there —
+   * a flat hourly price per {@link SandboxOpts.size}, charged per second while
+   * it runs (attached volumes bill separately). Prefer the {@link Lizard} client, which pins a project
    * for you. Ignored when {@link SandboxOpts.projectId} is set.
    */
   project?: string
   /** Exact project ID — skips resolving {@link SandboxOpts.project}. */
   projectId?: string
   template?: string
+  /**
+   * Create from a private saved snapshot. The sandbox runs on the machine the
+   * snapshot was captured on and is billed by measured usage; `size` is ignored.
+   */
   snapshotId?: string
+  /**
+   * Machine size, billed flat per hour (per second of running time):
+   * - `'small'`  — 2 vCPU / 4 GB, $0.009/h
+   * - `'medium'` — 4 vCPU / 8 GB, $0.018/h (default)
+   * - `'large'`  — 8 vCPU / 16 GB, $0.036/h
+   *
+   * Measured CPU/RAM are not charged and egress is free. Ignored with {@link SandboxOpts.snapshotId}.
+   */
   size?: 'small' | 'medium' | 'large'
   metadata?: Record<string, string>
   envs?: Record<string, string>
