@@ -290,7 +290,7 @@ export class Sandbox extends SandboxClient {
     const deadline = Date.now() + (opts?.waitTimeoutMs ?? 900_000)
     do {
       const snapshot = await this.getSnapshot(snapshotId, opts)
-      if (snapshot.status === 'ready') return snapshot
+      if (snapshot.status === 'ready' && snapshot.readyCount >= Math.max(1, snapshot.poolSize ?? 1)) return snapshot
       if (['failed', 'paused', 'suspended'].includes(snapshot.status)) throw new ConflictError(snapshot.error ?? `Snapshot is ${snapshot.status}`)
       if (Date.now() >= deadline) break
       await new Promise(resolve => setTimeout(resolve, 1000))

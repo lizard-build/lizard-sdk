@@ -24,3 +24,9 @@ def test_sandbox_wait_reports_criu_error_and_timeout(monkeypatch):
     monkeypatch.setattr(sandbox, "get_info", lambda: SandboxInfo("sb-1", "base", "", "", status="resuming"))
     with pytest.raises(TimeoutError):
         sandbox.wait_for_status("running", wait_timeout_ms=0)
+
+
+def test_snapshot_wait_requires_usable_capacity(monkeypatch):
+    monkeypatch.setattr(Sandbox, "get_snapshot", lambda *a, **k: {"status": "ready", "readyCount": 0, "poolSize": 5})
+    with pytest.raises(TimeoutError):
+        Sandbox.wait_for_snapshot("snap-1", wait_timeout_ms=0, **CONFIG)

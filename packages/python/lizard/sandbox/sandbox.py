@@ -454,7 +454,7 @@ class Sandbox:
         deadline = time.monotonic() + wait_timeout_ms / 1000
         while True:
             snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
-            if snapshot["status"] == "ready":
+            if snapshot["status"] == "ready" and snapshot.get("readyCount", 0) >= max(1, snapshot.get("poolSize", 1)):
                 return snapshot
             if snapshot["status"] in ("failed", "paused", "suspended"):
                 raise ConflictError(snapshot.get("error") or f"Snapshot is {snapshot['status']}")
