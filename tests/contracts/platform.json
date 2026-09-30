@@ -4356,5 +4356,113 @@
       }
     ],
     "expectRequests": 1
+  },
+  {
+    "name": "sandbox.desktop.start",
+    "ts": {
+      "path": "sandbox.desktop.start",
+      "args": [
+        {
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "py": {
+      "path": "sandbox.desktop.start",
+      "args": [],
+      "kwargs": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/desktop",
+        "response": {
+          "running": true,
+          "width": 1920,
+          "height": 1080,
+          "url": "https://sb1-6080.sandbox.eu.onlizard.com/vnc.html?password=secret",
+          "viewOnlyUrl": "https://sb1-6080.sandbox.eu.onlizard.com/vnc.html?password=view&view_only=true"
+        },
+        "body": {
+          "width": 1920,
+          "height": 1080
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.desktop.info",
+    "ts": {
+      "path": "sandbox.desktop.info",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.desktop.info",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandboxes/sb1/desktop",
+        "response": {
+          "running": true,
+          "width": 1920,
+          "height": 1080,
+          "url": "https://sb1-6080.sandbox.eu.onlizard.com/vnc.html?password=secret",
+          "viewOnlyUrl": "https://sb1-6080.sandbox.eu.onlizard.com/vnc.html?password=view&view_only=true"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.desktop.stop",
+    "ts": {
+      "path": "sandbox.desktop.stop",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.desktop.stop",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "DELETE",
+        "path": "/api/sandboxes/sb1/desktop",
+        "response": {
+          "running": false
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "sandbox.desktop.unsupported",
+    "ts": {
+      "path": "sandbox.desktop.start",
+      "args": []
+    },
+    "py": {
+      "path": "sandbox.desktop.start",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/desktop",
+        "status": 400,
+        "response": {
+          "error": "The 'base' template has no desktop. Create the sandbox with template 'desktop'.",
+          "code": "DESKTOP_NOT_SUPPORTED"
+        }
+      }
+    ],
+    "error": "has no desktop",
+    "expectRequests": 1
   }
 ]

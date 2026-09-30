@@ -6,6 +6,7 @@ import time
 from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_TIMEOUT_MS
 from .process import Process
 from .fs import Fs
+from .desktop import Desktop
 
 
 class SandboxSnapshot(TypedDict):
@@ -109,6 +110,9 @@ class Sandbox:
         self._config = ConnectionConfig(api_key=api_key, api_url=api_url, timeout_ms=timeout_ms)
         self.fs = Fs(self.sandbox_id, self._config)
         self.process = Process(self.sandbox_id, self._config)
+        #: Drive the graphical desktop of a ``desktop``-template sandbox: stream it to
+        #: a browser, take screenshots, click and type. See :class:`Desktop`.
+        self.desktop = Desktop(self.sandbox_id, self._config, self.process)
 
     @classmethod
     def create(

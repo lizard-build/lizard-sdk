@@ -20,6 +20,8 @@ export interface ProcessResult {
   stdout: string
   stderr: string
   exitCode: number
+  /** Set when the platform cut the output off at its per-stream limit (512 KiB). */
+  truncated?: boolean
 }
 
 export interface ProcessOpts {
@@ -55,7 +57,9 @@ export class Process {
    * The command runs in a shell inside the Lizard sandbox and returns
    * stdout, stderr, and the exit code when it finishes.
    *
-   * @param cmd Shell command to run inside the sandbox.
+   * @param cmd Shell command to run inside the sandbox, or an argv array that is
+   *   executed directly with no shell — nothing in it is interpreted, so it is the
+   *   safe way to pass untrusted text as an argument.
    * @param opts Optional execution options — environment variables, working
    *   directory, user, and timeout.
    *
@@ -63,6 +67,11 @@ export class Process {
    * ```ts
    * const result = await sandbox.process.exec('node index.js')
    * console.log(result.stdout)
+   * ```
+   *
+   * @example Pass untrusted text as an argument, not through a shell:
+   * ```ts
+   * await sandbox.process.exec(['grep', '-rn', '--', userQuery, '/workspace'])
    * ```
    *
    * @example Run with a custom working directory and env vars:
@@ -73,7 +82,7 @@ export class Process {
    * })
    * ```
    */
-  async exec(cmd: string, opts?: ProcessOpts): Promise<ProcessResult> {
+  async exec(cmd: string | string[], opts?: ProcessOpts): Promise<ProcessResult> {
     // `onStdout`/`onStderr` have been in ProcessOpts since the beginning but were
     // never wired up — passing them did nothing and the caller waited for the whole
     // command regardless. The platform has always streamed the output; it just needs

@@ -59,6 +59,24 @@ const result = await sandbox.process.exec('printf "hello\\n"', {
 if (result.exitCode !== 0) throw new Error(result.stderr)
 ```
 
+## Desktop (computer use)
+
+The `desktop` template runs XFCE and Chromium you can watch in a browser and an agent can drive:
+
+```ts
+import { Sandbox } from '@lizard-build/sdk'
+
+const sandbox = await Sandbox.create('desktop', { project: 'my-project' })
+const { url, viewOnlyUrl } = await sandbox.desktop.start() // open `url` in a browser
+await sandbox.desktop.openUrl('https://example.com')
+await sandbox.desktop.click(640, 400)
+await sandbox.desktop.type('hello')
+await sandbox.desktop.press('Return')
+const png: Uint8Array = await sandbox.desktop.screenshot()
+```
+
+Treat `url` like a credential: anyone with it can see and control the desktop. Share `viewOnlyUrl` when someone only needs to watch. See the [desktop guide](../../docs/sandboxes.md#desktop-computer-use).
+
 ## Run Python
 
 Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.

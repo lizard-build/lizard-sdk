@@ -112,12 +112,17 @@ finally:
 | Run a shell command | `sandbox.process.exec(cmd)` | `sandbox.process.exec_(cmd)` |
 | Read or write a file | `sandbox.fs.read(path)` / `write(path, text)` | Same method names |
 | Expose an HTTP port | `sandbox.getHost(port)` | `sandbox.get_host(port)` |
+| Drive a desktop (computer use) | `sandbox.desktop.start()`, `screenshot()`, `click()`, `type()` | Same on `sandbox.desktop` |
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
 | Resize a volume in place | `lizard.volumes.resize(name, sizeGb)` | `lizard.volumes.resize(name, size_gb)` |
 | Manage cloud apps | `lizard.services`, `projects`, `addons` | Same namespaces |
 
 See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md) for configuration, streaming, ports, volumes, errors and method names in both languages.
+
+## Desktop (computer use)
+
+Create a sandbox from the `desktop` template, call `await sandbox.desktop.start()` and open the returned `url` in a browser to watch and control it. Agents drive it with `screenshot()`, `click(x, y)`, `type(text)` and `press('ctrl+l')`. The URLs are secrets: `url` gives full control, `viewOnlyUrl` / `view_only_url` only watches. See the [desktop guide](docs/sandboxes.md#desktop-computer-use).
 
 ## Runtime and persistence
 

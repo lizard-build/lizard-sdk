@@ -58,6 +58,24 @@ if result.exit_code != 0:
     raise RuntimeError(result.stderr)
 ```
 
+## Desktop (computer use)
+
+The `desktop` template runs XFCE and Chromium you can watch in a browser and an agent can drive:
+
+```python
+from lizard import Sandbox
+
+with Sandbox.create("desktop", project="my-project") as sandbox:
+    info = sandbox.desktop.start()  # open info.url in a browser
+    sandbox.desktop.open_url("https://example.com")
+    sandbox.desktop.click(640, 400)
+    sandbox.desktop.type("hello")
+    sandbox.desktop.press("Return")
+    png: bytes = sandbox.desktop.screenshot()
+```
+
+Treat `info.url` like a credential: anyone with it can see and control the desktop. Share `info.view_only_url` when someone only needs to watch. See the [desktop guide](../../docs/sandboxes.md#desktop-computer-use).
+
 ## Run Python
 
 Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, Sequence, TYPE_CHECKING
 
 from ..config import HTTP_TIMEOUT_S
 
@@ -15,6 +15,8 @@ class ProcessResult:
     stdout: str
     stderr: str
     exit_code: int
+    #: True when the platform cut the output off at its per-stream limit (512 KiB).
+    truncated: bool = False
 
 
 @dataclass
@@ -40,7 +42,7 @@ class Process:
 
     def exec_(
         self,
-        cmd: str,
+        cmd: "str | Sequence[str]",
         *,
         envs: dict[str, str] | None = None,
         user: str | None = None,
@@ -56,7 +58,9 @@ class Process:
         The command runs in a shell inside the Lizard sandbox and returns
         stdout, stderr, and the exit code when it completes.
 
-        :param cmd: Shell command to run inside the sandbox.
+        :param cmd: Shell command to run inside the sandbox, or an argv list that is
+            executed directly with no shell -- nothing in it is interpreted, so it
+            is the safe way to pass untrusted text as an argument.
         :param envs: Additional environment variables for this execution.
         :param user: Run as this Linux user (default: ``root``).
         :param workdir: Working directory inside the sandbox.
@@ -72,6 +76,10 @@ class Process:
             result = sandbox.process.exec_("node index.js")
             print(result.stdout)
 
+        Example passing untrusted text as an argument, not through a shell::
+
+            sandbox.process.exec_(["grep", "-rn", "--", user_query, "/workspace"])
+
         Example with options::
 
             result = sandbox.process.exec_(
@@ -82,7 +90,7 @@ class Process:
         """
         import httpx
 
-        body: dict = {"cmd": cmd}
+        body: dict = {"cmd": cmd if isinstance(cmd, str) else [str(a) for a in cmd]}
         if envs:
             body["envs"] = envs
         if user:
@@ -113,6 +121,7 @@ class Process:
             stdout=data.get("stdout", ""),
             stderr=data.get("stderr", ""),
             exit_code=data.get("exitCode", 0),
+            truncated=bool(data.get("truncated", False)),
         )
 
     def _exec_streaming(
