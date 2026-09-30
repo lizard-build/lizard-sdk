@@ -189,7 +189,62 @@ Error codes: `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volum
 
 `connect()` checks sandbox metadata without changing its state. It does not recreate an expired sandbox. `Lizard.list()` lists sandboxes visible to the credential; it does not filter by the client's project. Use `Sandbox.list()` with the project ID for a project-specific list.
 
-The Kubernetes backend returns HTTP 501 for `pause()`, `resume()`, `fork()`, `snapshot()` and `Sandbox.restore()`. These methods remain in the SDK for API compatibility. Snapshot listing and deletion do not imply support for snapshot creation. Reconnect to running sandboxes and use volumes to keep files across sessions.
+## Snapshots and CRIU pause/resume
+
+Private snapshots capture a running app's memory and workspace files. Close active clients and terminals and stop workspace writes before capture. Attached persistent volumes cannot be captured. Snapshot creation is asynchronous; wait until ready before restoring. Warm copies default to five (configurable from one to ten); a depleted pool can return HTTP 503 until it refills. Fast warm claims do not guarantee a 100 ms API response.
+
+```ts
+const source = await Sandbox.create('base', { projectId, timeoutMs: 0 })
+let snapshotId: string | undefined
+let clone: Sandbox | undefined
+try {
+  // Start the application, then disconnect its clients before capture.
+  const saved = await source.snapshot('my-app', { poolSize: 5 })
+  snapshotId = saved.id
+  await Sandbox.waitForSnapshot(saved.id)
+  clone = await Sandbox.restore(saved.id)
+  await Sandbox.pauseSnapshot(saved.id) // deletes idle warm copies, keeps clone running
+  await Sandbox.resumeSnapshot(saved.id)
+  await Sandbox.waitForSnapshot(saved.id)
+  await clone.pause()
+  await clone.waitForStatus('paused')
+  await clone.resume()
+  await clone.waitForStatus('running')
+} finally {
+  if (clone) await clone.kill()
+  if (snapshotId) await Sandbox.deleteSnapshot(snapshotId)
+  await source.kill()
+}
+```
+
+```python
+source = Sandbox.create("base", project_id=project_id, timeout_ms=0)
+saved = None
+clone = None
+try:
+    saved = source.snapshot("my-app", pool_size=5)
+    Sandbox.wait_for_snapshot(saved["id"])
+    clone = Sandbox.restore(saved["id"])
+    Sandbox.pause_snapshot(saved["id"])
+    Sandbox.resume_snapshot(saved["id"])
+    Sandbox.wait_for_snapshot(saved["id"])
+    clone.pause()
+    clone.wait_for_status("paused")
+    clone.resume()
+    clone.wait_for_status("running")
+finally:
+    if clone:
+        clone.kill()
+    if saved:
+        Sandbox.delete_snapshot(saved["id"])
+    source.kill()
+```
+
+Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect status, `Sandbox.snapshots(projectId)` / `Sandbox.snapshots(project_id)` to list, and `Sandbox.setSnapshotWarmPool(id, count)` / `Sandbox.set_snapshot_warm_pool(id, count)` to resize the warm pool. Both `Sandbox.create({snapshotId, projectId})` and `Sandbox.create(snapshot_id=..., project_id=...)` also support private snapshots.
+
+Snapshot pause preserves immutable saved images, disables replenishment and releases idle warm copies and image cache pins. Resume recreates the configured pool. Capture/build/verification resources are cleaned up automatically; saved images must remain for restore. Deleting a snapshot keeps already claimed sandboxes running. A paused snapshot stays paused after its workspace is unfrozen.
+
+Sandbox `pause()` and `resume()` queue asynchronous operations and return a boolean. The wait helpers report capture errors and time out instead of polling forever. A sandbox resumes with the same ID and saved state. `fork()` still returns HTTP 501 on Kubernetes.
 
 ## Errors
 

@@ -50,6 +50,10 @@ describe('CLI/backend wire contracts (shared with Python)', () => {
         list: (opts = {}) => Sandbox.list({ ...opts, ...config }),
         snapshots: (id: string) => Sandbox.snapshots(id, config),
         restore: (id: string) => Sandbox.restore(id, config),
+        getSnapshot: (id: string) => Sandbox.getSnapshot(id, config),
+        setSnapshotWarmPool: (id: string, count: number) => Sandbox.setSnapshotWarmPool(id, count, config),
+        pauseSnapshot: (id: string) => Sandbox.pauseSnapshot(id, config),
+        resumeSnapshot: (id: string) => Sandbox.resumeSnapshot(id, config),
         deleteSnapshot: (id: string) => Sandbox.deleteSnapshot(id, config),
       },
     })

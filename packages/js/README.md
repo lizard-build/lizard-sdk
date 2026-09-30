@@ -79,7 +79,7 @@ Pass `timeoutMs` to `create()` to set the sandbox lifetime. The default is five 
 
 ## Runtime limits
 
-Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. Pause, resume, fork, snapshot creation, snapshot restore, and file watching return HTTP 501 on the current backend.
+Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. CRIU pause/resume and private snapshots preserve running memory and workspace files. Snapshot pools keep five copies warm by default and can be paused to release idle compute. Fork and file watching remain unsupported. See the [snapshot lifecycle guide](../../docs/sandboxes.md#snapshots-and-criu-pause-resume).
 
 `getHost()` returns a hostname without `https://`. File writes accept UTF-8 text or valid UTF-8 bytes; `readBytes()` supports binary downloads.
 

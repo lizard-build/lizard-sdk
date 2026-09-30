@@ -35,7 +35,7 @@ It checks command discovery, not the live effect of each command.
 
 Keep the root README short. Put language-specific setup in `packages/js/README.md` and `packages/python/README.md`, and shared behavior in `docs/`. Package releases use each package's own README.
 
-Use examples that check results and clean up sandboxes with `try/finally` or a Python context manager. Check examples against the public exports and method signatures. Describe runtime support as it exists: Kubernetes sandboxes, persistent files on volumes, and HTTP 501 for unsupported lifecycle methods.
+Use examples that check results and clean up sandboxes with `try/finally` or a Python context manager. Check examples against the public exports and method signatures. Describe runtime support as it exists: Kubernetes sandboxes, persistent files on volumes, CRIU pause/resume and private warm snapshots, and HTTP 501 for unsupported fork operations.
 
 ## Releases
 

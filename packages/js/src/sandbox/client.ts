@@ -10,6 +10,9 @@ export interface SandboxInfo {
   /** Region the sandbox runs in — the volume's region when one is attached. */
   region?: string
   status?: string
+  pauseError?: string | null
+  size?: 'small' | 'medium' | 'large' | null
+  pricePerHour?: number | null
   cpus?: number
   memoryMb?: number
   metadata?: Record<string, string>
@@ -26,6 +29,8 @@ export interface SandboxOpts extends ConnectionOpts {
   /** Exact project ID — skips resolving {@link SandboxOpts.project}. */
   projectId?: string
   template?: string
+  snapshotId?: string
+  size?: 'small' | 'medium' | 'large'
   metadata?: Record<string, string>
   envs?: Record<string, string>
   timeoutMs?: number
@@ -92,6 +97,8 @@ export class SandboxClient {
       headers: config.headers,
       body: JSON.stringify({
         template,
+        snapshotId: opts?.snapshotId,
+        size: opts?.size,
         timeoutMs,
         projectId,
         metadata: opts?.metadata,

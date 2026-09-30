@@ -111,7 +111,7 @@ See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main
 
 Sandboxes run on **Kubernetes with runc and share the host kernel**. Files outside an attached persistent volume last only for the sandbox's lifetime. Mount a volume at `/workspace` to keep files across sessions. A volume preserves files; it does not preserve running processes or memory.
 
-The Kubernetes backend returns **HTTP 501** for pause, resume, fork, snapshot creation, snapshot restore, and file watching. The SDK keeps these methods for API compatibility. Use `connect()` for a running sandbox and volumes for files that must outlive it.
+The Kubernetes backend supports **CRIU pause/resume and private warm snapshots**. Capture running memory and workspace files, keep five copies warm by default, and pause a snapshot pool to release idle compute. See the [snapshot lifecycle guide](docs/sandboxes.md#snapshots-and-criu-pause-resume). `fork()` and file watching remain unsupported.
 
 ## Documentation
 

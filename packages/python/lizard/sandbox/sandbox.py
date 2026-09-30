@@ -1,10 +1,27 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal, TypedDict
+import time
 
 from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_TIMEOUT_MS
 from .process import Process
 from .fs import Fs
+
+
+class SandboxSnapshot(TypedDict):
+    id: str
+    name: str
+    projectId: str
+    workspaceId: str
+    region: str
+    sourceSandboxId: str
+    status: Literal["building", "warming", "ready", "paused", "suspended", "failed"]
+    poolSize: int
+    readyCount: int
+    error: str | None
+    cpus: int
+    memoryMb: int
+    createdAt: int
 
 
 @dataclass
@@ -16,6 +33,9 @@ class SandboxInfo:
     #: Region the sandbox runs in -- the volume's region when one is attached.
     region: str | None = None
     status: str | None = None
+    pause_error: str | None = None
+    size: str | None = None
+    price_per_hour: float | None = None
     cpus: int | None = None
     memory_mb: int | None = None
     metadata: dict[str, str] | None = None
@@ -36,6 +56,9 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
         end_at=s.get("endAt") or s.get("expiresAt") or "",
         region=s.get("region"),
         status=s.get("status"),
+        pause_error=s.get("pauseError"),
+        size=s.get("size"),
+        price_per_hour=s.get("pricePerHour"),
         cpus=s.get("cpus"),
         memory_mb=s.get("memoryMb"),
         metadata=s.get("metadata"),
@@ -92,6 +115,8 @@ class Sandbox:
         cls,
         template: str | None = None,
         *,
+        snapshot_id: str | None = None,
+        size: Literal["small", "medium", "large"] | None = None,
         project: str | None = None,
         project_id: str | None = None,
         api_key: str | None = None,
@@ -162,6 +187,10 @@ class Sandbox:
             "timeoutMs": effective_timeout,
             "projectId": resolved_project_id,
         }
+        if snapshot_id is not None:
+            body["snapshotId"] = snapshot_id
+        if size is not None:
+            body["size"] = size
         if metadata:
             body["metadata"] = metadata
         if envs:
@@ -265,13 +294,7 @@ class Sandbox:
         return True
 
     def pause(self) -> bool:
-        """
-        Request sandbox pause. The Kubernetes backend returns HTTP 501.
-
-        .. deprecated::
-            Unsupported on Kubernetes. Save files to a :class:`~lizard.Volume`
-            and attach it to a new sandbox instead.
-        """
+        """Queue CRIU capture. Wait for status 'paused' before resuming."""
         import httpx
 
         res = httpx.post(
@@ -287,13 +310,7 @@ class Sandbox:
         return True
 
     def resume(self) -> bool:
-        """
-        Request sandbox resume. The Kubernetes backend returns HTTP 501.
-
-        .. deprecated::
-            Unsupported on Kubernetes. Use :meth:`connect` to reconnect to a
-            running sandbox.
-        """
+        """Queue restoration. Wait for status 'running' before executing commands."""
         import httpx
 
         res = httpx.post(
@@ -370,10 +387,23 @@ class Sandbox:
         from ..platform.client import PlatformClient
         return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
 
-    def snapshot(self, name: str | None = None):
-        """Snapshot creation is unsupported on Kubernetes; the backend returns HTTP 501."""
+    def snapshot(self, name: str | None = None, *, pool_size: int = 5) -> SandboxSnapshot:
+        """Capture memory and workspace. Disconnect active clients before capture."""
         from ..platform.client import PlatformClient
-        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name} if name is not None else {})
+        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size})
+
+    def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
+        from ..errors import ConflictError, TimeoutError
+        deadline = time.monotonic() + wait_timeout_ms / 1000
+        while True:
+            info = self.get_info()
+            if info.status == status:
+                return info
+            if info.pause_error or info.status in ("failed", "stopped", "deleted"):
+                raise ConflictError(info.pause_error or f"Sandbox is {info.status}")
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Sandbox did not become {status} within the wait timeout")
+            time.sleep(min(1, max(0, deadline - time.monotonic())))
 
     def unexpose(self, port: int) -> None:
         from ..platform.client import PlatformClient
@@ -384,16 +414,53 @@ class Sandbox:
         return PlatformClient(self._config).events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
 
     @classmethod
-    def snapshots(cls, project_id: str, *, api_key: str | None = None, api_url: str | None = None):
-        from ..platform.client import PlatformClient
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/projects/{project_id}/snapshots")
+    def snapshots(cls, project_id: str, *, api_key: str | None = None, api_url: str | None = None) -> list[SandboxSnapshot]:
+        from ..platform.client import PlatformClient, segment
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/projects/{segment(project_id)}/snapshots")
 
     @classmethod
-    def restore(cls, snapshot_id: str, *, timeout_ms: int = 0, api_key: str | None = None, api_url: str | None = None):
-        """Snapshot restore is unsupported on Kubernetes; the backend returns HTTP 501."""
+    def get_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         from ..platform.client import PlatformClient, segment
-        result = PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/fork", {"timeoutMs": timeout_ms})
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
+
+    @classmethod
+    def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
+        """Claim a warm copy in the snapshot's project and region."""
+        from ..platform.client import PlatformClient
+        client = PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url))
+        snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
+        result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
+
+    @classmethod
+    def set_snapshot_warm_pool(cls, snapshot_id: str, pool_size: int, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
+        from ..platform.client import PlatformClient, segment
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).patch(f"/api/sandbox-snapshots/{segment(snapshot_id)}", {"poolSize": pool_size})
+
+    @classmethod
+    def pause_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
+        """Release idle warm copies, preserving saved state and claimed sandboxes."""
+        from ..platform.client import PlatformClient, segment
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/pause", {})
+
+    @classmethod
+    def resume_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
+        from ..platform.client import PlatformClient, segment
+        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/resume", {})
+
+    @classmethod
+    def wait_for_snapshot(cls, snapshot_id: str, *, wait_timeout_ms: int = 900_000, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
+        from ..errors import ConflictError, TimeoutError
+        deadline = time.monotonic() + wait_timeout_ms / 1000
+        while True:
+            snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
+            if snapshot["status"] == "ready":
+                return snapshot
+            if snapshot["status"] in ("failed", "paused", "suspended"):
+                raise ConflictError(snapshot.get("error") or f"Snapshot is {snapshot['status']}")
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Snapshot did not become ready within the wait timeout")
+            time.sleep(min(1, max(0, deadline - time.monotonic())))
 
     @classmethod
     def delete_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None):

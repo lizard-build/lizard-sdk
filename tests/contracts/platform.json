@@ -3043,7 +3043,8 @@
           "ok": true
         },
         "body": {
-          "name": "snap"
+          "name": "snap",
+          "poolSize": 5
         }
       }
     ],
@@ -3142,17 +3143,29 @@
     },
     "requests": [
       {
+        "method": "GET",
+        "path": "/api/sandbox-snapshots/snap1",
+        "response": {
+          "id": "snap1",
+          "projectId": "p1",
+          "region": "eu-west-lim-a"
+        }
+      },
+      {
         "method": "POST",
-        "path": "/api/sandbox-snapshots/snap1/fork",
+        "path": "/api/sandboxes",
         "response": {
           "id": "sb2"
         },
         "body": {
-          "timeoutMs": 0
+          "snapshotId": "snap1",
+          "projectId": "p1",
+          "region": "eu-west-lim-a",
+          "timeoutMs": 300000
         }
       }
     ],
-    "expectRequests": 1
+    "expectRequests": 2
   },
   {
     "name": "Sandbox.deleteSnapshot",
@@ -3204,7 +3217,7 @@
     "error": "501"
   },
   {
-    "name": "sandbox.snapshot.unsupported",
+    "name": "sandbox.snapshot.capture_conflict",
     "ts": {
       "path": "sandbox.snapshot",
       "args": []
@@ -3218,13 +3231,16 @@
         "method": "POST",
         "path": "/api/sandboxes/sb1/snapshot",
         "response": {
-          "error": "Not supported for k8s"
+          "error": "Disconnect active clients before creating the snapshot"
         },
-        "status": 501,
-        "body": {}
+        "status": 409,
+        "body": {
+          "name": "Snapshot sb1",
+          "poolSize": 5
+        }
       }
     ],
-    "error": "501"
+    "error": "Disconnect active clients"
   },
   {
     "name": "workspaces.list",
@@ -4221,5 +4237,124 @@
         "stream": "data: {\"message\":\"hello\"}\n\n"
       }
     ]
+  },
+  {
+    "name": "Sandbox.getSnapshot",
+    "ts": {
+      "path": "Sandbox.getSnapshot",
+      "args": [
+        "snap1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.get_snapshot",
+      "args": [
+        "snap1"
+      ],
+      "kwargs": {}
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sandbox-snapshots/snap1",
+        "response": {
+          "id": "snap1",
+          "status": "warming",
+          "poolSize": 3
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.setSnapshotWarmPool",
+    "ts": {
+      "path": "Sandbox.setSnapshotWarmPool",
+      "args": [
+        "snap1",
+        3
+      ]
+    },
+    "py": {
+      "path": "Sandbox.set_snapshot_warm_pool",
+      "args": [
+        "snap1",
+        3
+      ],
+      "kwargs": {}
+    },
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/sandbox-snapshots/snap1",
+        "response": {
+          "id": "snap1",
+          "status": "warming",
+          "poolSize": 3
+        },
+        "body": {
+          "poolSize": 3
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.pauseSnapshot",
+    "ts": {
+      "path": "Sandbox.pauseSnapshot",
+      "args": [
+        "snap1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.pause_snapshot",
+      "args": [
+        "snap1"
+      ],
+      "kwargs": {}
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandbox-snapshots/snap1/pause",
+        "response": {
+          "id": "snap1",
+          "status": "paused",
+          "poolSize": 3
+        },
+        "body": {}
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.resumeSnapshot",
+    "ts": {
+      "path": "Sandbox.resumeSnapshot",
+      "args": [
+        "snap1"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.resume_snapshot",
+      "args": [
+        "snap1"
+      ],
+      "kwargs": {}
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandbox-snapshots/snap1/resume",
+        "response": {
+          "id": "snap1",
+          "status": "warming",
+          "poolSize": 3
+        },
+        "body": {}
+      }
+    ],
+    "expectRequests": 1
   }
 ]
