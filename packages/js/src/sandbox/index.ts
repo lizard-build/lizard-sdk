@@ -2,6 +2,7 @@ import { PlatformClient, query } from '../platform/client'
 import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '../config'
 import { Process } from './process'
 import { Fs } from './fs'
+import { Desktop } from './desktop'
 import { SandboxClient, SandboxInfo, SandboxOpts } from './client'
 import { TimeoutError, ConflictError } from '../errors'
 
@@ -95,6 +96,20 @@ export class Sandbox extends SandboxClient {
    */
   readonly process: Process
 
+  /**
+   * Drive the graphical desktop of a `desktop`-template sandbox: stream it to a
+   * browser, take screenshots, click and type.
+   *
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('desktop', { project: 'my-project' })
+   * const { url } = await sandbox.desktop.start() // a credential: anyone with it controls the desktop
+   * await sandbox.desktop.click(100, 200)
+   * const png = await sandbox.desktop.screenshot()
+   * ```
+   */
+  readonly desktop: Desktop
+
   protected readonly connectionConfig: ConnectionConfig
 
   constructor(opts: { sandboxId: string } & ConnectionOpts) {
@@ -103,6 +118,7 @@ export class Sandbox extends SandboxClient {
     this.connectionConfig = new ConnectionConfig(opts)
     this.fs = new Fs(this.sandboxId, this.connectionConfig)
     this.process = new Process(this.sandboxId, this.connectionConfig)
+    this.desktop = new Desktop(this.sandboxId, this.connectionConfig, this.process)
   }
 
   /**

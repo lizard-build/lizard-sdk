@@ -25,7 +25,7 @@ Sandboxes are Linux environments running on Kubernetes. `Sandbox` provides shell
 
 Pricing is flat by size: the hourly price above, billed per second while the sandbox runs. Measured CPU and RAM are not charged, and sandbox egress is free. Attached volumes bill separately. A sandbox created from a private snapshot runs on the machine the snapshot was captured on and is billed by measured usage; `size` is ignored there. There are no `cpus` / `memoryMb` options.
 
-The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, and `interpreter`; availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
+The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, `interpreter` and `desktop` (see [Desktop](#desktop-computer-use)); availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
 The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 
@@ -249,6 +249,63 @@ Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect status, `S
 Snapshot pause preserves immutable saved images, disables replenishment and releases idle warm copies and image cache pins. Resume recreates the configured pool. Capture/build/verification resources are cleaned up automatically; saved images must remain for restore. Deleting a snapshot keeps already claimed sandboxes running. A paused snapshot stays paused after its workspace is unfrozen.
 
 Sandbox `pause()` and `resume()` queue asynchronous operations and return a boolean. The wait helpers report capture errors and time out instead of polling forever. A sandbox resumes with the same ID and saved state. `fork()` still returns HTTP 501 on Kubernetes.
+
+## Desktop (computer use)
+
+The `desktop` template runs a graphical desktop — Xvfb, XFCE and Chromium on `DISPLAY=:1` — that you can watch in a browser and an agent can drive with screenshots, mouse and keyboard. The desktop is not running when the sandbox boots; `desktop.start()` starts it (about a second) and publishes its noVNC stream. `DISPLAY` is set in the image, so anything you `exec` (for example a Playwright script or `xdotool`) talks to the same screen.
+
+```ts
+import { writeFileSync } from 'node:fs'
+
+const sandbox = await Sandbox.create('desktop', { project: 'my-project' })
+try {
+  const { url, viewOnlyUrl } = await sandbox.desktop.start({ width: 1280, height: 800 })
+  console.log('Watch and control:', url) // a credential — see below
+
+  await sandbox.desktop.openUrl('https://example.com')
+  await sandbox.desktop.click(640, 400)
+  await sandbox.desktop.type('hello world')
+  await sandbox.desktop.press('Return')
+  writeFileSync('screen.png', await sandbox.desktop.screenshot())
+} finally {
+  await sandbox.kill()
+}
+```
+
+```python
+from pathlib import Path
+
+with Sandbox.create("desktop", project="my-project") as sandbox:
+    info = sandbox.desktop.start(width=1280, height=800)
+    print("Watch and control:", info.url)  # a credential -- see below
+
+    sandbox.desktop.open_url("https://example.com")
+    sandbox.desktop.click(640, 400)
+    sandbox.desktop.type("hello world")
+    sandbox.desktop.press("Return")
+    Path("screen.png").write_bytes(sandbox.desktop.screenshot())
+```
+
+| TypeScript | Python | What it does |
+| --- | --- | --- |
+| `start({ width?, height? })` | `start(width=, height=)` | Start the desktop (idempotent) and return `{ running, width, height, url, viewOnlyUrl }`. Size is 640–3840 × 480–2160, default 1280×800; a running desktop keeps its size |
+| `info()` | `info()` | Same shape, without starting anything |
+| `stop()` | `stop()` | Stop the desktop and unpublish the stream |
+| `screenshot()` | `screenshot()` | PNG of the whole screen, as `Uint8Array` / `bytes` |
+| `click(x, y, { button?, double? })` | `click(x, y, button=, double=)` | `button` is `'left'` (default), `'right'` or `'middle'` |
+| `moveMouse(x, y)` | `move_mouse(x, y)` | Move the pointer |
+| `drag(fromX, fromY, toX, toY)` | `drag(from_x, from_y, to_x, to_y)` | Left-button drag |
+| `type(text)` | `type(text)` | Type text into the focused window |
+| `press(keys)` | `press(keys)` | xdotool key names or chords: `'Return'`, `'ctrl+l'`, `['ctrl+a', 'Delete']` |
+| `scroll(direction, amount = 3)` | `scroll(direction, amount=3)` | `'up'`, `'down'`, `'left'` or `'right'`, in wheel clicks |
+| `cursorPosition()` | `cursor_position()` | `{ x, y }` / `(x, y)` |
+| `openUrl(url)` | `open_url(url)` | Open a URL in a new Chromium window; returns once Chromium is launched, not when the page has loaded |
+
+Input and screenshots run inside the sandbox with `xdotool` and `scrot` through the normal exec path. Every argument is sent as an argv array and never passes through a shell, so text a model or user asks you to type cannot run commands. `process.exec` / `process.exec_` accept an argv array too, for your own commands.
+
+**Treat both URLs like credentials.** The stream is published on a public hostname, and each URL carries its access token and a VNC password. Anyone with `url` can see and control the desktop, including everything signed in inside it. `viewOnlyUrl` can only watch — the VNC server enforces this, not the page — so share that one when someone only needs to look. Do not log either URL. Stopping and restarting the desktop keeps the same URLs; killing the sandbox revokes them.
+
+On any other template the desktop calls fail with HTTP 400 and `code === 'DESKTOP_NOT_SUPPORTED'`. A screenshot is returned through the exec output, which is capped at 512 KiB; very large or very busy screens can exceed it, and `screenshot()` then throws rather than return a truncated image — start the desktop at a smaller size.
 
 ## Errors
 

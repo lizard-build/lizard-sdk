@@ -4,6 +4,8 @@ export { Sandbox } from './sandbox'
 export type { SandboxOpts, SandboxInfo, SandboxSnapshot, SnapshotOpts, SnapshotWaitOpts } from './sandbox'
 export { resolveProjectId } from './project'
 export type { ProcessResult, ProcessOpts } from './sandbox/process'
+export { Desktop } from './sandbox/desktop'
+export type { DesktopInfo, DesktopStartOpts, ClickOpts, MouseButton, ScrollDirection } from './sandbox/desktop'
 export type { FileInfo, FsOpts } from './sandbox/fs'
 export type { ConnectionOpts } from './config'
 export {
