@@ -2,6 +2,7 @@ import { ConnectionConfig } from '../config'
 import { LizardError } from '../errors'
 import { PlatformClient } from '../platform/client'
 import { Process, ProcessResult } from './process'
+import { Fs } from './fs'
 
 /**
  * State of a sandbox's desktop, and the URLs that stream it.
@@ -41,6 +42,8 @@ export interface ClickOpts {
 
 const BUTTONS: Record<MouseButton, string> = { left: '1', middle: '2', right: '3' }
 const SCROLL_BUTTONS: Record<ScrollDirection, string> = { up: '4', down: '5', left: '6', right: '7' }
+/** Where `lizard-desktop screenshot --path` writes its file (mktemp suffix). */
+const SCREENSHOT_PATH = /^\/tmp\/lizard-screenshot-[A-Za-z0-9_-]+\.png$/
 /** Milliseconds between typed characters; xdotool's own default (12) is what it is tuned for. */
 const TYPE_DELAY_MS = 12
 
@@ -72,6 +75,7 @@ export class Desktop {
     private readonly sandboxId: string,
     private readonly config: ConnectionConfig,
     private readonly process: Process,
+    private readonly fs: Fs,
   ) {}
 
   private get client(): PlatformClient {
@@ -114,11 +118,18 @@ export class Desktop {
    * ```
    */
   async screenshot(): Promise<Uint8Array> {
-    const r = await this.run(['lizard-desktop', 'screenshot'])
-    if (r.truncated) {
-      throw new LizardError('Screenshot is larger than the exec output limit; start the desktop at a smaller size')
+    // The PNG goes through a file, not stdout: exec output is streamed in 64 KiB
+    // lines and capped at 512 KiB, and a real page is a ~250 KB PNG.
+    const r = await this.run(['lizard-desktop', 'screenshot', '--path'])
+    const path = r.stdout.split('\n').map(l => l.trim()).filter(Boolean).pop() ?? ''
+    if (!SCREENSHOT_PATH.test(path)) {
+      throw new LizardError(`Screenshot returned an unexpected path: ${path.slice(0, 200)}`)
     }
-    return decodeBase64(r.stdout.trim())
+    try {
+      return await this.fs.readBytes(path)
+    } finally {
+      await this.fs.remove(path).catch(() => {})
+    }
   }
 
   /** Click at (x, y). */
@@ -208,11 +219,4 @@ export class Desktop {
 function coord(n: number): string {
   if (!Number.isFinite(n) || n < 0) throw new LizardError(`Invalid screen coordinate: ${n}`)
   return String(Math.round(n))
-}
-
-function decodeBase64(b64: string): Uint8Array {
-  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) {
-    throw new LizardError('Screenshot returned no image')
-  }
-  return new Uint8Array(Buffer.from(b64, 'base64'))
 }

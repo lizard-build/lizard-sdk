@@ -109,18 +109,46 @@ describe('sandbox.desktop input', () => {
     expect(await sandbox().desktop.cursorPosition()).toEqual({ x: 640, y: 400 })
     expect(exec(calls)).toEqual(['xdotool', 'getmouselocation', '--shell'])
   })
-  it('screenshot runs lizard-desktop and decodes the base64 PNG', async () => {
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 255])
-    const calls = stub({ stdout: Buffer.from(png).toString('base64') + '\n', stderr: '', exitCode: 0 })
+  /** exec answers with `stdout`; a file read answers with the PNG bytes; DELETE with `removeStatus`. */
+  function stubShot(stdout: string, png: Uint8Array, removeStatus = 200) {
+    const calls: Array<{ method: string; url: string; body: any }> = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string | URL, init: RequestInit = {}) => {
+      const method = init.method ?? 'GET'
+      calls.push({ method, url: String(url), body: init.body ? JSON.parse(String(init.body)) : undefined })
+      if (String(url).endsWith('/exec')) return new Response(JSON.stringify({ stdout, stderr: '', exitCode: 0 }))
+      if (method === 'GET') return new Response(new Blob([new Uint8Array(png)]))
+      return new Response(removeStatus === 200 ? '{}' : '{"error":"gone"}', { status: removeStatus })
+    }))
+    return calls
+  }
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 255])
+  const PATH = '/tmp/lizard-screenshot-Ab12Cd34.png'
+
+  it('screenshot writes a file, reads its bytes and removes it', async () => {
+    const calls = stubShot(`${PATH}\n`, PNG)
     const shot = await sandbox().desktop.screenshot()
-    expect(shot).toBeInstanceOf(Uint8Array)
-    expect([...shot]).toEqual([...png])
-    expect(exec(calls)).toEqual(['lizard-desktop', 'screenshot'])
+    expect([...shot]).toEqual([...PNG])
+    expect(calls).toHaveLength(3)
+    expect(calls[0].body.cmd).toEqual(['lizard-desktop', 'screenshot', '--path'])
+    const read = new URL(calls[1].url)
+    expect([calls[1].method, read.pathname, read.searchParams.get('path')]).toEqual(['GET', '/api/sandboxes/sb1/files', PATH])
+    expect([calls[2].method, calls[2].url, calls[2].body.path]).toEqual(['DELETE', 'https://test.invalid/api/sandboxes/sb1/files', PATH])
   })
-  it('screenshot refuses truncated output instead of returning a broken PNG', async () => {
-    stub({ stdout: 'iVBORw0KGgo', stderr: '', exitCode: 0, truncated: true })
-    await expect(sandbox().desktop.screenshot()).rejects.toThrow('exec output limit')
+  it('screenshot takes the last non-empty stdout line as the path', async () => {
+    const calls = stubShot(`starting\n${PATH}\n\n`, PNG)
+    await sandbox().desktop.screenshot()
+    expect(new URL(calls[1].url).searchParams.get('path')).toBe(PATH)
   })
+  it('screenshot still returns the image when cleanup fails', async () => {
+    stubShot(PATH, PNG, 500)
+    expect([...await sandbox().desktop.screenshot()]).toEqual([...PNG])
+  })
+  it.each(['/etc/passwd', '/tmp/lizard-screenshot-../../etc/passwd.png', '/tmp/other.png', 'iVBORw0KGgo='])(
+    'screenshot refuses an unexpected path %s without reading it', async bad => {
+      const calls = stubShot(`${bad}\n`, PNG)
+      await expect(sandbox().desktop.screenshot()).rejects.toThrow('unexpected path')
+      expect(calls).toHaveLength(1)
+    })
   it('a failed command throws with its stderr', async () => {
     stub({ stdout: '', stderr: 'lizard-desktop: the desktop is not running', exitCode: 1 })
     await expect(sandbox().desktop.screenshot()).rejects.toThrow('the desktop is not running')

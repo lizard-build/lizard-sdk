@@ -291,7 +291,7 @@ with Sandbox.create("desktop", project="my-project") as sandbox:
 | `start({ width?, height? })` | `start(width=, height=)` | Start the desktop (idempotent) and return `{ running, width, height, url, viewOnlyUrl }`. Size is 640–3840 × 480–2160, default 1280×800; a running desktop keeps its size |
 | `info()` | `info()` | Same shape, without starting anything |
 | `stop()` | `stop()` | Stop the desktop and unpublish the stream |
-| `screenshot()` | `screenshot()` | PNG of the whole screen, as `Uint8Array` / `bytes` |
+| `screenshot()` | `screenshot()` | PNG of the whole screen, as `Uint8Array` / `bytes`; the desktop must be running |
 | `click(x, y, { button?, double? })` | `click(x, y, button=, double=)` | `button` is `'left'` (default), `'right'` or `'middle'` |
 | `moveMouse(x, y)` | `move_mouse(x, y)` | Move the pointer |
 | `drag(fromX, fromY, toX, toY)` | `drag(from_x, from_y, to_x, to_y)` | Left-button drag |
@@ -305,7 +305,7 @@ Input and screenshots run inside the sandbox with `xdotool` and `scrot` through 
 
 **Treat both URLs like credentials.** The stream is published on a public hostname, and each URL carries its access token and a VNC password. Anyone with `url` can see and control the desktop, including everything signed in inside it. `viewOnlyUrl` can only watch — the VNC server enforces this, not the page — so share that one when someone only needs to look. Do not log either URL. Stopping and restarting the desktop keeps the same URLs; killing the sandbox revokes them.
 
-On any other template the desktop calls fail with HTTP 400 and `code === 'DESKTOP_NOT_SUPPORTED'`. A screenshot is returned through the exec output, which is capped at 512 KiB; very large or very busy screens can exceed it, and `screenshot()` then throws rather than return a truncated image — start the desktop at a smaller size.
+On any other template the desktop calls fail with HTTP 400 and `code === 'DESKTOP_NOT_SUPPORTED'`. `screenshot()` has the desktop write a PNG to a temporary file in `/tmp`, downloads it with the binary file read, then deletes it, so full-size screenshots are not limited by exec output.
 
 ## Errors
 
