@@ -1,7 +1,7 @@
 export { Lizard } from './lizard'
 export type { LizardOpts, Account } from './lizard'
 export { Sandbox } from './sandbox'
-export type { SandboxOpts, SandboxInfo } from './sandbox'
+export type { SandboxOpts, SandboxInfo, SandboxSnapshot, SnapshotOpts, SnapshotWaitOpts } from './sandbox'
 export { resolveProjectId } from './project'
 export type { ProcessResult, ProcessOpts } from './sandbox/process'
 export type { FileInfo, FsOpts } from './sandbox/fs'

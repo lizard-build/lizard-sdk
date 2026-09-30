@@ -3,8 +3,28 @@ import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '..
 import { Process } from './process'
 import { Fs } from './fs'
 import { SandboxClient, SandboxInfo, SandboxOpts } from './client'
+import { TimeoutError, ConflictError } from '../errors'
 
 export { SandboxOpts, SandboxInfo }
+
+export interface SandboxSnapshot {
+  id: string
+  name: string
+  projectId: string
+  workspaceId: string
+  region: string
+  sourceSandboxId: string
+  status: 'building' | 'warming' | 'ready' | 'paused' | 'suspended' | 'failed'
+  poolSize: number
+  readyCount: number
+  error: string | null
+  cpus: number
+  memoryMb: number
+  createdAt: number
+}
+export interface SnapshotOpts { poolSize?: number }
+export interface SnapshotWaitOpts extends ConnectionOpts { waitTimeoutMs?: number }
+
 
 /**
  * A Linux sandbox running on Kubernetes.
@@ -166,24 +186,29 @@ export class Sandbox extends SandboxClient {
     return SandboxClient.killSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
-  /**
-   * Request sandbox pause. The Kubernetes backend returns HTTP 501.
-   *
-   * @deprecated Unsupported on Kubernetes. Save files to a {@link Volume}
-   * and attach it to a new sandbox instead.
-   */
+  /** Queue a CRIU checkpoint and stop compute. Use waitForStatus('paused') before resuming. */
   async pause(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
-  /**
-   * Request sandbox resume. The Kubernetes backend returns HTTP 501.
-   *
-   * @deprecated Unsupported on Kubernetes. Use {@link Sandbox.connect} to
-   * reconnect to a running sandbox.
-   */
+  /** Queue restoration of saved memory and files. Use waitForStatus('running') before executing. */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.resumeSandbox(this.sandboxId, this.resolveOpts(opts))
+  }
+
+  /** Wait for an asynchronous pause/resume operation to finish. */
+  async waitForStatus(status: 'paused' | 'running', opts?: SnapshotWaitOpts): Promise<SandboxInfo> {
+    const deadline = Date.now() + (opts?.waitTimeoutMs ?? 600_000)
+    do {
+      const info = await this.getInfo(opts)
+      if (info.status === status) return info
+      if (['failed', 'stopped', 'deleted'].includes(info.status ?? '') || info.pauseError) {
+        throw new ConflictError(info.pauseError ?? `Sandbox is ${info.status}`)
+      }
+      if (Date.now() >= deadline) break
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    } while (Date.now() < deadline)
+    throw new TimeoutError(`Sandbox did not become ${status} within the wait timeout`)
   }
 
   /**
@@ -224,9 +249,9 @@ export class Sandbox extends SandboxClient {
   fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<unknown> {
     return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
   }
-  /** Snapshot creation is unsupported on Kubernetes; the backend returns HTTP 501. */
-  snapshot(name?: string): Promise<unknown> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name })
+  /** Capture memory and workspace files. Disconnect active clients before capturing. */
+  snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5 })
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
@@ -234,13 +259,43 @@ export class Sandbox extends SandboxClient {
   logs(opts: { tail?: number; signal?: AbortSignal } = {}) {
     return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${this.sandboxId}/logs`, { tail: opts.tail }), { signal: opts.signal })
   }
-  static snapshots(projectId: string, opts?: ConnectionOpts): Promise<unknown[]> {
-    return new PlatformClient(opts ?? {}).get(`/api/projects/${projectId}/snapshots`)
+  static snapshots(projectId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot[]> {
+    return new PlatformClient(opts ?? {}).get(`/api/projects/${encodeURIComponent(projectId)}/snapshots`)
   }
-  /** Snapshot restore is unsupported on Kubernetes; the backend returns HTTP 501. */
+  static getSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
+    return new PlatformClient(opts ?? {}).get(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
+  }
+  /** Start a sandbox from an available warm copy in the snapshot's project and region. */
   static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number }): Promise<Sandbox> {
-    const result = await new PlatformClient(opts ?? {}).post<{ id?: string; sandboxId?: string }>(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/fork`, { timeoutMs: opts?.timeoutMs ?? 0 })
-    return new this({ ...opts, sandboxId: result.sandboxId ?? result.id! })
+    const client = new PlatformClient(opts ?? {})
+    const snapshot = await this.getSnapshot(snapshotId, opts)
+    const result = await client.post<{ id: string; sandboxId?: string }>('/api/sandboxes', {
+      snapshotId, projectId: snapshot.projectId, region: snapshot.region,
+      timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
+    })
+    return new this({ ...opts, sandboxId: result.sandboxId ?? result.id })
+  }
+  static setSnapshotWarmPool(snapshotId: string, poolSize: number, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
+    return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { poolSize })
+  }
+  /** Release idle warm copies; retain saved state and existing claimed sandboxes. */
+  static pauseSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
+    return new PlatformClient(opts ?? {}).post(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/pause`, {})
+  }
+  /** Refill the configured warm pool without another capture. */
+  static resumeSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
+    return new PlatformClient(opts ?? {}).post(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/resume`, {})
+  }
+  static async waitForSnapshot(snapshotId: string, opts?: SnapshotWaitOpts): Promise<SandboxSnapshot> {
+    const deadline = Date.now() + (opts?.waitTimeoutMs ?? 900_000)
+    do {
+      const snapshot = await this.getSnapshot(snapshotId, opts)
+      if (snapshot.status === 'ready') return snapshot
+      if (['failed', 'paused', 'suspended'].includes(snapshot.status)) throw new ConflictError(snapshot.error ?? `Snapshot is ${snapshot.status}`)
+      if (Date.now() >= deadline) break
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    } while (Date.now() < deadline)
+    throw new TimeoutError('Snapshot did not become ready within the wait timeout')
   }
   static deleteSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<void> {
     return new PlatformClient(opts ?? {}).delete(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)

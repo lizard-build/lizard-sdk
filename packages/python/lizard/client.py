@@ -92,6 +92,8 @@ class Lizard:
         self,
         template: str | None = None,
         *,
+        snapshot_id: str | None = None,
+        size: str | None = None,
         timeout_ms: int | None = None,
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
@@ -103,6 +105,8 @@ class Lizard:
         """Create a new sandbox in this client's project."""
         return Sandbox.create(
             template,
+            snapshot_id=snapshot_id,
+            size=size,
             api_key=self._config.api_key,
             api_url=self._config.api_url,
             timeout_ms=timeout_ms if timeout_ms is not None else self._config.timeout_ms,
