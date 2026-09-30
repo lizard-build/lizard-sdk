@@ -118,7 +118,7 @@ export class Sandbox extends SandboxClient {
     this.connectionConfig = new ConnectionConfig(opts)
     this.fs = new Fs(this.sandboxId, this.connectionConfig)
     this.process = new Process(this.sandboxId, this.connectionConfig)
-    this.desktop = new Desktop(this.sandboxId, this.connectionConfig, this.process)
+    this.desktop = new Desktop(this.sandboxId, this.connectionConfig, this.process, this.fs)
   }
 
   /**

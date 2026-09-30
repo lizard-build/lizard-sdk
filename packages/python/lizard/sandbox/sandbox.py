@@ -112,7 +112,7 @@ class Sandbox:
         self.process = Process(self.sandbox_id, self._config)
         #: Drive the graphical desktop of a ``desktop``-template sandbox: stream it to
         #: a browser, take screenshots, click and type. See :class:`Desktop`.
-        self.desktop = Desktop(self.sandbox_id, self._config, self.process)
+        self.desktop = Desktop(self.sandbox_id, self._config, self.process, self.fs)
 
     @classmethod
     def create(

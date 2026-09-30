@@ -1,5 +1,4 @@
 """sandbox.desktop: REST calls and xdotool/scrot argv, with the transport mocked."""
-import base64
 import json
 
 import httpx
@@ -150,17 +149,57 @@ def test_cursor_position(execs):
     assert argv(execs) == ["xdotool", "getmouselocation", "--shell"]
 
 
-def test_screenshot_decodes_base64(execs):
-    png = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 255])
-    execs.reply = {"stdout": base64.b64encode(png).decode() + "\n", "stderr": "", "exitCode": 0}
-    assert sandbox().desktop.screenshot() == png
-    assert argv(execs) == ["lizard-desktop", "screenshot"]
+PNG = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 255])
+SHOT_PATH = "/tmp/lizard-screenshot-Ab12Cd34.png"
 
 
-def test_screenshot_refuses_truncated_output(execs):
-    execs.reply = {"stdout": "iVBORw0KGgo", "stderr": "", "exitCode": 0, "truncated": True}
-    with pytest.raises(LizardError, match="exec output limit"):
+@pytest.fixture
+def files(monkeypatch):
+    """Record the file read and the cleanup DELETE; answer the read with PNG."""
+    calls = Calls()
+    calls.state = {"remove_status": 200}
+
+    def get(url, **kw):
+        calls.append(("GET", url, kw["params"]["path"]))
+        return httpx.Response(200, content=PNG)
+
+    def request(method, url, **kw):
+        calls.append((method, url, kw["json"]["path"]))
+        return httpx.Response(calls.state["remove_status"], json={})
+
+    monkeypatch.setattr(httpx, "get", get)
+    monkeypatch.setattr(httpx, "request", request)
+    return calls
+
+
+def test_screenshot_reads_file_and_removes_it(execs, files):
+    execs.reply = {"stdout": SHOT_PATH + "\n", "stderr": "", "exitCode": 0}
+    assert sandbox().desktop.screenshot() == PNG
+    assert argv(execs) == ["lizard-desktop", "screenshot", "--path"]
+    assert files == [
+        ("GET", "https://test.invalid/api/sandboxes/sb1/files", SHOT_PATH),
+        ("DELETE", "https://test.invalid/api/sandboxes/sb1/files", SHOT_PATH),
+    ]
+
+
+def test_screenshot_uses_last_nonempty_line(execs, files):
+    execs.reply = {"stdout": f"starting\n{SHOT_PATH}\n\n", "stderr": "", "exitCode": 0}
+    sandbox().desktop.screenshot()
+    assert files[0][2] == SHOT_PATH
+
+
+def test_screenshot_survives_failed_cleanup(execs, files):
+    files.state["remove_status"] = 500
+    execs.reply = {"stdout": SHOT_PATH, "stderr": "", "exitCode": 0}
+    assert sandbox().desktop.screenshot() == PNG
+
+
+@pytest.mark.parametrize("bad", ["/etc/passwd", "/tmp/lizard-screenshot-../../etc/passwd.png", "/tmp/other.png", "iVBORw0KGgo=", ""])
+def test_screenshot_refuses_unexpected_path(execs, files, bad):
+    execs.reply = {"stdout": bad + "\n", "stderr": "", "exitCode": 0}
+    with pytest.raises(LizardError, match="unexpected path"):
         sandbox().desktop.screenshot()
+    assert files == []
 
 
 def test_failed_command_raises_with_stderr(execs):

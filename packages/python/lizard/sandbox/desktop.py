@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import base64
-import binascii
 import math
 import re
 from dataclasses import dataclass
@@ -11,6 +9,7 @@ from ..errors import LizardError
 
 if TYPE_CHECKING:
     from ..config import ConnectionConfig
+    from .fs import Fs
     from .process import Process, ProcessResult
 
 
@@ -21,6 +20,8 @@ _BUTTONS = {"left": "1", "middle": "2", "right": "3"}
 _SCROLL_BUTTONS = {"up": "4", "down": "5", "left": "6", "right": "7"}
 #: Milliseconds between typed characters; xdotool's own default.
 _TYPE_DELAY_MS = 12
+#: Where ``lizard-desktop screenshot --path`` writes its file (mktemp suffix).
+_SCREENSHOT_PATH = re.compile(r"/tmp/lizard-screenshot-[A-Za-z0-9_-]+\.png")
 _OPEN_URL_SCRIPT = 'setsid chromium --new-window "$1" >/dev/null 2>&1 < /dev/null &'
 
 
@@ -84,10 +85,11 @@ class Desktop:
         png = sandbox.desktop.screenshot()
     """
 
-    def __init__(self, sandbox_id: str, config: "ConnectionConfig", process: "Process"):
+    def __init__(self, sandbox_id: str, config: "ConnectionConfig", process: "Process", fs: "Fs"):
         self._sandbox_id = sandbox_id
         self._config = config
         self._process = process
+        self._fs = fs
 
     def _path(self) -> str:
         from ..platform.client import segment
@@ -126,16 +128,20 @@ class Desktop:
 
             Path("screen.png").write_bytes(sandbox.desktop.screenshot())
         """
-        r = self._run(["lizard-desktop", "screenshot"])
-        if r.truncated:
-            raise LizardError("Screenshot is larger than the exec output limit; start the desktop at a smaller size")
-        data = r.stdout.strip()
-        if not data:
-            raise LizardError("Screenshot returned no image")
+        # The PNG goes through a file, not stdout: exec output is streamed in 64 KiB
+        # lines and capped at 512 KiB, and a real page is a ~250 KB PNG.
+        r = self._run(["lizard-desktop", "screenshot", "--path"])
+        lines = [line.strip() for line in r.stdout.splitlines() if line.strip()]
+        path = lines[-1] if lines else ""
+        if not _SCREENSHOT_PATH.fullmatch(path):
+            raise LizardError(f"Screenshot returned an unexpected path: {path[:200]}")
         try:
-            return base64.b64decode(data, validate=True)
-        except (binascii.Error, ValueError) as e:
-            raise LizardError(f"Screenshot returned no image: {e}") from None
+            return self._fs.read_bytes(path)
+        finally:
+            try:
+                self._fs.remove(path)
+            except Exception:
+                pass  # best effort: a leftover file in /tmp is harmless
 
     def click(self, x: float, y: float, *, button: MouseButton = "left", double: bool = False) -> None:
         """Click at (x, y)."""
