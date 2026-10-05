@@ -49,10 +49,11 @@ describe('SSE and HTTP transport', () => {
     await Sandbox.create('base', { ...opts, projectId: 'p1', timeoutMs: 0 })
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toMatchObject({ timeoutMs: 0 })
   })
-  it('rejects lossy binary file writes before sending', async () => {
-    const fetch = vi.fn(); vi.stubGlobal('fetch', fetch)
-    await expect(new Sandbox({ sandboxId: 's', ...opts }).fs.write('/tmp/data', new Uint8Array([255]))).rejects.toThrow()
-    expect(fetch).not.toHaveBeenCalled()
+  it('sends binary file writes base64-encoded, byte for byte', async () => {
+    const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response('{"status":"written"}', { status: 201 }))
+    vi.stubGlobal('fetch', fetch)
+    await new Sandbox({ sandboxId: 's', ...opts }).fs.write('/tmp/data', new Uint8Array([255, 0, 128]))
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ path: '/tmp/data', content: '/wCA', encoding: 'base64' })
   })
   it('does not move a secret across projects', async () => {
     const fetch = vi.fn(async () => new Response('{"name":"api","projectId":"other"}'))

@@ -13,7 +13,9 @@ class VolumeInfo:
     name: str
     size_gb: int
     status: str
-    created_at: int
+    #: Creation time: an ISO-8601 string for Firecracker volumes, unix ms for container volumes.
+    created_at: int | str
+    #: Id of the sandbox the volume is attached to, or None when it is free.
     attached_to: str | None = None
     #: Region the volume's node lives in. A sandbox mounting it runs here too.
     region: str | None = None
@@ -36,7 +38,8 @@ class Volume:
     a letter or digit, up to 64 characters.
 
     Mount it to a sandbox with ``Sandbox.create(volume_name="my-data")``; inside the
-    sandbox it appears at ``/workspace``.
+    sandbox it appears at ``/workspace``. A volume is attached to one sandbox at a
+    time (``attached_to``), and a sandbox with a volume attached cannot be forked.
 
     Example::
 
@@ -121,7 +124,7 @@ class Volume:
 
         New volumes allow 1–50 GB (default 5), subject to server config.
         An existing volume is returned as-is -- ``size_gb`` applies only to a fresh
-        create, so an existing volume keeps its size. Call :meth:`resize` to change it.
+        create, so an existing volume keeps its size.
         """
         import httpx
 
@@ -200,12 +203,16 @@ class Volume:
     ) -> VolumeInfo:
         """Resize a volume, by name or by id, to ``size_gb``.
 
-        The change is in place and online: the size is a quota, so no data is
-        copied, it completes in well under a second, and a sandbox that has the
-        volume mounted keeps running and sees the new size immediately. Both growing
-        and shrinking are allowed, but a shrink must leave at least 10% of the new
-        size free -- otherwise it raises :class:`~lizard.ConflictError` with
-        ``code == "volume_too_full_to_shrink"``.
+        **Firecracker volumes cannot be resized yet**: volumes created for the
+        default Firecracker sandboxes raise :class:`~lizard.LizardError` (400) with
+        ``code == "volume_not_resizable"``. Create the volume at the size you need,
+        or copy the data to a new, larger one.
+
+        On a container volume the change is in place and online: the size is a
+        quota, so no data is copied and a mounted sandbox sees the new size
+        immediately. Both growing and shrinking are allowed, but a shrink must
+        leave at least 10% of the new size free -- otherwise it raises
+        :class:`~lizard.ConflictError` with ``code == "volume_too_full_to_shrink"``.
 
         Other failures carry a ``code`` too: ``invalid_volume_size``,
         ``volume_not_resizable``, ``volume_resize_in_progress``,
@@ -270,7 +277,7 @@ class Volume:
         return _to_info(res.json())
 
     def resize_to(self, project_id: str, size_gb: int) -> VolumeInfo:
-        """Resize this volume in place -- see :meth:`resize`.
+        """Resize this volume -- see :meth:`resize` (not supported for Firecracker volumes yet).
 
         Named ``resize_to`` because ``resize`` is the classmethod: a Python class
         cannot carry a classmethod and an instance method under one name (the same

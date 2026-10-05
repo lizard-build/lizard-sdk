@@ -22,7 +22,23 @@ class SandboxSnapshot(TypedDict):
     error: str | None
     cpus: int
     memoryMb: int
+    #: Unix milliseconds.
     createdAt: int
+
+
+@dataclass
+class ExposedPort:
+    """A sandbox port published on a public HTTPS hostname. See :meth:`Sandbox.expose_port`."""
+
+    #: Hostname without a scheme, e.g. ``abc-3000.sandbox.eu-west-lim-a.onlizard.com``.
+    hostname: str
+    #: A browser URL that carries the access token (``?lizard_token=...``).
+    url: str
+    port: int
+    #: The port is private: every request needs this token, either as the
+    #: ``X-Lizard-Access-Token`` header or once as ``?lizard_token=`` (a browser
+    #: then gets a cookie).
+    access_token: str
 
 
 @dataclass
@@ -35,6 +51,8 @@ class SandboxInfo:
     region: str | None = None
     status: str | None = None
     pause_error: str | None = None
+    #: The sandbox runtime: ``"firecracker"`` (a microVM), ``"container"``, or None when unknown.
+    runtime: str | None = None
     size: str | None = None
     price_per_hour: float | None = None
     cpus: int | None = None
@@ -58,6 +76,7 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
         region=s.get("region"),
         status=s.get("status"),
         pause_error=s.get("pauseError"),
+        runtime=s.get("runtime"),
         size=s.get("size"),
         price_per_hour=s.get("pricePerHour"),
         cpus=s.get("cpus"),
@@ -66,11 +85,29 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
     )
 
 
+@dataclass
+class ForkResult:
+    """One entry of :meth:`Sandbox.fork`'s result: the new sandbox, or why that
+    copy could not be made (e.g. the account's sandbox limit)."""
+
+    sandbox: "Sandbox | None" = None
+    info: SandboxInfo | None = None
+    error: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.sandbox is not None
+
+
 class Sandbox:
     """
-    A Linux sandbox running on Kubernetes.
+    A Linux sandbox: a Firecracker microVM with its own kernel.
 
-    Run commands, read and write files, and expose HTTP ports in a sandbox.
+    Run commands, read and write files, and expose HTTP ports in a sandbox. A
+    sandbox boots in well under a second; :meth:`pause` and :meth:`resume` keep its
+    memory and running processes, :meth:`snapshot` saves it in about 2 s and
+    :meth:`restore` starts a copy in about 0.4 s, and :meth:`fork` clones a running
+    sandbox, processes and all.
 
     Sandboxes are **ephemeral**: killing one, or letting it hit its timeout,
     discards everything written inside it. State that has to outlive a sandbox
@@ -108,6 +145,11 @@ class Sandbox:
     ):
         self.sandbox_id = sandbox_id
         self._config = ConnectionConfig(api_key=api_key, api_url=api_url, timeout_ms=timeout_ms)
+        #: The token that opens this sandbox's published ports. Set by
+        #: :meth:`get_host` and :meth:`expose_port`; send it as the
+        #: ``X-Lizard-Access-Token`` header.
+        self.access_token: str | None = None
+        self._pc = None
         self.fs = Fs(self.sandbox_id, self._config)
         self.process = Process(self.sandbox_id, self._config)
         #: Drive the graphical desktop of a ``desktop``-template sandbox: stream it to
@@ -137,8 +179,9 @@ class Sandbox:
         Boot a new Lizard sandbox from the specified template.
 
         Template availability and installed tools depend on the platform and region.
-        Use ``base`` for shell commands or ``interpreter`` for Python process commands.
-        Hosted templates do not support the legacy ``CodeSandbox`` execution API.
+        Use ``base`` for shell commands, ``interpreter`` for Python with the data
+        stack (use :class:`~lizard.CodeSandbox` to run code snippets in it), or
+        ``desktop`` for a graphical desktop.
 
         Every sandbox must belong to a project — billing is metered per project.
         Pass ``project`` (its ID, slug, or name) or an exact ``project_id``, or
@@ -155,6 +198,10 @@ class Sandbox:
             $0.036/h). Measured CPU/RAM are not charged and egress is free;
             attached volumes bill separately.
         :param project: Project ID, slug, or name the sandbox belongs to.
+        :param metadata: Your own key/value labels for the sandbox, returned by
+            :meth:`get_info` and :meth:`list`.
+        :param envs: Environment variables set in the sandbox, visible to every
+            command it runs.
         :param project_id: Exact project ID — skips resolving ``project``.
         :param region: Region to run the sandbox in, e.g. ``"us-east-1"``. Leave
             unset when attaching a volume: a volume is node-local, so the server
@@ -306,7 +353,8 @@ class Sandbox:
         return True
 
     def pause(self) -> bool:
-        """Queue CRIU capture. Wait for status 'paused' before resuming."""
+        """Pause the sandbox: its memory, running processes and files are kept and
+        compute stops. Wait with ``wait_for_status("paused")`` before resuming."""
         import httpx
 
         res = httpx.post(
@@ -322,7 +370,8 @@ class Sandbox:
         return True
 
     def resume(self) -> bool:
-        """Queue restoration. Wait for status 'running' before executing commands."""
+        """Resume a paused sandbox exactly where it stopped, processes included.
+        Wait with ``wait_for_status("running")`` before running commands."""
         import httpx
 
         res = httpx.post(
@@ -368,8 +417,13 @@ class Sandbox:
 
     def get_host(self, port: int) -> str:
         """
-        Register a public HTTPS route for a port inside the sandbox and return
-        the hostname (without scheme).
+        Publish a port on a public HTTPS hostname and return the hostname
+        (without scheme).
+
+        The port is private: requests need :attr:`access_token` (set by this
+        call) as the ``X-Lizard-Access-Token`` header, or ``?lizard_token=<token>``
+        in a browser. :meth:`expose_port` returns the token and a ready-made
+        browser URL together.
 
         :param port: Port number the service is listening on inside the sandbox.
 
@@ -377,32 +431,104 @@ class Sandbox:
 
             # Start an HTTP server on port 3000 before exposing it.
             hostname = sandbox.get_host(3000)
-            print(f"https://{hostname}")
+            httpx.get(f"https://{hostname}/", headers={"X-Lizard-Access-Token": sandbox.access_token})
+        """
+        return self.expose_port(port).hostname
+
+    def expose_port(self, port: int) -> ExposedPort:
+        """
+        Publish a port and return everything needed to reach it: the hostname, a
+        browser ``url`` that carries the token, and the ``access_token`` for API
+        clients.
+
+        Example::
+
+            exposed = sandbox.expose_port(3000)
+            print(exposed.url)  # open in a browser
+            httpx.get(f"https://{exposed.hostname}/api",
+                      headers={"X-Lizard-Access-Token": exposed.access_token})
         """
         import httpx
+
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/expose/{port}",
             headers=self._config.headers,
-            timeout=30,
+            timeout=HTTP_TIMEOUT_S,
         )
-        res.raise_for_status()
-        return res.json()["hostname"]
+        if not res.is_success:
+            from ..errors import handle_api_error
+            handle_api_error(res.status_code, res.text)
+        body = res.json()
+        token = body.get("accessToken") or ""
+        if token:
+            self.access_token = token
+        return ExposedPort(
+            hostname=body["hostname"],
+            url=body.get("url") or f"https://{body['hostname']}",
+            port=body.get("port", port),
+            access_token=token,
+        )
+
+    def _platform(self):
+        """This sandbox's HTTP client, reused across calls (one connection pool)."""
+        from ..platform.client import PlatformClient
+        if self._pc is None:
+            self._pc = PlatformClient(self._config)
+        return self._pc
 
     def __enter__(self) -> "Sandbox":
         return self
 
     def __exit__(self, *_: Any) -> None:
-        self.kill()
+        try:
+            self.kill()
+        finally:
+            self.close()
 
-    def fork(self, *, count: int = 1, timeout_ms: int = 0):
-        """Fork is unsupported on Kubernetes; the backend returns HTTP 501."""
-        from ..platform.client import PlatformClient
-        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
+    def fork(self, *, count: int = 1, timeout_ms: int = 0) -> "list[ForkResult]":
+        """Clone this running sandbox ``count`` times (1-10).
+
+        Each fork is a copy of the microVM at this instant -- memory, running
+        processes and files -- and is billed like its source. The source keeps
+        running.
+
+        Returns one :class:`ForkResult` per requested fork, in order: its
+        ``sandbox`` (a handle like this one) and ``info``, or ``error`` for a copy
+        that could not be made (e.g. the account's sandbox limit). A sandbox with
+        a volume attached cannot be forked (:class:`~lizard.ConflictError`, 409).
+
+        :param timeout_ms: Lifetime of each fork; 0 (the default) uses the
+            source's timeout.
+
+        Example::
+
+            for f in sandbox.fork(count=2):
+                if f.sandbox:
+                    f.sandbox.process.exec_("echo hi")
+        """
+        result = self._platform().post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
+        out: list[ForkResult] = []
+        for entry in result if isinstance(result, list) else []:
+            info = entry.get("sandbox") if isinstance(entry, dict) else None
+            sid = (info or {}).get("sandboxId") or (info or {}).get("id")
+            if not sid:
+                out.append(ForkResult(error=(entry or {}).get("error") or "fork failed"))
+                continue
+            out.append(ForkResult(
+                sandbox=type(self)(sid, api_key=self._config.api_key, api_url=self._config.api_url),
+                info=_to_sandbox_info({**info, "sandboxId": sid}),
+            ))
+        return out
 
     def snapshot(self, name: str | None = None, *, pool_size: int = 5) -> SandboxSnapshot:
-        """Capture memory and workspace. Disconnect active clients before capture."""
-        from ..platform.client import PlatformClient
-        return PlatformClient(self._config).post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size})
+        """Save this sandbox -- memory, running processes and files -- as a private
+        snapshot.
+
+        A Firecracker snapshot is ``ready`` as soon as this returns (about 2 s);
+        start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
+        running. ``pool_size`` applies to container sandboxes only.
+        """
+        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size})
 
     def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
         from ..errors import ConflictError, TimeoutError
@@ -418,47 +544,62 @@ class Sandbox:
             time.sleep(min(1, max(0, deadline - time.monotonic())))
 
     def unexpose(self, port: int) -> None:
-        from ..platform.client import PlatformClient
-        PlatformClient(self._config).delete(f"/api/sandboxes/{self.sandbox_id}/expose/{port}")
+        """Unpublish a port exposed with :meth:`get_host` / :meth:`expose_port`."""
+        self._platform().delete(f"/api/sandboxes/{self.sandbox_id}/expose/{port}")
 
     def logs(self, *, tail: int | None = None):
-        from ..platform.client import PlatformClient, query
-        return PlatformClient(self._config).events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
+        """Stream the sandbox's logs. Not available on Firecracker sandboxes yet
+        (:class:`~lizard.LizardError`, 501)."""
+        from ..platform.client import query
+        return self._platform().events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
+
+    def close(self) -> None:
+        """Release this handle's HTTP connections. The sandbox keeps running."""
+        for owner in (self, self.desktop):
+            pc = getattr(owner, "_pc", None)
+            if pc is not None:
+                pc.close()
+                owner._pc = None
 
     @classmethod
     def snapshots(cls, project_id: str, *, api_key: str | None = None, api_url: str | None = None) -> list[SandboxSnapshot]:
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/projects/{segment(project_id)}/snapshots")
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get(f"/api/projects/{segment(project_id)}/snapshots")
 
     @classmethod
     def get_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).get(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
 
     @classmethod
     def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
-        """Claim a warm copy in the snapshot's project and region."""
+        """Start a new sandbox from a snapshot, in the snapshot's project and region."""
         from ..platform.client import PlatformClient
-        client = PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url))
         snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
-        result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as client:
+            result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
 
     @classmethod
     def set_snapshot_warm_pool(cls, snapshot_id: str, pool_size: int, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).patch(f"/api/sandbox-snapshots/{segment(snapshot_id)}", {"poolSize": pool_size})
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.patch(f"/api/sandbox-snapshots/{segment(snapshot_id)}", {"poolSize": pool_size})
 
     @classmethod
     def pause_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
-        """Release idle warm copies, preserving saved state and claimed sandboxes."""
+        """Release idle warm copies (container snapshots), preserving saved state and claimed sandboxes."""
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/pause", {})
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/pause", {})
 
     @classmethod
     def resume_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/resume", {})
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/resume", {})
 
     @classmethod
     def wait_for_snapshot(cls, snapshot_id: str, *, wait_timeout_ms: int = 900_000, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
@@ -477,4 +618,5 @@ class Sandbox:
     @classmethod
     def delete_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None):
         from ..platform.client import PlatformClient, segment
-        return PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)).delete(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.delete(f"/api/sandbox-snapshots/{segment(snapshot_id)}")

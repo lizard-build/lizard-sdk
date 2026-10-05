@@ -195,7 +195,7 @@ class _ProjectVolumes:
         return Volume.list(self._parent.project_id(), **self._kw())
 
     def resize(self, name_or_id: str, size_gb: int) -> VolumeInfo:
-        """Resize in place, online, no data copied -- see :meth:`Volume.resize`."""
+        """Resize a volume -- see :meth:`Volume.resize` (not supported for Firecracker volumes yet)."""
         return Volume.resize(self._parent.project_id(), name_or_id, size_gb, **self._kw())
 
     def delete(self, name_or_id: str) -> None:

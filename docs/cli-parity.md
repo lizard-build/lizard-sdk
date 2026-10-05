@@ -2,7 +2,7 @@
 
 Checked against CLI 4.0.8 (`92de61f`) and the backend source at the audit date. The command map in `tests/contracts/cli-coverage.json` lists every discovered command. `scripts/audit_cli.py` fails when the installed CLI adds a command without a mapping.
 
-CLI PR #13 removes `sandbox pause`, `resume`, `fork`, `snapshot`, `restore` and the `snapshot-fork` alias. The updated CLI has 99 command entries. The coverage map keeps these five commands separately as legacy entries so discovery can also check published CLI 4.0.8 until the removal ships. This historical discovery audit predates the later CRIU and warm snapshot release; the current SDK supports those operations as described below.
+CLI PR #13 removes `sandbox pause`, `resume`, `fork`, `snapshot`, `restore` and the `snapshot-fork` alias. The updated CLI has 99 command entries. The coverage map keeps these five commands separately as legacy entries so discovery can also check published CLI 4.0.8 until the removal ships. This historical discovery audit predates the Firecracker sandbox runtime; the current SDK supports those operations as described below.
 
 ## Native APIs
 
@@ -19,7 +19,7 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 | `git` | `github.status/installUrl/checkout` |
 | `s3` | `storage.list/upload` |
 | `credits` | `billing.balance/transactions/summary/live/paymentMethods/setupPaymentMethod/removePaymentMethod/purchase/autoTopup/setAutoTopup/runAutoTopup/redeemPromo/x402Quote/paymentStatus/payX402` |
-| `sandbox` | `Sandbox.create/connect/list/restore/snapshots/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
+| `sandbox` | `Sandbox.create/connect/list/restore/snapshots/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/exposePort/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
 | `volume` | `Volume.*`, project-bound `client.volumes.*`, `projects.volumeLimits` |
 | `workspace`, `keys`, `regions`, `whoami` | `workspaces.*`, `apiKeys.*`, `regions.list`, `whoami` |
 
@@ -53,7 +53,7 @@ Use the same request ID to recover a payment. `pending` or a network error is no
 
 ## Backend limits
 
-CRIU sandbox pause/resume and private warm snapshot creation/restoration are supported. Both SDKs also expose snapshot get/list/delete, pool resizing, pool pause/resume, and wait helpers. Fork remains unsupported (HTTP 501).
+Sandbox pause/resume (memory and processes kept), snapshot creation/restoration and fork are supported on Firecracker sandboxes. Both SDKs also expose snapshot get/list/delete and wait helpers, plus warm-pool resizing and pool pause/resume for container snapshots.
 
 Sandbox file upload accepts UTF-8 text. Passing invalid UTF-8 bytes fails locally instead of corrupting data. Use `readBytes` / `read_bytes` for binary downloads.
 

@@ -1,5 +1,6 @@
 import { Sandbox, SandboxOpts } from '../sandbox'
 import { ConnectionOpts } from '../config'
+import { LizardError } from '../errors'
 import {
   Execution,
   ExecutionError,
@@ -8,41 +9,62 @@ import {
   RunCodeOpts,
   CreateContextOpts,
 } from './types'
+import { RUNNER_SOURCE } from './runner'
 
 export { Execution, ExecutionError, CodeContext, RunCodeOpts, CreateContextOpts }
 export type { RunCodeLanguage } from './types'
 
-const CODE_INTERPRETER_PORT = 8080
+/** Default execution timeout for {@link CodeSandbox.runCode}. */
+const DEFAULT_RUN_TIMEOUT_MS = 60_000
+/** Extra time the exec call gets on top of the code's own timeout (kernel start-up). */
+const RUNNER_OVERHEAD_MS = 45_000
+/** Encoded arguments above this go through a file instead of argv (128 KiB per-argument limit). */
+const MAX_INLINE_ARGS = 100_000
+
+type RunnerEvent = Record<string, unknown> & { type?: string }
 
 /**
- * Legacy client for the code-interpreter execution server.
+ * A sandbox for running code snippets, built on {@link Sandbox.process}.
  *
- * Current hosted templates do not provide this server. The default
- * `code-interpreter-v1` template is unavailable; selecting `interpreter`
- * does not enable this API. Use `Sandbox.create('interpreter', options)`
- * and `sandbox.process.exec()` for Python commands instead.
+ * Boots the `interpreter` template by default. Python runs in a persistent
+ * Jupyter kernel per context, so variables, imports and functions carry over
+ * between calls, `execution.results` holds rich output (the value of the last
+ * expression, matplotlib charts as `image/png`, HTML, ...) and errors carry
+ * the exception name and traceback.
  *
- * The methods remain for compatibility with a separately provided server.
+ * Limits, honestly:
+ * - `javascript` (node) and `bash` run each call as a fresh process: no state
+ *   carries over and `results` stays empty. `node` must be installed in the
+ *   template; the `interpreter` template does not ship it.
+ * - On a template without Jupyter (e.g. `base`), Python also runs as a fresh
+ *   process per call.
+ * - `stdout`/`stderr` are delivered in the chunks the kernel or process
+ *   produced them, not per character.
+ *
+ * Kernels live inside the sandbox's microVM, so pause/resume, snapshots and
+ * forks keep their state.
+ *
+ * @example
+ * ```ts
+ * const sandbox = await CodeSandbox.create({ project: 'my-project' })
+ * await sandbox.runCode('x = 21')
+ * const run = await sandbox.runCode('x * 2')
+ * console.log(run.results[0].data) // "42"
+ * await sandbox.kill()
+ * ```
  */
 export class CodeSandbox extends Sandbox {
-  protected static override readonly defaultTemplate = 'code-interpreter-v1'
-
-  private get serverUrl(): Promise<string> {
-    return this.getHost(CODE_INTERPRETER_PORT).then(h => `https://${h}`)
-  }
+  protected static override readonly defaultTemplate: string = 'interpreter'
 
   /**
-   * Execute code in a persistent kernel.
+   * Execute code and wait for it to finish.
    *
-   * Variables, imports, and function definitions from previous calls are
-   * available in subsequent calls within the same context.
+   * Python keeps its state per context (the default context, per language,
+   * when none is given). Code errors appear in `execution.error`; request
+   * failures throw.
    *
    * @param code  Source code to run.
    * @param opts  Language, context, env vars, timeout, and streaming callbacks.
-   *
-   * @returns Execution result with stdout, stderr, results, and any error.
-   *
-   * Code errors appear in `execution.error`; request failures throw.
    *
    * @example
    * ```ts
@@ -57,75 +79,44 @@ export class CodeSandbox extends Sandbox {
     if (opts?.context && opts?.language) {
       throw new Error('Provide context or language, not both')
     }
-
-    const body: Record<string, unknown> = { code, env_vars: opts?.envs ?? {} }
-    if (opts?.context) body.context_id = opts.context.id
-    else if (opts?.language) body.language = opts.language
-
-    const controller = new AbortController()
-    const timer = opts?.timeoutMs
-      ? setTimeout(() => controller.abort(), opts.timeoutMs)
-      : undefined
-
-    try {
-      const res = await fetch(`${await this.serverUrl}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-
-      if (!res.ok) {
-        throw new Error(`Code interpreter returned ${res.status}: ${await res.text()}`)
-      }
-
-      if (!res.body) throw new Error('Empty response body')
-
-      const execution = new Execution()
-
-      for await (const line of readLines(res.body)) {
-        let item: Record<string, unknown>
-        try {
-          item = JSON.parse(line)
-        } catch {
-          continue
-        }
-
-        if (item.type === 'stdout') {
-          execution.stdout += item.data as string
-          opts?.onStdout?.(item.data as string)
-        } else if (item.type === 'stderr') {
-          execution.stderr += item.data as string
-          opts?.onStderr?.(item.data as string)
-        } else if (item.type === 'result') {
-          const out = item as unknown as OutputItem
-          execution.results.push(out)
-          opts?.onResult?.(out)
-        } else if (item.type === 'error') {
-          const err = new ExecutionError(
-            item.name as string,
-            item.message as string,
-            item.traceback as string
-          )
-          execution.error = err
-          opts?.onError?.(err)
-        } else if (item.type === 'done') {
-          execution.executionCount = (item.execution_count as number) ?? 0
-          break
-        }
-      }
-
-      return execution
-    } finally {
-      clearTimeout(timer)
+    const timeoutMs = opts?.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS
+    const args: Record<string, unknown> = {
+      action: 'run',
+      code,
+      envs: opts?.envs ?? {},
+      timeout: timeoutMs / 1000,
     }
+    if (opts?.context) args.context = opts.context.id
+    else args.language = opts?.language ?? 'python'
+
+    const execution = new Execution()
+    await this.runner(args, timeoutMs, (item) => {
+      if (item.type === 'stdout') {
+        execution.stdout += item.data as string
+        opts?.onStdout?.(item.data as string)
+      } else if (item.type === 'stderr') {
+        execution.stderr += item.data as string
+        opts?.onStderr?.(item.data as string)
+      } else if (item.type === 'result') {
+        const out: OutputItem = { type: 'result', mime: item.mime as string, data: item.data as string }
+        execution.results.push(out)
+        opts?.onResult?.(out)
+      } else if (item.type === 'error') {
+        const err = new ExecutionError(item.name as string, item.message as string, item.traceback as string)
+        execution.error = err
+        opts?.onError?.(err)
+      } else if (item.type === 'done') {
+        execution.executionCount = (item.execution_count as number) ?? 0
+      }
+    })
+    return execution
   }
 
   /**
    * Create a new isolated execution context.
    *
-   * Each context maintains its own variable namespace and process state.
-   * Useful for running multiple independent sessions in the same sandbox.
+   * A Python context is its own kernel: its own variables, and `cwd` as its
+   * working directory. Other languages get the working directory only.
    *
    * @example
    * ```ts
@@ -135,43 +126,79 @@ export class CodeSandbox extends Sandbox {
    * ```
    */
   async createContext(opts?: CreateContextOpts): Promise<CodeContext> {
-    const res = await fetch(`${await this.serverUrl}/contexts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language: opts?.language ?? 'python',
-        cwd: opts?.cwd ?? '/home/user',
-      }),
-    })
-    if (!res.ok) throw new Error(`Failed to create context: ${await res.text()}`)
-    return res.json()
+    const id = `ctx-${randomId()}`
+    let ctx: CodeContext | undefined
+    await this.runner({ action: 'create', id, language: opts?.language ?? 'python', cwd: opts?.cwd ?? '/home/user' },
+      DEFAULT_RUN_TIMEOUT_MS, (ev) => {
+        if (ev.type === 'context') ctx = { id: ev.id as string, language: ev.language as string, cwd: ev.cwd as string }
+      })
+    if (!ctx) throw new LizardError('Failed to create context')
+    return ctx
   }
 
-  /**
-   * List all active execution contexts in this sandbox.
-   */
+  /** List the contexts created with {@link createContext} in this sandbox. */
   async listContexts(): Promise<CodeContext[]> {
-    const res = await fetch(`${await this.serverUrl}/contexts`)
-    if (!res.ok) throw new Error(`Failed to list contexts: ${await res.text()}`)
-    return res.json()
+    let out: CodeContext[] = []
+    await this.runner({ action: 'list' }, DEFAULT_RUN_TIMEOUT_MS, (ev) => {
+      if (ev.type === 'contexts') out = ev.data as CodeContext[]
+    })
+    return out
   }
 
-  /**
-   * Delete an execution context and free its resources.
-   */
+  /** Delete an execution context, stopping its kernel. */
   async deleteContext(context: CodeContext | string): Promise<void> {
     const id = typeof context === 'string' ? context : context.id
-    const res = await fetch(`${await this.serverUrl}/contexts/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(`Failed to delete context: ${await res.text()}`)
+    await this.runner({ action: 'delete', context: id }, DEFAULT_RUN_TIMEOUT_MS, () => {})
   }
 
-  /**
-   * Restart a context, clearing all variables and state.
-   */
+  /** Restart a context, clearing all variables and state. */
   async restartContext(context: CodeContext | string): Promise<void> {
     const id = typeof context === 'string' ? context : context.id
-    const res = await fetch(`${await this.serverUrl}/contexts/${id}/restart`, { method: 'POST' })
-    if (!res.ok) throw new Error(`Failed to restart context: ${await res.text()}`)
+    await this.runner({ action: 'restart', context: id }, DEFAULT_RUN_TIMEOUT_MS, () => {})
+  }
+
+  /** Run the in-sandbox runner with `args` and hand each of its events to `onEvent`. */
+  private async runner(args: Record<string, unknown>, timeoutMs: number, onEvent: (ev: RunnerEvent) => void): Promise<void> {
+    let encoded = toBase64(JSON.stringify(args))
+    if (encoded.length > MAX_INLINE_ARGS && typeof args.code === 'string') {
+      const codeFile = `/tmp/.lizard-code/in-${randomId()}`
+      await this.fs.write(codeFile, args.code as string)
+      const { code: _code, ...rest } = args
+      encoded = toBase64(JSON.stringify({ ...rest, codeFile }))
+    }
+
+    let part = ''
+    let fatal: string | undefined
+    let sawEvent = false
+    const stderr: string[] = []
+    const result = await this.process.exec(['python3', '-c', RUNNER_SOURCE, encoded], {
+      timeoutMs: timeoutMs + RUNNER_OVERHEAD_MS,
+      onStdout: (line) => {
+        let ev: RunnerEvent
+        try {
+          ev = JSON.parse(line)
+          // An event too long for one output line arrives as pieces.
+          if (ev.type === 'part') {
+            part += ev.data as string
+            if (!ev.end) return
+            ev = JSON.parse(part)
+            part = ''
+          }
+        } catch {
+          part = ''
+          return
+        }
+        sawEvent = true
+        if (ev.type === 'fatal') fatal = ev.message as string
+        else onEvent(ev)
+      },
+      onStderr: (line) => { stderr.push(line) },
+    })
+    if (fatal) throw new LizardError(fatal)
+    if (result.exitCode !== 0 || !sawEvent) {
+      const detail = stderr.slice(-20).join('\n').trim() || `exit code ${result.exitCode}`
+      throw new LizardError(`Code runner failed (python3 is required in the sandbox): ${detail}`)
+    }
   }
 
   static override async create(opts?: SandboxOpts): Promise<CodeSandbox>
@@ -188,24 +215,15 @@ export class CodeSandbox extends Sandbox {
   }
 }
 
-async function* readLines(body: ReadableStream<Uint8Array>): AsyncIterable<string> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let buf = ''
+function randomId(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  return c?.randomUUID ? c.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(16).slice(2, 18)
+}
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() ?? ''
-      for (const line of lines) {
-        if (line.trim()) yield line
-      }
-    }
-    if (buf.trim()) yield buf
-  } finally {
-    reader.releaseLock()
-  }
+function toBase64(text: string): string {
+  if (typeof Buffer !== 'undefined') return Buffer.from(text, 'utf8').toString('base64')
+  const bytes = new TextEncoder().encode(text)
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
 }

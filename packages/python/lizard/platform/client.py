@@ -17,7 +17,11 @@ def query(path: str, **values) -> str:
 
 
 class PlatformClient:
-    """HTTP transport. Calls never retry mutations or payments."""
+    """HTTP transport. Calls never retry mutations or payments.
+
+    Holds one connection pool: reuse an instance rather than making one per call,
+    and :meth:`close` it (or use it as a context manager) when done.
+    """
 
     def __init__(self, config: ConnectionConfig) -> None:
         self._config = config
@@ -90,3 +94,9 @@ class PlatformClient:
 
     def close(self) -> None:
         self._http.close()
+
+    def __enter__(self) -> "PlatformClient":
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        self.close()

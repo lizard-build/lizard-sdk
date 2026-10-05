@@ -3010,13 +3010,23 @@
       {
         "method": "POST",
         "path": "/api/sandboxes/sb1/fork",
-        "response": {
-          "ok": true
-        },
+        "response": [
+          {
+            "sandbox": {
+              "sandboxId": "fk1",
+              "status": "running",
+              "runtime": "firecracker"
+            }
+          },
+          {
+            "error": "Sandbox limit reached"
+          }
+        ],
         "body": {
           "count": 2,
           "timeoutMs": 0
-        }
+        },
+        "status": 201
       }
     ],
     "expectRequests": 1
@@ -3191,7 +3201,7 @@
     "expectRequests": 1
   },
   {
-    "name": "sandbox.fork.unsupported",
+    "name": "sandbox.fork.volume_attached",
     "ts": {
       "path": "sandbox.fork",
       "args": []
@@ -3205,16 +3215,16 @@
         "method": "POST",
         "path": "/api/sandboxes/sb1/fork",
         "response": {
-          "error": "Not supported for k8s"
+          "error": "A sandbox with a volume attached cannot be forked"
         },
-        "status": 501,
+        "status": 409,
         "body": {
           "count": 1,
           "timeoutMs": 0
         }
       }
     ],
-    "error": "501"
+    "error": "volume attached"
   },
   {
     "name": "sandbox.snapshot.capture_conflict",

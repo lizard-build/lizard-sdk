@@ -96,8 +96,11 @@ class Desktop:
         return f"/api/sandboxes/{segment(self._sandbox_id)}/desktop"
 
     def _client(self):
+        # One client per Desktop: a client per call left its connection pool open.
         from ..platform.client import PlatformClient
-        return PlatformClient(self._config)
+        if getattr(self, "_pc", None) is None:
+            self._pc = PlatformClient(self._config)
+        return self._pc
 
     def start(self, *, width: int | None = None, height: int | None = None) -> DesktopInfo:
         """Start the desktop, publish its stream and return the URLs.

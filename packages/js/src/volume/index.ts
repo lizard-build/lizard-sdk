@@ -10,8 +10,10 @@ export interface VolumeInfo {
   /** Region the volume's node lives in. A sandbox mounting it runs here too. */
   region?: string
   status: string
+  /** Id of the sandbox the volume is attached to, or `null` when it is free. */
   attachedTo?: string | null
-  createdAt: number
+  /** Creation time: an ISO-8601 string for Firecracker volumes, unix milliseconds for container volumes. */
+  createdAt: string | number
   /**
    * Whether `sizeGb` is actually enforced as a hard limit on the volume's node.
    * Returned by {@link Volume.resize}; `false` means the size was recorded but the
@@ -21,7 +23,7 @@ export interface VolumeInfo {
 }
 
 export interface CreateVolumeOpts extends ConnectionOpts {
-  /** Whole GB, default 5. New volumes allow 1–50 GB unless the server config sets another maximum. Creating never changes an existing volume's size; use `Volume.resize` for that. */
+  /** Whole GB, default 5. New volumes allow 1–50 GB unless the server config sets another maximum. Creating never changes an existing volume's size. */
   sizeGb?: number
   /**
    * Region to place the volume in, e.g. `'us-east-1'`. A volume is node-local, so
@@ -45,7 +47,9 @@ export interface CreateVolumeOpts extends ConnectionOpts {
  * Names are slugs: lowercase letters, digits and dashes, starting and ending with a
  * letter or digit, up to 64 characters.
  *
- * Mount one to a sandbox via `Sandbox.create({ volumeName: 'my-data' })`.
+ * Mount one to a sandbox via `Sandbox.create({ volumeName: 'my-data' })`; it appears
+ * at `/workspace`. A volume is attached to one sandbox at a time (`attachedTo`), and
+ * a sandbox with a volume attached cannot be forked.
  */
 export class Volume {
   /** The volume's generated id. Stable, but you rarely need it — address by name. */
@@ -82,7 +86,7 @@ export class Volume {
    * "the scratch disk for this task" no longer has to store an id between runs.
    *
    * An existing volume is returned as-is — `sizeGb` applies only to a fresh create,
-   * so an existing volume keeps its size. Call {@link Volume.resize} to change it.
+   * so an existing volume keeps its size.
    */
   static async getOrCreate(projectId: string, name: string, opts?: CreateVolumeOpts): Promise<Volume> {
     const config = new ConnectionConfig(opts)
@@ -129,11 +133,15 @@ export class Volume {
   /**
    * Resize a volume, by name or by id, to `sizeGb`.
    *
-   * The change is in place and online: the size is a quota, so no data is copied,
-   * it completes in well under a second, and a sandbox that has the volume mounted
-   * keeps running and sees the new size immediately. Both growing and shrinking are
-   * allowed, but a shrink must leave at least 10% of the new size free — otherwise
-   * it throws `ConflictError` with `code: 'volume_too_full_to_shrink'`.
+   * **Firecracker volumes cannot be resized yet**: volumes created for the default
+   * Firecracker sandboxes throw `LizardError` (400) with `code: 'volume_not_resizable'`.
+   * Create the volume at the size you need, or copy the data to a new, larger one.
+   *
+   * On a container volume the change is in place and online: the size is a quota,
+   * so no data is copied and a mounted sandbox sees the new size immediately. Both
+   * growing and shrinking are allowed, but a shrink must leave at least 10% of the
+   * new size free — otherwise it throws `ConflictError` with
+   * `code: 'volume_too_full_to_shrink'`.
    *
    * Other failures carry a `code` too: `invalid_volume_size`, `volume_not_resizable`,
    * `volume_resize_in_progress`, `volume_not_provisioned`,
@@ -161,7 +169,7 @@ export class Volume {
     return res.json() as Promise<VolumeInfo>
   }
 
-  /** Resize this volume in place — see the static {@link Volume.resize}. */
+  /** Resize this volume — see the static {@link Volume.resize} (not supported for Firecracker volumes yet). */
   async resize(projectId: string, sizeGb: number): Promise<VolumeInfo> {
     return Volume.resize(projectId, this.volumeId, sizeGb, {
       apiKey: this.config.apiKey,

@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/lizard-sdk)](https://pypi.org/project/lizard-sdk/)
 [![Checks](https://github.com/lizard-build/lizard-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/lizard-build/lizard-sdk/actions)
 
-**Run code, work with files, and build AI agents in Linux sandboxes on Kubernetes.**
+**Run code, work with files, and build AI agents in Linux sandboxes: Firecracker microVMs that boot in under a second.**
 
 Lizard (lizard.build) provides TypeScript and Python SDKs for sandboxes and the cloud services around them: apps, databases, storage, projects and API keys.
 
@@ -103,7 +103,7 @@ finally:
     sandbox.kill()
 ```
 
-`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
+To run code snippets with state carried between calls, use `CodeSandbox` (`runCode` / `run_code`): it boots the `interpreter` template and runs Python in a persistent Jupyter kernel inside the sandbox. See [Run code](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md#run-code-codesandbox).
 
 ## What you can do
 
@@ -111,11 +111,12 @@ finally:
 | --- | --- | --- |
 | Run a shell command | `sandbox.process.exec(cmd)` | `sandbox.process.exec_(cmd)` |
 | Read or write a file | `sandbox.fs.read(path)` / `write(path, text)` | Same method names |
-| Expose an HTTP port | `sandbox.getHost(port)` | `sandbox.get_host(port)` |
+| Run code with state between calls | `codeSandbox.runCode(code)` | `code_sandbox.run_code(code)` |
+| Expose an HTTP port (private, token-gated) | `sandbox.exposePort(port)` / `getHost(port)` | `sandbox.expose_port(port)` / `get_host(port)` |
+| Pause, snapshot, restore, fork | `pause()`, `snapshot()`, `Sandbox.restore(id)`, `fork()` | Same method names |
 | Drive a desktop (computer use) | `sandbox.desktop.start()`, `screenshot()`, `click()`, `type()` | Same on `sandbox.desktop` |
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
-| Resize a volume in place | `lizard.volumes.resize(name, sizeGb)` | `lizard.volumes.resize(name, size_gb)` |
 | Manage cloud apps | `lizard.services`, `projects`, `addons` | Same namespaces |
 
 See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md) for configuration, streaming, ports, volumes, errors and method names in both languages.
@@ -126,14 +127,18 @@ Create a sandbox from the `desktop` template, call `await sandbox.desktop.start(
 
 ## Runtime and persistence
 
-Sandboxes run on **Kubernetes with runc and share the host kernel**. Files outside an attached persistent volume last only for the sandbox's lifetime. Mount a volume at `/workspace` to keep files across sessions. A volume preserves files; it does not preserve running processes or memory.
+Each sandbox is a **Firecracker microVM** with its own kernel. Files outside an attached persistent volume last only for the sandbox's lifetime; mount a volume at `/workspace` to keep files across sessions.
 
-The Kubernetes backend supports **CRIU pause/resume and private warm snapshots**. Capture running memory and workspace files, keep five copies warm by default, and pause a snapshot pool to release idle compute. See the [snapshot lifecycle guide](docs/sandboxes.md#snapshots-and-criu-pause-resume). `fork()` and file watching remain unsupported.
+- `pause()` / `resume()` keep the sandbox's memory and running processes.
+- `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
+- `fork()` clones a running sandbox, processes and all.
+
+See the [snapshot guide](docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available on Firecracker sandboxes yet; a volume cannot be resized yet, and a sandbox with a volume attached cannot be forked.
 
 ## Documentation
 
 - [TypeScript guide](https://github.com/lizard-build/lizard-sdk/blob/main/packages/js/README.md) and [Python guide](https://github.com/lizard-build/lizard-sdk/blob/main/packages/python/README.md): setup and runnable examples.
-- [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md): commands, files, code, ports, lifecycle and persistence.
+- [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md): commands, files, code, ports, lifecycle, snapshots, fork and persistence.
 - [Platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md): projects, workspaces, scoped keys and cloud services.
 - [CLI coverage and migration](https://github.com/lizard-build/lizard-sdk/blob/main/docs/cli-parity.md): native APIs, optional CLI adapter and backend limits.
 - [Contributing](https://github.com/lizard-build/lizard-sdk/blob/main/CONTRIBUTING.md): local checks and test scope.

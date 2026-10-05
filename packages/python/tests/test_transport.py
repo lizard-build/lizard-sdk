@@ -62,10 +62,11 @@ def test_zero_lifetime(monkeypatch):
     Sandbox.create("base", project_id="p1", timeout_ms=0, **CONFIG)
 
 
-def test_reject_lossy_binary_write(monkeypatch):
-    monkeypatch.setattr(httpx, "post", lambda *a, **kw: pytest.fail("must not send"))
-    with pytest.raises(UnicodeDecodeError):
-        Sandbox("s", **CONFIG).fs.write("/tmp/data", bytes([255]))
+def test_binary_write_is_base64(monkeypatch):
+    sent = []
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: sent.append(kw["json"]) or httpx.Response(201, json={}))
+    Sandbox("s", **CONFIG).fs.write("/tmp/data", bytes([255, 0, 128]))
+    assert sent == [{"path": "/tmp/data", "content": "/wCA", "encoding": "base64"}]
 
 
 def test_secret_project_guard():
@@ -147,6 +148,6 @@ def test_code_sandbox_uses_interpreter_template(monkeypatch, template):
 
     monkeypatch.setattr(httpx, "post", post)
     sandbox = CodeSandbox.create(template, project_id="p1", **CONFIG)
-    assert calls[0]["template"] == (template or "code-interpreter-v1")
+    assert calls[0]["template"] == (template or "interpreter")
     assert isinstance(sandbox, CodeSandbox)
     assert sandbox.sandbox_id == "code-1"

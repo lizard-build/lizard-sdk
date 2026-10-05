@@ -10,6 +10,8 @@ export interface SandboxInfo {
   /** Region the sandbox runs in — the volume's region when one is attached. */
   region?: string
   status?: string
+  /** The sandbox runtime: `'firecracker'` (a microVM), `'container'`, or `null` when unknown. */
+  runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
   /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox created from a private snapshot. */
   size?: 'small' | 'medium' | 'large' | null
@@ -18,6 +20,20 @@ export interface SandboxInfo {
   cpus?: number
   memoryMb?: number
   metadata?: Record<string, string>
+}
+
+/** A sandbox port published on a public HTTPS hostname. See {@link Sandbox.exposePort}. */
+export interface ExposedPort {
+  /** Hostname without a scheme, e.g. `abc-3000.sandbox.eu-west-lim-a.onlizard.com`. */
+  hostname: string
+  /** A browser URL that carries the access token (`?lizard_token=...`). */
+  url: string
+  port: number
+  /**
+   * The port is private: every request needs this token, either as the
+   * `X-Lizard-Access-Token` header or once as `?lizard_token=` (a browser then gets a cookie).
+   */
+  accessToken: string
 }
 
 export interface SandboxOpts extends ConnectionOpts {
@@ -46,7 +62,9 @@ export interface SandboxOpts extends ConnectionOpts {
    * Measured CPU/RAM are not charged and egress is free. Ignored with {@link SandboxOpts.snapshotId}.
    */
   size?: 'small' | 'medium' | 'large'
+  /** Your own key/value labels for the sandbox, returned by `getInfo()` and `list()`. */
   metadata?: Record<string, string>
+  /** Environment variables set in the sandbox, visible to every command it runs. */
   envs?: Record<string, string>
   timeoutMs?: number
   /**
@@ -194,13 +212,13 @@ export class SandboxClient {
     sandboxId: string,
     port: number,
     opts?: ConnectionOpts
-  ): Promise<{ hostname: string; url: string }> {
+  ): Promise<ExposedPort> {
     const config = new ConnectionConfig(opts)
     const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/expose/${port}`, {
       method: 'POST',
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
-    return res.json() as Promise<{ hostname: string; url: string }>
+    return res.json() as Promise<ExposedPort>
   }
 }

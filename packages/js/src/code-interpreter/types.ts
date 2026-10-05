@@ -27,7 +27,7 @@ export class Execution {
   results: OutputItem[] = []
   /** Execution error if the code threw an exception. */
   error?: ExecutionError
-  /** Monotonically increasing counter for this context. */
+  /** Monotonically increasing counter for this context (the Python kernel's `In[n]`). */
   executionCount = 0
 
   get success(): boolean {
@@ -55,11 +55,15 @@ export type RunCodeLanguage =
 export interface RunCodeOpts {
   /** Language to run in. Defaults to python. */
   language?: RunCodeLanguage
-  /** Use a specific context instead of the per-language default. */
+  /** Use a specific context (from `createContext`) instead of the per-language default. */
   context?: CodeContext
   /** Extra environment variables available to the code. */
   envs?: Record<string, string>
-  /** Client timeout in milliseconds. No client timer is set when omitted. */
+  /**
+   * Execution timeout in milliseconds, default 60 000. A Python kernel that runs
+   * past it is interrupted (its state is kept) and `execution.error.name` is
+   * `'TimeoutError'`; a process is killed.
+   */
   timeoutMs?: number
   onStdout?: (data: string) => void
   onStderr?: (data: string) => void

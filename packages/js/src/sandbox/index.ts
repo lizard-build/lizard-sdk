@@ -3,10 +3,10 @@ import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '..
 import { Process } from './process'
 import { Fs } from './fs'
 import { Desktop } from './desktop'
-import { SandboxClient, SandboxInfo, SandboxOpts } from './client'
+import { SandboxClient, SandboxInfo, SandboxOpts, ExposedPort } from './client'
 import { TimeoutError, ConflictError } from '../errors'
 
-export { SandboxOpts, SandboxInfo }
+export { SandboxOpts, SandboxInfo, ExposedPort }
 
 export interface SandboxSnapshot {
   id: string
@@ -21,16 +21,32 @@ export interface SandboxSnapshot {
   error: string | null
   cpus: number
   memoryMb: number
+  /** Unix milliseconds. */
   createdAt: number
 }
-export interface SnapshotOpts { poolSize?: number }
+export interface SnapshotOpts {
+  /** Warm copies to keep ready (container sandboxes only; ignored for Firecracker, whose snapshots restore from disk). */
+  poolSize?: number
+}
+
+/**
+ * One entry of {@link Sandbox.fork}'s result: the new sandbox, or why that copy
+ * could not be made (e.g. the account's sandbox limit).
+ */
+export type ForkResult<S extends Sandbox = Sandbox> =
+  | { sandbox: S; info: SandboxInfo; error?: undefined }
+  | { sandbox?: undefined; info?: undefined; error: string }
 export interface SnapshotWaitOpts extends ConnectionOpts { waitTimeoutMs?: number }
 
 
 /**
- * A Linux sandbox running on Kubernetes.
+ * A Linux sandbox: a Firecracker microVM with its own kernel.
  *
- * Run commands, read and write files, and expose HTTP ports in a sandbox.
+ * Run commands, read and write files, and expose HTTP ports in a sandbox. A
+ * sandbox boots in well under a second; {@link pause} and {@link resume} keep its
+ * memory and running processes, {@link snapshot} saves it in about 2 s and
+ * {@link restore} starts a copy in about 0.4 s, and {@link fork} clones a running
+ * sandbox, processes and all.
  *
  * Sandboxes are **ephemeral**: killing one, or letting it hit its timeout, discards
  * everything written inside it. State that has to outlive a sandbox belongs on a
@@ -135,8 +151,9 @@ export class Sandbox extends SandboxClient {
    * Create a new Lizard sandbox from the specified template.
    *
    * Template availability and installed tools depend on the platform and region.
-   * Use `base` for shell commands or `interpreter` for Python process commands.
-   * Hosted templates do not support the legacy `CodeSandbox` execution API.
+   * Use `base` for shell commands, `interpreter` for Python with the data stack
+   * (use {@link CodeSandbox} to run code snippets in it), or `desktop` for a
+   * graphical desktop.
    *
    * @param template Name of the sandbox template to boot from.
    *
@@ -202,12 +219,18 @@ export class Sandbox extends SandboxClient {
     return SandboxClient.killSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
-  /** Queue a CRIU checkpoint and stop compute. Use waitForStatus('paused') before resuming. */
+  /**
+   * Pause the sandbox: its memory, running processes and files are kept and
+   * compute stops. Wait with `waitForStatus('paused')` before resuming.
+   */
   async pause(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
-  /** Queue restoration of saved memory and files. Use waitForStatus('running') before executing. */
+  /**
+   * Resume a paused sandbox exactly where it stopped, processes included. Wait
+   * with `waitForStatus('running')` before running commands.
+   */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
     return SandboxClient.resumeSandbox(this.sandboxId, this.resolveOpts(opts))
   }
@@ -244,34 +267,89 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Register a public HTTPS route and return its hostname without a scheme.
+   * The token that opens this sandbox's published ports. Set by {@link getHost}
+   * and {@link exposePort}; send it as the `X-Lizard-Access-Token` header.
+   */
+  accessToken?: string
+
+  /**
+   * Publish a port on a public HTTPS hostname and return the hostname without a scheme.
    *
-   * Useful for accessing HTTP servers started inside the sandbox from your
-   * agent or tests without additional tunneling.
+   * The port is private: requests need {@link accessToken} (set by this call) as
+   * the `X-Lizard-Access-Token` header, or `?lizard_token=<token>` in a browser.
+   * {@link exposePort} returns the token and a ready-made browser URL together.
    *
    * @example
    * ```ts
    * // Start an HTTP server on port 3000 before exposing it.
    * const hostname = await sandbox.getHost(3000)
-   * console.log(`https://${hostname}`)
+   * const res = await fetch(`https://${hostname}/`, {
+   *   headers: { 'X-Lizard-Access-Token': sandbox.accessToken! },
+   * })
    * ```
    */
   async getHost(port: number, opts?: ConnectionOpts): Promise<string> {
-    const { hostname } = await SandboxClient.exposeSandboxPort(this.sandboxId, port, this.resolveOpts(opts))
-    return hostname
+    return (await this.exposePort(port, opts)).hostname
   }
 
-  /** Fork is unsupported on Kubernetes; the backend returns HTTP 501. */
-  fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<unknown> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
+  /**
+   * Publish a port and return everything needed to reach it: the hostname, a
+   * browser `url` that carries the token, and the `accessToken` for API clients.
+   *
+   * @example
+   * ```ts
+   * const { url, hostname, accessToken } = await sandbox.exposePort(3000)
+   * console.log(url) // open in a browser
+   * await fetch(`https://${hostname}/api`, { headers: { 'X-Lizard-Access-Token': accessToken } })
+   * ```
+   */
+  async exposePort(port: number, opts?: ConnectionOpts): Promise<ExposedPort> {
+    const exposed = await SandboxClient.exposeSandboxPort(this.sandboxId, port, this.resolveOpts(opts))
+    if (exposed.accessToken) this.accessToken = exposed.accessToken
+    return exposed
   }
-  /** Capture memory and workspace files. Disconnect active clients before capturing. */
+
+  /**
+   * Clone this running sandbox `count` times (1-10). Each fork is a copy of the
+   * microVM at this instant -- memory, running processes and files -- and is
+   * billed like its source. The source keeps running.
+   *
+   * Returns one entry per requested fork, in order: `{ sandbox, info }`, or
+   * `{ error }` for a copy that could not be made (e.g. the account's sandbox
+   * limit). A sandbox with a volume attached cannot be forked (`ConflictError`, 409).
+   *
+   * @param opts.timeoutMs Lifetime of each fork; defaults to the source's timeout.
+   *
+   * @example
+   * ```ts
+   * const forks = await sandbox.fork({ count: 2 })
+   * for (const f of forks) if (f.sandbox) await f.sandbox.process.exec('echo hi')
+   * ```
+   */
+  async fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<ForkResult<this>[]> {
+    const result = await new PlatformClient(this.resolveOpts()).post<Array<{ sandbox?: SandboxInfo; error?: string }>>(
+      `/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
+    const Ctor = this.constructor as new (o: { sandboxId: string } & ConnectionOpts) => this
+    return (Array.isArray(result) ? result : []).map((entry): ForkResult<this> => {
+      const id = entry.sandbox?.sandboxId ?? (entry.sandbox as { id?: string } | undefined)?.id
+      if (!entry.sandbox || !id) return { error: entry.error ?? 'fork failed' }
+      return { sandbox: new Ctor({ ...this.resolveOpts(), sandboxId: id }), info: { ...entry.sandbox, sandboxId: id } }
+    })
+  }
+
+  /**
+   * Save this sandbox -- memory, running processes and files -- as a private
+   * snapshot. A Firecracker snapshot is `ready` as soon as this returns (about 2 s);
+   * start copies of it with {@link Sandbox.restore} (about 0.4 s each). The source
+   * keeps running. `poolSize` applies to container sandboxes only.
+   */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
     return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5 })
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
   }
+  /** Stream the sandbox's logs. Not available on Firecracker sandboxes yet (`LizardError`, 501). */
   logs(opts: { tail?: number; signal?: AbortSignal } = {}) {
     return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${this.sandboxId}/logs`, { tail: opts.tail }), { signal: opts.signal })
   }
@@ -281,7 +359,7 @@ export class Sandbox extends SandboxClient {
   static getSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).get(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
   }
-  /** Start a sandbox from an available warm copy in the snapshot's project and region. */
+  /** Start a new sandbox from a snapshot, in the snapshot's project and region. */
   static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number }): Promise<Sandbox> {
     const client = new PlatformClient(opts ?? {})
     const snapshot = await this.getSnapshot(snapshotId, opts)
@@ -294,7 +372,7 @@ export class Sandbox extends SandboxClient {
   static setSnapshotWarmPool(snapshotId: string, poolSize: number, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { poolSize })
   }
-  /** Release idle warm copies; retain saved state and existing claimed sandboxes. */
+  /** Release idle warm copies (container snapshots); retain saved state and existing claimed sandboxes. */
   static pauseSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).post(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/pause`, {})
   }

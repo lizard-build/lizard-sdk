@@ -16,10 +16,35 @@ class FileInfo:
     path: str
     type: str  # 'file' | 'dir' | 'symlink'
     size: int
-    #: Permission bits as a string, e.g. ``-rw-r--r--``. None on older sandboxes.
-    mode: str | None = None
-    #: Last modification time, unix milliseconds. None on older sandboxes.
+    #: Permission bits as a number, e.g. ``0o644`` (420).
+    mode: int | None = None
+    #: Last modification time, unix milliseconds.
     mod_time: int | None = None
+    #: Permission bits as a string, e.g. ``-rw-r--r--``.
+    permissions: str | None = None
+    #: Owning user name.
+    owner: str | None = None
+    #: Owning group name.
+    group: str | None = None
+    #: Where a symlink points, for a symlink.
+    symlink_target: str | None = None
+
+
+def _to_file_info(f: dict) -> FileInfo:
+    # Map explicitly, not FileInfo(**f): the API returns camelCase and may gain
+    # fields, which would blow up FileInfo(**f) with an unexpected keyword.
+    return FileInfo(
+        name=f["name"],
+        path=f["path"],
+        type=f["type"],
+        size=f.get("size", 0),
+        mode=f.get("mode"),
+        mod_time=f.get("modTime", f.get("modifiedAt")),
+        permissions=f.get("permissions"),
+        owner=f.get("owner"),
+        group=f.get("group"),
+        symlink_target=f.get("symlinkTarget"),
+    )
 
 
 @dataclass
@@ -51,18 +76,23 @@ class Fs:
         Parent directories are created automatically if they don't exist.
 
         :param path: Absolute path inside the sandbox.
-        :param data: UTF-8 text or valid UTF-8 bytes. Arbitrary binary uploads
-            are unsupported.
-        :param user: Write as this Linux user (default: ``root``).
+        :param data: Text (written as UTF-8) or bytes, written exactly as given,
+            so binary files round-trip with :meth:`read_bytes`.
+        :param user: Write as (and owned by) this Linux user (default: ``root``).
 
         Example::
 
             sandbox.fs.write("/app/index.js", 'console.log("hello")')
+            sandbox.fs.write("/app/logo.png", Path("logo.png").read_bytes())
         """
+        import base64
         import httpx
 
-        content = data if isinstance(data, str) else data.decode()
-        body: dict = {"path": path, "content": content}
+        if isinstance(data, str):
+            body: dict = {"path": path, "content": data}
+        else:
+            # Bytes go base64-encoded: a JSON string cannot carry arbitrary binary.
+            body = {"path": path, "content": base64.b64encode(bytes(data)).decode("ascii"), "encoding": "base64"}
         if user:
             body["user"] = user
 
@@ -81,7 +111,10 @@ class Fs:
         Read a file from the sandbox filesystem.
 
         :param path: Absolute path inside the sandbox.
-        :returns: File contents as a UTF-8 string.
+        :returns: File contents as a UTF-8 string. Use :meth:`read_bytes` for
+            binary files.
+
+        Raises :class:`~lizard.NotFoundError` if the path does not exist.
 
         Example::
 
@@ -105,6 +138,7 @@ class Fs:
         return res.text
 
     def read_bytes(self, path: str, *, user: str | None = None) -> bytes:
+        """Read a file as bytes. Raises :class:`~lizard.NotFoundError` if it does not exist."""
         import httpx
         from ..errors import handle_api_error
         params = {"path": path}
@@ -139,19 +173,7 @@ class Fs:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
 
-        # Map explicitly, not FileInfo(**f): the API returns camelCase and gained
-        # `mode`/`modTime`, which blew up `FileInfo(**f)` with an unexpected keyword.
-        return [
-            FileInfo(
-                name=f["name"],
-                path=f["path"],
-                type=f["type"],
-                size=f.get("size", 0),
-                mode=f.get("mode"),
-                mod_time=f.get("modTime"),
-            )
-            for f in res.json()
-        ]
+        return [_to_file_info(f) for f in res.json()]
 
     def remove(self, path: str, *, user: str | None = None) -> None:
         """Remove a file or directory from the sandbox filesystem."""
@@ -166,6 +188,7 @@ class Fs:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
             headers=self._config.headers,
             json=body,
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error
@@ -197,8 +220,6 @@ class Fs:
         this exist, and how big is it".
 
         Raises :class:`~lizard.NotFoundError` if the path does not exist.
-        Sandboxes created before this shipped run a guest agent without it and
-        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
         """
         import httpx
 
@@ -214,22 +235,10 @@ class Fs:
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
-        b = res.json()
-        return FileInfo(
-            name=b["name"],
-            path=b["path"],
-            type=b["type"],
-            size=b["size"],
-            mode=b.get("mode"),
-            mod_time=b.get("modTime"),
-        )
+        return _to_file_info(res.json())
 
     def move(self, from_path: str, to_path: str) -> None:
-        """Move or rename a path, creating the destination's parent directories.
-
-        Sandboxes created before this shipped run a guest agent without it and
-        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
-        """
+        """Move or rename a path, creating the destination's parent directories."""
         import httpx
 
         res = httpx.post(
@@ -254,8 +263,8 @@ class Fs:
         Remember to :meth:`Watcher.close` it; an abandoned watcher keeps queueing
         events in the guest until the sandbox ends (bounded, but wasted).
 
-        Sandboxes created before this shipped run a guest agent without it and
-        raise :class:`~lizard.LizardError` (501) -- recreate the sandbox to use it.
+        Not available on Firecracker sandboxes yet: the call raises
+        :class:`~lizard.LizardError` (501).
         """
         import httpx
 
@@ -308,6 +317,7 @@ class Watcher:
             f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
             headers=self._config.headers,
             params={"watcherId": self.watcher_id},
+            timeout=HTTP_TIMEOUT_S,
         )
         if not res.is_success:
             from ..errors import handle_api_error

@@ -1,12 +1,12 @@
 export { Lizard } from './lizard'
 export type { LizardOpts, Account } from './lizard'
 export { Sandbox } from './sandbox'
-export type { SandboxOpts, SandboxInfo, SandboxSnapshot, SnapshotOpts, SnapshotWaitOpts } from './sandbox'
+export type { SandboxOpts, SandboxInfo, SandboxSnapshot, SnapshotOpts, SnapshotWaitOpts, ExposedPort, ForkResult } from './sandbox'
 export { resolveProjectId } from './project'
-export type { ProcessResult, ProcessOpts } from './sandbox/process'
+export type { ProcessResult, ProcessOpts, ProcessInfo, ProcessSignal } from './sandbox/process'
 export { Desktop } from './sandbox/desktop'
 export type { DesktopInfo, DesktopStartOpts, ClickOpts, MouseButton, ScrollDirection } from './sandbox/desktop'
-export type { FileInfo, FsOpts } from './sandbox/fs'
+export type { FileInfo, FsOpts, FsEvent } from './sandbox/fs'
 export type { ConnectionOpts } from './config'
 export {
   LizardError,

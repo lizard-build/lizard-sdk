@@ -21,12 +21,19 @@ class ProcessResult:
 
 @dataclass
 class ProcessInfo:
-    """A process the sandbox is currently running."""
+    """A process the sandbox is currently running (one started through ``exec_``)."""
 
     pid: int
+    #: The argv: ``["/bin/sh", "-c", "npm test"]`` for a shell command.
     cmd: list[str]
-    #: When the process started, unix milliseconds.
-    started_at: int
+    #: When the process started, unix milliseconds; 0 when the sandbox does not report it.
+    started_at: int = 0
+    #: ``cmd`` joined with spaces, for display.
+    command: str | None = None
+    #: Working directory the process was started in, when known.
+    cwd: str | None = None
+    #: The process's tag, when it was started with one.
+    tag: str | None = None
 
 
 class Process:
@@ -99,6 +106,9 @@ class Process:
             body["workdir"] = workdir
         if timeout_ms:
             body["timeoutMs"] = timeout_ms
+        if on_pid is not None:
+            # The pid event is opt-in: older CLIs print any unknown data line as output.
+            body["pidEvent"] = True
 
         timeout = (timeout_ms or 60_000) / 1000
 
@@ -136,8 +146,8 @@ class Process:
         it arrives while still accumulating the full result.
 
         The platform has always streamed exec output; it just has to be asked for it
-        with an SSE Accept header. Events are ``{"stream", "line"}`` for output and
-        ``{"exitCode"}`` at the end.
+        with an SSE Accept header. Events are ``{"pid"}`` first (when asked for with
+        ``pidEvent``), ``{"stream", "line"}`` for output and ``{"exitCode"}`` at the end.
         """
         import httpx
         import json as _json
@@ -205,15 +215,25 @@ class Process:
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
-        return [
-            ProcessInfo(pid=p["pid"], cmd=p.get("cmd", []), started_at=p.get("startedAt", 0))
-            for p in res.json()
-        ]
+        out = []
+        for p in res.json():
+            cmd = p.get("cmd") or []
+            if isinstance(cmd, str):
+                cmd = cmd.split()
+            out.append(ProcessInfo(
+                pid=p["pid"],
+                cmd=list(cmd),
+                started_at=p.get("startedAt") or 0,
+                command=p.get("command") or " ".join(cmd),
+                cwd=p.get("cwd"),
+                tag=p.get("tag"),
+            ))
+        return out
 
     def kill(self, pid: int, signal: str = "SIGTERM") -> None:
         """Signal a running process. Defaults to ``SIGTERM``.
 
-        The signal goes to the process group, so a shell's children die with it --
+        The signal goes to the whole process tree, so a shell's children die with it --
         killing ``sh -c 'sleep 100'`` otherwise leaves the sleep running.
 
         The pid comes from :meth:`list`, or from ``on_pid`` during a streaming

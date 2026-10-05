@@ -1,6 +1,6 @@
 # Lizard SDK for Python
 
-Run commands, work with files and execute code in Linux sandboxes on Kubernetes. The SDK also manages Lizard apps, databases, storage and projects.
+Run commands, work with files and execute code in Linux sandboxes (Firecracker microVMs). The SDK also manages Lizard apps, databases, storage and projects.
 
 ## Install
 
@@ -78,7 +78,7 @@ Treat `info.url` like a credential: anyone with it can see and control the deskt
 
 ## Run Python
 
-Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls. Save intermediate results to files. The API returns stdout, stderr, and an exit code; it does not return typed notebook results or chart objects.
+Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls; use `CodeSandbox` (below) when they should.
 
 ```python
 from lizard import Sandbox
@@ -91,7 +91,22 @@ finally:
     sandbox.kill()
 ```
 
-`CodeSandbox`, `runCode` / `run_code`, and execution-context methods remain in the SDK, but the hosted template catalog does not provide their required execution server. The legacy default `code-interpreter-v1` is unavailable. Changing its name to `interpreter` does not enable this API. Use `Sandbox.create("interpreter")` and process commands as shown below.
+To run code snippets with state carried between calls, use `CodeSandbox` (`runCode` / `run_code`): it boots the `interpreter` template and runs Python in a persistent Jupyter kernel inside the sandbox. See [Run code](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md#run-code-codesandbox).
+
+## Run code with state (CodeSandbox)
+
+`CodeSandbox` boots the `interpreter` template and runs Python in a persistent Jupyter kernel inside the sandbox: variables survive between calls, the value of the last expression and matplotlib charts come back in `results`, and exceptions in `error`.
+
+```python
+from lizard import CodeSandbox
+
+with CodeSandbox.create(project_id="proj_123") as sandbox:
+    sandbox.run_code("x = 21")
+    run = sandbox.run_code("x * 2")
+    print(run.results[0].data)  # "42"
+```
+
+`language="bash"` (and `"javascript"` where `node` is installed; the `interpreter` template does not ship it) runs each call as a fresh process with no shared state.
 
 ## Configuration
 
@@ -101,13 +116,13 @@ Pass `timeout_ms` to `create()` to set the sandbox lifetime. The default is five
 
 ## Runtime limits
 
-Sandboxes run on Kubernetes. Use volumes mounted at `/workspace` to keep files after a sandbox ends. CRIU pause/resume and private snapshots preserve running memory and workspace files. Snapshot pools keep five copies warm by default and can be paused to release idle compute. Fork and file watching remain unsupported. See the [snapshot lifecycle guide](../../docs/sandboxes.md#snapshots-and-criu-pause-resume).
+Each sandbox is a Firecracker microVM with its own kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet, volumes cannot be resized yet, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
 
-`get_host()` returns a hostname without `https://`. File writes accept UTF-8 text or valid UTF-8 bytes; `read_bytes()` supports binary downloads.
+`get_host()` returns a hostname without `https://`; the port is private, so send `sandbox.access_token` as the `X-Lizard-Access-Token` header (or use `expose_port()`, which also returns a browser `url` carrying the token). File writes accept text or bytes (binary is sent exactly); `read_bytes()` supports binary downloads.
 
 ## Current command and lifetime limits
 
-Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The current runtime does not apply the SDK command options `envs`, `workdir`, or `user`; set the directory and environment in the shell command when needed. Create-time `envs` and `metadata` are also not applied.
+Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The command options `envs`, `workdir` and `user` apply to that command; create-time `envs` apply to every command, and create-time `metadata` is returned by `getInfo()` / `get_info()`.
 
 The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 

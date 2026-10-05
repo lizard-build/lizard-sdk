@@ -1,12 +1,19 @@
 import { ConnectionConfig } from '../config'
 import { handleApiError } from '../errors'
 
-/** A process this sandbox is currently running. */
+/** A process this sandbox is currently running (one started through `exec`). */
 export interface ProcessInfo {
   pid: number
+  /** The argv: `['/bin/sh', '-c', 'npm test']` for a shell command. */
   cmd: string[]
-  /** When the process started, unix milliseconds. */
-  startedAt: number
+  /** `cmd` joined with spaces, for display. */
+  command?: string
+  /** Working directory the process was started in, when known. */
+  cwd?: string | null
+  /** The process's tag, when it was started with one. */
+  tag?: string | null
+  /** When the process started, unix milliseconds. Not reported by every sandbox. */
+  startedAt?: number
 }
 
 /** Signals accepted by {@link Process.kill}. */
@@ -100,6 +107,8 @@ export class Process {
         user: opts?.user,
         workdir: opts?.workdir,
         timeoutMs: opts?.timeoutMs,
+        // The pid event is opt-in: older CLIs print any unknown data line as output.
+        pidEvent: opts?.onPid ? true : undefined,
       }),
       signal: AbortSignal.timeout(opts?.timeoutMs ?? 60_000),
     })
@@ -109,11 +118,6 @@ export class Process {
     return this.consumeStream(res, opts!)
   }
 
-  /**
-   * Read an SSE exec stream, handing each line to the caller as it arrives while
-   * still accumulating the full result. Events are `{stream, line}` for output and
-   * `{exitCode}` at the end.
-   */
   /**
    * List the processes this sandbox is currently running.
    *
@@ -138,8 +142,8 @@ export class Process {
   /**
    * Signal a running process. Defaults to `SIGTERM`.
    *
-   * The signal goes to the process group, so a shell's children die with it —
-   * killing `sh -c 'sleep 100'` otherwise leaves the sleep running.
+   * The signal goes to the whole process tree, so a shell's children die with
+   * it — killing `sh -c 'sleep 100'` otherwise leaves the sleep running.
    *
    * The pid comes from {@link list}, or from the `pid` event at the start of a
    * streaming `exec`.
@@ -159,6 +163,11 @@ export class Process {
     if (!res.ok) await handleApiError(res)
   }
 
+  /**
+   * Read an SSE exec stream, handing each line to the caller as it arrives while
+   * still accumulating the full result. Events are `{pid}` first (when asked for
+   * with `pidEvent`), `{stream, line}` for output and `{exitCode}` at the end.
+   */
   private async consumeStream(res: Response, opts: ProcessOpts): Promise<ProcessResult> {
     const reader = res.body?.getReader()
     if (!reader) return { stdout: '', stderr: '', exitCode: 0 }

@@ -19,10 +19,20 @@ export interface FileInfo {
   path: string
   type: 'file' | 'dir' | 'symlink'
   size: number
-  /** Permission bits as a string, e.g. `-rw-r--r--`. Absent on older sandboxes. */
-  mode?: string
-  /** Last modification time, unix milliseconds. Absent on older sandboxes. */
+  /** Permission bits as a number, e.g. `0o644` (420). */
+  mode?: number
+  /** Permission bits as a string, e.g. `-rw-r--r--`. */
+  permissions?: string
+  /** Owning user name. */
+  owner?: string
+  /** Owning group name. */
+  group?: string
+  /** Last modification time, unix milliseconds. */
   modTime?: number
+  /** Same as `modTime`, unix milliseconds. */
+  modifiedAt?: number
+  /** Where a symlink points, for a symlink. */
+  symlinkTarget?: string
 }
 
 /**
@@ -39,25 +49,31 @@ export class Fs {
   /**
    * Write a file into the sandbox filesystem.
    *
-   * Creates parent directories automatically if they don't exist.
-   * Byte input must contain valid UTF-8; arbitrary binary uploads are unsupported.
+   * Creates parent directories automatically if they don't exist. A string is
+   * written as UTF-8; bytes (`Uint8Array`, `Buffer` or `ArrayBuffer`) are written
+   * exactly as given, so binary files round-trip with {@link readBytes}.
+   *
+   * With `opts.user` the file is written as (and owned by) that user.
    *
    * @example
    * ```ts
    * await sandbox.fs.write('/app/index.js', 'console.log("hello")')
    * ```
    *
-   * @example Write UTF-8 bytes:
+   * @example Write binary data:
    * ```ts
-   * await sandbox.fs.write('/app/notes.txt', new TextEncoder().encode('hello'))
+   * await sandbox.fs.write('/app/logo.png', await readFile('logo.png'))
    * ```
    */
-  async write(path: string, data: string | Uint8Array, opts?: FsOpts): Promise<void> {
-    const content = typeof data === 'string' ? data : new TextDecoder('utf-8', { fatal: true }).decode(data)
+  async write(path: string, data: string | Uint8Array | ArrayBuffer, opts?: FsOpts): Promise<void> {
+    // Bytes go base64-encoded: a JSON string cannot carry arbitrary binary.
+    const body = typeof data === 'string'
+      ? { path, content: data, user: opts?.user }
+      : { path, content: bytesToBase64(data instanceof ArrayBuffer ? new Uint8Array(data) : data), encoding: 'base64', user: opts?.user }
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`, {
       method: 'POST',
       headers: this.config.headers,
-      body: JSON.stringify({ path, content, user: opts?.user }),
+      body: JSON.stringify(body),
     })
     if (!res.ok) await handleApiError(res)
   }
@@ -65,8 +81,9 @@ export class Fs {
   /**
    * Read a file from the sandbox filesystem.
    *
-   * @returns The file contents as a UTF-8 string.
+   * @returns The file contents as a UTF-8 string. Use {@link readBytes} for binary files.
    *
+   * Throws `NotFoundError` if the path does not exist.
    * @example
    * ```ts
    * const content = await sandbox.fs.read('/app/index.js')
@@ -141,9 +158,7 @@ export class Fs {
    * console.log(info.size, info.type)
    * ```
    *
-   * Throws `NotFoundError` if the path does not exist. Sandboxes created before
-   * this shipped run a guest agent without it and throw `LizardError` (501) —
-   * recreate the sandbox to use it.
+   * Throws `NotFoundError` if the path does not exist.
    */
   async stat(path: string, opts?: FsOpts): Promise<FileInfo> {
     const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/stat`)
@@ -162,9 +177,6 @@ export class Fs {
    * ```ts
    * await sandbox.fs.move('/tmp/build.log', '/app/logs/build.log')
    * ```
-   *
-   * Sandboxes created before this shipped run a guest agent without it and throw
-   * `LizardError` (501) — recreate the sandbox to use it.
    */
   async move(from: string, to: string): Promise<void> {
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/move`, {
@@ -194,8 +206,7 @@ export class Fs {
    * }, 1000)
    * ```
    *
-   * Sandboxes created before this shipped run a guest agent without it and throw
-   * `LizardError` (501) — recreate the sandbox to use it.
+   * Not available on Firecracker sandboxes yet: the call throws `LizardError` (501).
    */
   async watch(path: string, opts?: { recursive?: boolean }): Promise<Watcher> {
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/watch`, {
@@ -248,4 +259,11 @@ export class Watcher {
     const res = await fetch(url.toString(), { method: 'DELETE', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
   }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64')
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
 }

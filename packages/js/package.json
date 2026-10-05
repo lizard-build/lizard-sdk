@@ -1,7 +1,7 @@
 {
   "name": "@lizard-build/sdk",
   "version": "0.1.8",
-  "description": "TypeScript SDK for Lizard: Kubernetes sandboxes, code execution and cloud apps.",
+  "description": "TypeScript SDK for Lizard: Firecracker microVM sandboxes, code execution and cloud apps.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,8 @@
   "keywords": [
     "sandbox",
     "sandboxes",
-    "kubernetes",
+    "firecracker",
+    "microvm",
     "containers",
     "ai-agents",
     "code-interpreter",
