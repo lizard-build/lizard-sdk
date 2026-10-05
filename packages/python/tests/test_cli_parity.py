@@ -226,3 +226,73 @@ def test_platform_client_errors_keep_the_code_too(calls):
     assert ei.value.code == "volume_capacity_unavailable"
     assert ei.value.status_code == 503
     assert "No capacity" in str(ei.value)
+
+
+# ── payment required (HTTP 402) ───────────────────────────────────────────────
+
+_PAY = {
+    "error": "INSUFFICIENT_CREDITS",
+    "code": "PAYMENT_REQUIRED",
+    "status": "trial_available",
+    "message": "Start your 7-day Pro trial with $5 in credits to deploy. No charge today, then $19/month.",
+    "subscribeUrl": "https://lizard.build/profile/account-billing?subscribe=1",
+    "billingUrl": "https://lizard.build/profile/account-billing",
+    "topupUrl": "https://lizard.build/profile/account-credits",
+    "balanceCents": 0,
+    "availableCents": 100,
+}
+
+
+def test_402_is_payment_required_with_the_links(calls):
+    seed(calls, (_PAY, 402))
+    with pytest.raises(lz.PaymentRequiredError) as ei:
+        lz.Lizard(**KW).projects.create(workspace_id="w1", name="x")
+    err = ei.value
+    assert isinstance(err, lz.LizardError)
+    assert err.status_code == 402
+    assert err.code == "PAYMENT_REQUIRED"
+    assert err.message == _PAY["message"] == str(err)
+    assert err.payment_status == "trial_available"
+    assert err.subscribe_url == _PAY["subscribeUrl"]
+    assert err.billing_url == _PAY["billingUrl"]
+    assert err.url == _PAY["subscribeUrl"]
+
+
+def test_402_from_an_older_server(calls):
+    seed(calls, ({"error": "INSUFFICIENT_CREDITS", "status": "frozen", "message": "Your credits are used up.",
+                  "topupUrl": _PAY["topupUrl"]}, 402))
+    with pytest.raises(lz.PaymentRequiredError) as ei:
+        lz.Lizard(**KW).regions.list()
+    assert ei.value.code == "INSUFFICIENT_CREDITS"
+    assert ei.value.message == "Your credits are used up."
+    assert ei.value.billing_url is None
+    assert ei.value.url == _PAY["topupUrl"]
+
+
+@pytest.mark.parametrize("status,url", [
+    ("past_due", _PAY["billingUrl"]),
+    ("trial_credits_used", _PAY["billingUrl"]),
+    ("subscription_required", _PAY["subscribeUrl"]),
+])
+def test_402_points_at_the_right_page(calls, status, url):
+    seed(calls, ({**_PAY, "status": status}, 402))
+    with pytest.raises(lz.PaymentRequiredError) as ei:
+        lz.Lizard(**KW).regions.list()
+    assert ei.value.url == url
+
+
+def test_402_unpaid_invoice_links_the_invoice(calls):
+    seed(calls, ({"error": "UNPAID_INVOICE", "message": "Pay your open invoice before starting Pro again",
+                  "invoiceUrl": "https://invoice.stripe.com/i/x"}, 402))
+    with pytest.raises(lz.PaymentRequiredError) as ei:
+        lz.Lizard(**KW).regions.list()
+    assert ei.value.code == "UNPAID_INVOICE"
+    assert ei.value.url == "https://invoice.stripe.com/i/x"
+
+
+def test_coded_billing_errors_keep_sentence_and_code(calls):
+    seed(calls, ({"error": "ALREADY_SUBSCRIBED", "message": "This account already has Pro"}, 409))
+    with pytest.raises(lz.ConflictError) as ei:
+        lz.Lizard(**KW).projects.create(workspace_id="w1", name="x")
+    assert str(ei.value) == "This account already has Pro"
+    assert ei.value.code == "ALREADY_SUBSCRIBED"

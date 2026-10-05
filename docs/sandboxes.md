@@ -370,11 +370,32 @@ Most platform and sandbox methods map HTTP failures to these exported errors. Ea
 
 | Error | Meaning |
 | --- | --- |
+| `PaymentRequiredError` | HTTP 402: the account has to start Pro, start it now, or pay an invoice before it can create anything; see below |
 | `AuthenticationError` | HTTP 401 or 403: invalid key or insufficient access |
 | `NotFoundError` | HTTP 404: resource missing or no longer available |
 | `ConflictError` | HTTP 409: conflicting state, such as a volume name already in use |
 | `TimeoutError` | HTTP 408 or 504 |
 | `LizardError` | Other API failures, including unsupported operations |
 | `ConfigApplyError` | Platform config saved, but a deploy or restart action failed; inspect `result` before retrying |
+
+When the API sends `{error: "SOME_CODE", message: "..."}`, the sentence becomes the error message and `SOME_CODE` the `code`.
+
+`PaymentRequiredError` has the platform's sentence as its message; show it to the user as is. `code` is `PAYMENT_REQUIRED` (`INSUFFICIENT_CREDITS` from older servers, `UNPAID_INVOICE` when an old invoice blocks a new Pro subscription). `paymentStatus` / `payment_status` says why: `trial_available`, `subscription_required`, `trial_credits_used`, `past_due`, `paused`, or a status of the old prepaid credits (`grace`, `frozen`, `card_required`, `credits_required`). The links are `subscribeUrl`, `billingUrl`, `topupUrl` and `invoiceUrl` (snake_case in Python), and `url` picks the one to open: Start Pro for the first two statuses, the invoice, the Credits page for prepaid credits, otherwise Billing. The user finishes payment in the browser; retry the call after they do.
+
+```ts
+try {
+  await Sandbox.create('base', { projectId })
+} catch (err) {
+  if (err instanceof PaymentRequiredError) console.log(`${err.message}\n${err.url}`)
+  else throw err
+}
+```
+
+```python
+try:
+    Sandbox.create("base", project_id=project_id)
+except PaymentRequiredError as err:
+    print(err.message, err.url, sep="\n")
+```
 
 Some direct HTTP calls expose native fetch/httpx errors. Local timeouts can also raise native transport errors. `kill()` returns `false` / `False` for an already missing sandbox. Check command exit codes and code execution errors separately from API failures.

@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Lizard } from './lizard'
 import { Sandbox } from './sandbox'
 import { Volume } from './volume'
-import { ConflictError, LizardError, TimeoutError } from './errors'
+import { AuthenticationError, ConflictError, LizardError, PaymentRequiredError, TimeoutError } from './errors'
 
 const API = 'https://api.parity.invalid'
 const opts = { apiKey: 'liz_test', apiUrl: API }
@@ -197,5 +197,77 @@ describe('volume resize', () => {
     expect(err).toBeInstanceOf(LizardError)
     expect(err.code).toBe('volume_capacity_unavailable')
     expect(err.status).toBe(503)
+  })
+})
+
+describe('payment required (HTTP 402)', () => {
+  const body = {
+    error: 'INSUFFICIENT_CREDITS',
+    code: 'PAYMENT_REQUIRED',
+    status: 'trial_available',
+    message: 'Start your 7-day Pro trial with $5 in credits to deploy. No charge today, then $19/month.',
+    subscribeUrl: 'https://lizard.build/profile/account-billing?subscribe=1',
+    billingUrl: 'https://lizard.build/profile/account-billing',
+    topupUrl: 'https://lizard.build/profile/account-credits',
+    balanceCents: 0,
+    availableCents: 100,
+  }
+
+  it('raises PaymentRequiredError with the sentence, the code and the links', async () => {
+    stubFetch([{ status: 402, body }])
+    const err = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
+    expect(err).toBeInstanceOf(PaymentRequiredError)
+    expect(err).toBeInstanceOf(LizardError)
+    expect(err.name).toBe('PaymentRequiredError')
+    expect(err.status).toBe(402)
+    expect(err.code).toBe('PAYMENT_REQUIRED')
+    expect(err.message).toBe(body.message)
+    expect(err.paymentStatus).toBe('trial_available')
+    expect(err.subscribeUrl).toBe(body.subscribeUrl)
+    expect(err.billingUrl).toBe(body.billingUrl)
+    expect(err.url).toBe(body.subscribeUrl)
+  })
+
+  it('reads older servers that send only error: INSUFFICIENT_CREDITS', async () => {
+    stubFetch([{ status: 402, body: { error: 'INSUFFICIENT_CREDITS', status: 'frozen', message: 'Your credits are used up.', topupUrl: body.topupUrl } }])
+    const err = await Sandbox.create('base', { ...opts, projectId: 'p1' }).catch((e) => e)
+    expect(err).toBeInstanceOf(PaymentRequiredError)
+    expect(err.code).toBe('INSUFFICIENT_CREDITS')
+    expect(err.message).toBe('Your credits are used up.')
+    expect(err.billingUrl).toBeUndefined()
+    expect(err.url).toBe(body.topupUrl)
+  })
+
+  it.each([
+    ['past_due', body.billingUrl],
+    ['trial_credits_used', body.billingUrl],
+    ['subscription_required', body.subscribeUrl],
+  ])('%s points at the right page', async (status, url) => {
+    stubFetch([{ status: 402, body: { ...body, status } }])
+    const err = await Volume.create('p1', 'data', opts).catch((e) => e)
+    expect(err).toBeInstanceOf(PaymentRequiredError)
+    expect(err.url).toBe(url)
+  })
+
+  it('an unpaid invoice links the invoice', async () => {
+    stubFetch([{ status: 402, body: { error: 'UNPAID_INVOICE', message: 'Pay your open invoice before starting Pro again', invoiceUrl: 'https://invoice.stripe.com/i/x' } }])
+    const err = await new Lizard(opts).regions.list().catch((e) => e)
+    expect(err).toBeInstanceOf(PaymentRequiredError)
+    expect(err.code).toBe('UNPAID_INVOICE')
+    expect(err.url).toBe('https://invoice.stripe.com/i/x')
+  })
+
+  it('coded billing errors keep the sentence and the code on every status', async () => {
+    stubFetch([{ status: 409, body: { error: 'ALREADY_SUBSCRIBED', message: 'This account already has Pro' } }])
+    const conflict = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
+    expect(conflict).toBeInstanceOf(ConflictError)
+    expect(conflict.message).toBe('This account already has Pro')
+    expect(conflict.code).toBe('ALREADY_SUBSCRIBED')
+
+    stubFetch([{ status: 403, body: { error: 'ACCOUNT_SCOPE_REQUIRED', message: 'Billing needs an unscoped key.' } }])
+    const scoped = await new Lizard(opts).billing.balance().catch((e) => e)
+    expect(scoped).toBeInstanceOf(AuthenticationError)
+    expect(scoped.message).toBe('Billing needs an unscoped key.')
+    expect(scoped.code).toBe('ACCOUNT_SCOPE_REQUIRED')
   })
 })

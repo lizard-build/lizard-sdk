@@ -15,6 +15,7 @@ export {
   NotFoundError,
   ConflictError,
   TimeoutError,
+  PaymentRequiredError,
 } from './errors'
 
 export { CodeSandbox } from './code-interpreter'
