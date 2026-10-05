@@ -18,7 +18,10 @@ export type { ApiKey, CreatedApiKey, ApiKeyScope, CreateApiKeyOpts } from './api
 export { RegionsAPI } from './regions'
 export type { Region } from './regions'
 export { BillingAPI } from './billing'
-export type { Balance, Transaction, TransactionPage, ListTransactionsOpts } from './billing'
+export type {
+  Balance, Transaction, TransactionPage, ListTransactionsOpts,
+  Plan, SubscriptionStatus, Subscription, StartCheckoutOpts, CheckoutSession, StartProNowResult, PromoRedemption,
+} from './billing'
 
 export { StorageAPI } from './storage'
 export { GitHubAPI } from './github'

@@ -120,6 +120,48 @@ describe('provisioning surfaces', () => {
     expect((await new Lizard(opts).billing.balance()).hourlyRateCents).toBe(22)
   })
 
+  it('reads the Pro plan, for the account or a workspace owner', async () => {
+    const plan = { plan: 'pro', status: 'active', isOwner: false, period: { kind: 'paid', includedCents: 1900, usedCents: 3140, overageCents: 1240 } }
+    const calls = stubFetch([{ body: plan }])
+    const sub = await new Lizard(opts).billing.subscription({ workspaceId: 'w 1' })
+    expect(calls[0].url).toBe(`${API}/api/billing/subscription?workspaceId=w+1`)
+    expect(sub.period?.overageCents).toBe(1240)
+    expect(sub.isOwner).toBe(false)
+  })
+
+  it('starts Checkout, starts Pro now, cancels and resumes', async () => {
+    const calls = stubFetch([
+      { body: { url: 'https://checkout.test/cs_1', sessionId: 'cs_1', trialDays: null, trialCreditCents: null } },
+      { body: { status: 'active' } },
+      { body: { cancelAt: 1791800000000 } },
+      { body: { cancelAt: null } },
+    ])
+    const billing = new Lizard(opts).billing
+    expect((await billing.startCheckout()).trialDays).toBeNull()
+    expect((await billing.startProNow()).status).toBe('active')
+    expect((await billing.cancel()).cancelAt).toBe(1791800000000)
+    expect((await billing.resume()).cancelAt).toBeNull()
+    expect(calls.map((c) => [c.method, c.url.slice(API.length), c.body])).toEqual([
+      ['POST', '/api/billing/subscription/checkout', {}],
+      ['POST', '/api/billing/subscription/start-now', {}],
+      ['POST', '/api/billing/subscription/cancel', {}],
+      ['POST', '/api/billing/subscription/resume', {}],
+    ])
+  })
+
+  it('returns the trial a promo code gives', async () => {
+    stubFetch([{ body: { status: 'applied', code: 'ROST', creditCents: 10000, expiresAt: 1, balanceCents: 0, trialDays: 31, trialCreditCents: 10000, appliesTo: 'current_trial' } }])
+    const out = await new Lizard(opts).billing.redeemPromo('ROST')
+    expect(out).toMatchObject({ trialDays: 31, trialCreditCents: 10000, appliesTo: 'current_trial' })
+  })
+
+  it('no longer has the credit purchase, auto top-up or x402 methods', () => {
+    const billing = new Lizard(opts).billing as unknown as Record<string, unknown>
+    for (const gone of ['purchase', 'autoTopup', 'setAutoTopup', 'runAutoTopup', 'x402Quote', 'payX402', 'paymentStatus', 'setupPaymentMethod']) {
+      expect(billing[gone]).toBeUndefined()
+    }
+  })
+
   it('builds the transactions query from its options', async () => {
     const calls = stubFetch([{ body: { items: [], nextCursor: null } }])
     await new Lizard(opts).billing.transactions({ limit: 5, includeUsage: true })

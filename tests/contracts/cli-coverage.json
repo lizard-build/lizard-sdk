@@ -8,6 +8,71 @@
       "sdk": "services.deploy; addons.create"
     },
     {
+      "command": "billing",
+      "mode": "native",
+      "sdk": "billing.subscription"
+    },
+    {
+      "command": "billing status",
+      "mode": "native",
+      "sdk": "billing.subscription"
+    },
+    {
+      "command": "billing open",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "billing start",
+      "mode": "native",
+      "sdk": "billing.startCheckout"
+    },
+    {
+      "command": "billing start-now",
+      "mode": "native",
+      "sdk": "billing.startProNow"
+    },
+    {
+      "command": "billing cancel",
+      "mode": "native",
+      "sdk": "billing.cancel"
+    },
+    {
+      "command": "billing resume",
+      "mode": "native",
+      "sdk": "billing.resume"
+    },
+    {
+      "command": "billing promo",
+      "mode": "native",
+      "sdk": "billing.redeemPromo"
+    },
+    {
+      "command": "billing balance",
+      "mode": "native",
+      "sdk": "billing.balance"
+    },
+    {
+      "command": "billing transactions",
+      "mode": "native",
+      "sdk": "billing.transactions"
+    },
+    {
+      "command": "billing payment-methods",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "billing payment-methods list",
+      "mode": "native",
+      "sdk": "billing.paymentMethods"
+    },
+    {
+      "command": "billing payment-methods remove",
+      "mode": "native",
+      "sdk": "billing.removePaymentMethod"
+    },
+    {
       "command": "config",
       "mode": "namespace",
       "sdk": "help/discovery"
@@ -16,71 +81,6 @@
       "command": "config apply",
       "mode": "native",
       "sdk": "projects.apply"
-    },
-    {
-      "command": "credits",
-      "mode": "native",
-      "sdk": "billing.balance"
-    },
-    {
-      "command": "credits balance",
-      "mode": "native",
-      "sdk": "billing.balance"
-    },
-    {
-      "command": "credits transactions",
-      "mode": "native",
-      "sdk": "billing.transactions"
-    },
-    {
-      "command": "credits payment-methods",
-      "mode": "namespace",
-      "sdk": "help/discovery"
-    },
-    {
-      "command": "credits payment-methods list",
-      "mode": "native",
-      "sdk": "billing.paymentMethods"
-    },
-    {
-      "command": "credits payment-methods add",
-      "mode": "native",
-      "sdk": "billing.setupPaymentMethod"
-    },
-    {
-      "command": "credits payment-methods remove",
-      "mode": "native",
-      "sdk": "billing.removePaymentMethod"
-    },
-    {
-      "command": "credits topup",
-      "mode": "native-and-cli-adapter",
-      "sdk": "billing.purchase; billing.x402Quote; billing.payX402"
-    },
-    {
-      "command": "credits payment-status",
-      "mode": "native",
-      "sdk": "billing.paymentStatus"
-    },
-    {
-      "command": "credits auto-topup",
-      "mode": "native",
-      "sdk": "billing.autoTopup"
-    },
-    {
-      "command": "credits auto-topup set",
-      "mode": "native",
-      "sdk": "billing.setAutoTopup"
-    },
-    {
-      "command": "credits auto-topup run",
-      "mode": "native",
-      "sdk": "billing.runAutoTopup"
-    },
-    {
-      "command": "credits promo",
-      "mode": "native",
-      "sdk": "billing.redeemPromo"
     },
     {
       "command": "docs",
@@ -523,7 +523,37 @@
       "command": "sandbox restore",
       "mode": "backend-501",
       "sdk": "Sandbox.restore"
+    },
+    {
+      "command": "credits payment-methods add",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
+    },
+    {
+      "command": "credits topup",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
+    },
+    {
+      "command": "credits payment-status",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
+    },
+    {
+      "command": "credits auto-topup",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
+    },
+    {
+      "command": "credits auto-topup set",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
+    },
+    {
+      "command": "credits auto-topup run",
+      "mode": "removed",
+      "sdk": "removed with Pro billing"
     }
   ],
-  "legacyNote": "Removed by lizard-cli PR #13. Retained only to audit published CLI 4.0.8 before that change is released."
+  "legacyNote": "Removed by lizard-cli PR #13. Retained only to audit published CLI 4.0.8 before that change is released. The credits rows are published CLI commands that Pro billing removes (top-ups, auto top-up, x402, adding a card); `credits` itself is now `billing`."
 }

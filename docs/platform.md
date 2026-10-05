@@ -37,7 +37,7 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 | `workspaces` | `workspaces` | Workspaces and resource ownership |
 | `apiKeys` | `api_keys` | API keys and scopes |
 | `regions` | `regions` | Available regions |
-| `billing` | `billing` | Account balance, transactions and payments |
+| `billing` | `billing` | The account's plan, Pro Checkout, promo codes, balance and transactions |
 | `volumes` | `volumes` | Persistent files for sandboxes in the client's project |
 
 `whoami()` returns the account identity visible to the credential. `platform` exposes the underlying HTTP client for endpoints without a dedicated method. See [CLI coverage](cli-parity.md#native-apis) for the method map.
@@ -75,12 +75,50 @@ If tools inside a sandbox need Lizard access, pass a scoped key through `lizardT
 
 ### Account and billing access
 
-Billing belongs to the account, across all its workspaces. Scoped keys cannot access account billing or account-wide usage; those routes return HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. Their `whoami()` response includes identity and scopes, without the account's email, balance or plan. Use scoped `metrics` calls for project costs.
+Billing belongs to the account, across all its workspaces. Scoped keys cannot access account billing or account-wide usage; those routes return HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. The one exception is `billing.subscription({ workspaceId })` / `billing.subscription(workspace_id=...)`, which any member's key that reaches the workspace can call to see why the owner's account is blocked; it leaves out the card and invoice. A scoped key's `whoami()` response includes identity and scopes, without the account's email, balance or plan. Use scoped `metrics` calls for project costs.
 
 `workspaces.delete()` requires an empty workspace by default. The `force` option removes the workspace and its resources. Revoking a key or deleting a resource takes effect immediately.
 
+## Billing
+
+Pro costs $19/month, taxes included, with $19 of credits each month for everything on the account. Usage above that is pay as you go, invoiced as it builds up. A new account starts with a 7-day trial with $5 of credits; Checkout asks for a card and charges nothing until the trial ends. Promo codes give a longer trial with more trial credits and work only before the first payment. Enterprise accounts pay as you go, invoiced monthly. Accounts on the old prepaid credits (`plan: "payg"`) keep `balance()` and `transactions()` until November 1, 2026. There are no top-ups and no crypto or x402 payments.
+
+```ts
+const sub = await lizard.billing.subscription()
+if (sub.plan === 'none' && sub.trial.eligible) {
+  const { url } = await lizard.billing.startCheckout({ returnUrl: '/' })
+  console.log(`Start your ${sub.trial.days}-day trial: ${url}`)
+} else if (sub.period) {
+  console.log(`$${(sub.period.usedCents / 100).toFixed(2)} of $${sub.period.includedCents / 100} used`)
+}
+```
+
+```python
+sub = lizard.billing.subscription()
+if sub.plan == "none" and sub.trial.eligible:
+    session = lizard.billing.start_checkout(return_url="/")
+    print(f"Start your {sub.trial.days}-day trial: {session.url}")
+elif sub.period:
+    print(f"${sub.period.used_cents / 100:.2f} of ${sub.period.included_cents // 100} used")
+```
+
+| TypeScript | Python | What it does |
+| --- | --- | --- |
+| `subscription({ workspaceId? })` | `subscription(workspace_id=None)` | Plan, trial days and credits left, this month's credits and overage, next charge, cancel date, unpaid invoice |
+| `startCheckout({ returnUrl? })` | `start_checkout(return_url=None)` | Stripe Checkout URL for the trial, or for Pro at once when the trial was used |
+| `startProNow()` | `start_pro_now()` | End the trial: charge $19 now and start the first paid month. `requires_action` returns an invoice page to open |
+| `cancel()` | `cancel()` | Cancel at the end of the month or trial; returns when it ends |
+| `resume()` | `resume()` | Undo a cancel |
+| `redeemPromo(code)` | `redeem_promo(code)` | `trialDays`, `trialCreditCents` and `appliesTo` (`next_checkout` or `current_trial`) |
+| `balance()`, `transactions()` | `balance()`, `transactions()` | Prepaid credits and enterprise accounts |
+| `paymentMethods()`, `removePaymentMethod(id)` | `payment_methods()`, `remove_payment_method(id)` | Saved cards; add a card in Checkout or on the Billing page |
+
+Checkout and invoices are web pages: the user finishes them in a browser. `startProNow`, `cancel` and `resume` change what the account pays, so call them only on the account owner's request. Nothing in the SDK retries a payment.
+
+When the account has to pay before it can create something, the call raises `PaymentRequiredError` (HTTP 402) with the platform's sentence and the page to open next; see [Errors](sandboxes.md#errors).
+
 ## Optional CLI adapter
 
-Native HTTP methods do not need the CLI. `LizardCLI` supports local workflows such as linking a directory or running CLI commands. Install Lizard CLI 4.0.8+ on `PATH` before using it. The x402 payment helper also needs the CLI.
+Native HTTP methods do not need the CLI. `LizardCLI` supports local workflows such as linking a directory or running CLI commands. Install Lizard CLI 4.0.8+ on `PATH` before using it.
 
-See [CLI adapter usage](cli-parity.md#optional-cli-adapter) and [payment behavior](cli-parity.md#x402). For config changes, inspect `ConfigApplyError.result` before retrying: the server may have saved the config even if a deploy or restart failed.
+See [CLI adapter usage](cli-parity.md#optional-cli-adapter). For config changes, inspect `ConfigApplyError.result` before retrying: the server may have saved the config even if a deploy or restart failed.

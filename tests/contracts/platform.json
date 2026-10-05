@@ -2491,6 +2491,263 @@
     "expectRequests": 2
   },
   {
+    "name": "billing.subscription",
+    "ts": {
+      "path": "billing.subscription",
+      "args": []
+    },
+    "py": {
+      "path": "billing.subscription",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/subscription",
+        "response": {
+          "plan": "pro",
+          "status": "trialing",
+          "isOwner": true,
+          "priceCents": 1900,
+          "taxIncluded": true,
+          "includedCents": 1900,
+          "trial": {
+            "eligible": false,
+            "days": 7,
+            "creditCents": 500,
+            "promoCode": null,
+            "endsAt": 1791800000000,
+            "usedCents": 120,
+            "remainingCents": 380
+          },
+          "period": {
+            "kind": "trial",
+            "start": 1791200000000,
+            "end": 1791800000000,
+            "includedCents": 500,
+            "usedCents": 120,
+            "overageCents": 0,
+            "billedOverageCents": 0,
+            "unbilledOverageCents": 0,
+            "nextOverageChargeAtCents": null
+          },
+          "nextCharge": {
+            "at": 1791800000000,
+            "amountCents": 1900
+          },
+          "cancelAt": null,
+          "pastDue": false,
+          "openInvoiceUrl": null,
+          "paymentMethod": {
+            "brand": "visa",
+            "last4": "4242",
+            "expMonth": 12,
+            "expYear": 2030
+          },
+          "limits": {
+            "tier": "trial",
+            "replicasPerApp": 1
+          },
+          "checkoutAvailable": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.subscription.workspace",
+    "ts": {
+      "path": "billing.subscription",
+      "args": [
+        {
+          "workspaceId": "w1"
+        }
+      ]
+    },
+    "py": {
+      "path": "billing.subscription",
+      "args": [],
+      "kwargs": {
+        "workspace_id": "w1"
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/billing/subscription?workspaceId=w1",
+        "response": {
+          "plan": "pro",
+          "status": "trialing",
+          "isOwner": false,
+          "priceCents": 1900,
+          "taxIncluded": true,
+          "includedCents": 1900,
+          "trial": {
+            "eligible": false,
+            "days": 7,
+            "creditCents": 500,
+            "promoCode": null,
+            "endsAt": 1791800000000,
+            "usedCents": 120,
+            "remainingCents": 380
+          },
+          "period": {
+            "kind": "trial",
+            "start": 1791200000000,
+            "end": 1791800000000,
+            "includedCents": 500,
+            "usedCents": 120,
+            "overageCents": 0,
+            "billedOverageCents": 0,
+            "unbilledOverageCents": 0,
+            "nextOverageChargeAtCents": null
+          },
+          "nextCharge": {
+            "at": 1791800000000,
+            "amountCents": 1900
+          },
+          "cancelAt": null,
+          "pastDue": false,
+          "openInvoiceUrl": null,
+          "paymentMethod": null,
+          "limits": {
+            "tier": "trial",
+            "replicasPerApp": 1
+          },
+          "checkoutAvailable": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.startCheckout",
+    "ts": {
+      "path": "billing.startCheckout",
+      "args": [
+        {
+          "returnUrl": "/projects/p1"
+        }
+      ]
+    },
+    "py": {
+      "path": "billing.start_checkout",
+      "args": [],
+      "kwargs": {
+        "return_url": "/projects/p1"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/subscription/checkout",
+        "body": {
+          "returnUrl": "/projects/p1"
+        },
+        "response": {
+          "url": "https://checkout.test/cs_1",
+          "sessionId": "cs_1",
+          "trialDays": 7,
+          "trialCreditCents": 500
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.startCheckout.unpaid_invoice",
+    "ts": {
+      "path": "billing.startCheckout",
+      "args": []
+    },
+    "py": {
+      "path": "billing.start_checkout",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/subscription/checkout",
+        "body": {},
+        "status": 402,
+        "response": {
+          "error": "UNPAID_INVOICE",
+          "message": "Pay your open invoice before starting Pro again",
+          "invoiceUrl": "https://invoice.test/i1"
+        }
+      }
+    ],
+    "error": "Pay your open invoice",
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.startProNow",
+    "ts": {
+      "path": "billing.startProNow",
+      "args": []
+    },
+    "py": {
+      "path": "billing.start_pro_now",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/subscription/start-now",
+        "body": {},
+        "response": {
+          "status": "requires_action",
+          "invoiceUrl": "https://invoice.test/i2"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.cancel",
+    "ts": {
+      "path": "billing.cancel",
+      "args": []
+    },
+    "py": {
+      "path": "billing.cancel",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/subscription/cancel",
+        "body": {},
+        "response": {
+          "cancelAt": 1791800000000
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "billing.resume",
+    "ts": {
+      "path": "billing.resume",
+      "args": []
+    },
+    "py": {
+      "path": "billing.resume",
+      "args": []
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/billing/subscription/resume",
+        "body": {},
+        "response": {
+          "cancelAt": null
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
     "name": "billing.paymentMethods",
     "ts": {
       "path": "billing.paymentMethods",
@@ -2504,27 +2761,6 @@
       {
         "method": "GET",
         "path": "/api/billing/payment-methods",
-        "response": {
-          "items": []
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
-    "name": "billing.autoTopup",
-    "ts": {
-      "path": "billing.autoTopup",
-      "args": []
-    },
-    "py": {
-      "path": "billing.auto_topup",
-      "args": []
-    },
-    "requests": [
-      {
-        "method": "GET",
-        "path": "/api/billing/auto-topup",
         "response": {
           "items": []
         }
@@ -2575,34 +2811,6 @@
     "expectRequests": 1
   },
   {
-    "name": "billing.setupPaymentMethod",
-    "ts": {
-      "path": "billing.setupPaymentMethod",
-      "args": [
-        "https://example.test"
-      ]
-    },
-    "py": {
-      "path": "billing.setup_payment_method",
-      "args": [
-        "https://example.test"
-      ]
-    },
-    "requests": [
-      {
-        "method": "POST",
-        "path": "/api/billing/payment-methods/setup",
-        "response": {
-          "url": "https://checkout.test"
-        },
-        "body": {
-          "returnUrl": "https://example.test"
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
     "name": "billing.removePaymentMethod",
     "ts": {
       "path": "billing.removePaymentMethod",
@@ -2628,112 +2836,6 @@
     "expectRequests": 1
   },
   {
-    "name": "billing.purchase",
-    "ts": {
-      "path": "billing.purchase",
-      "args": [
-        2000,
-        {
-          "paymentMethod": "crypto",
-          "returnUrl": "https://example.test"
-        }
-      ]
-    },
-    "py": {
-      "path": "billing.purchase",
-      "args": [
-        2000
-      ],
-      "kwargs": {
-        "payment_method": "crypto",
-        "return_url": "https://example.test"
-      }
-    },
-    "requests": [
-      {
-        "method": "POST",
-        "path": "/api/billing/purchase",
-        "response": {
-          "url": "https://checkout.test"
-        },
-        "body": {
-          "creditCents": 2000,
-          "paymentMethod": "crypto",
-          "returnUrl": "https://example.test"
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
-    "name": "billing.setAutoTopup",
-    "ts": {
-      "path": "billing.setAutoTopup",
-      "args": [
-        {
-          "enabled": false,
-          "thresholdCents": 500,
-          "amountCents": 2000,
-          "paymentMethodIds": [
-            "pm1"
-          ]
-        }
-      ]
-    },
-    "py": {
-      "path": "billing.set_auto_topup",
-      "args": [],
-      "kwargs": {
-        "enabled": false,
-        "threshold_cents": 500,
-        "amount_cents": 2000,
-        "payment_method_ids": [
-          "pm1"
-        ]
-      }
-    },
-    "requests": [
-      {
-        "method": "PUT",
-        "path": "/api/billing/auto-topup",
-        "response": {
-          "ok": true
-        },
-        "body": {
-          "enabled": false,
-          "thresholdCents": 500,
-          "amountCents": 2000,
-          "paymentMethodIds": [
-            "pm1"
-          ]
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
-    "name": "billing.runAutoTopup",
-    "ts": {
-      "path": "billing.runAutoTopup",
-      "args": []
-    },
-    "py": {
-      "path": "billing.run_auto_topup",
-      "args": []
-    },
-    "requests": [
-      {
-        "method": "POST",
-        "path": "/api/billing/auto-topup/run",
-        "response": {
-          "ok": true
-        },
-        "body": {}
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
     "name": "billing.redeemPromo",
     "ts": {
       "path": "billing.redeemPromo",
@@ -2752,63 +2854,17 @@
         "method": "POST",
         "path": "/api/billing/promo/redeem",
         "response": {
-          "ok": true
+          "status": "pending_payment_method",
+          "code": "TEST",
+          "creditCents": 10000,
+          "expiresAt": null,
+          "balanceCents": 0,
+          "trialDays": 31,
+          "trialCreditCents": 10000,
+          "appliesTo": "next_checkout"
         },
         "body": {
           "code": "TEST"
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
-    "name": "billing.x402Quote",
-    "ts": {
-      "path": "billing.x402Quote",
-      "args": [
-        2000
-      ]
-    },
-    "py": {
-      "path": "billing.x402_quote",
-      "args": [
-        2000
-      ]
-    },
-    "requests": [
-      {
-        "method": "POST",
-        "path": "/api/billing/purchase/x402/quote",
-        "response": {
-          "ok": true
-        },
-        "body": {
-          "creditCents": 2000
-        }
-      }
-    ],
-    "expectRequests": 1
-  },
-  {
-    "name": "billing.paymentStatus",
-    "ts": {
-      "path": "billing.paymentStatus",
-      "args": [
-        "attempt"
-      ]
-    },
-    "py": {
-      "path": "billing.payment_status",
-      "args": [
-        "attempt"
-      ]
-    },
-    "requests": [
-      {
-        "method": "GET",
-        "path": "/api/billing/purchase/x402/attempt",
-        "response": {
-          "ok": true
         }
       }
     ],

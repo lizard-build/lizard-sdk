@@ -73,10 +73,6 @@ describe('optional CLI adapter', () => {
   it('preserves nonzero exit status', async () => {
     expect((await new LizardCLI({ executable }).run(['fail'])).code).toBe(3)
   })
-  it('uses explicit cents and request ID for x402, without shell or automatic retries', async () => {
-    const result = await new Lizard(opts).billing.payX402(2000, { maxTotalCents: 2100, requestId: 'request-1', executable })
-    expect(result).toEqual({ args: ['--json', 'credits', 'topup', '20.00', '--method', 'x402', '--max-total', '21.00', '--yes', '--request-id', 'request-1'], input: '' })
-  })
 })
 
 describe('deploy completion', () => {

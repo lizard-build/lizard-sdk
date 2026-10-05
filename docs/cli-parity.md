@@ -18,12 +18,12 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 | `metrics` | `metrics.service/addon/project/cpu/memory/network/disk/all/cost` |
 | `git` | `github.status/installUrl/checkout` |
 | `s3` | `storage.list/upload` |
-| `credits` | `billing.balance/transactions/summary/live/paymentMethods/setupPaymentMethod/removePaymentMethod/purchase/autoTopup/setAutoTopup/runAutoTopup/redeemPromo/x402Quote/paymentStatus/payX402` |
+| `billing` (formerly `credits`) | `billing.subscription/startCheckout/startProNow/cancel/resume/redeemPromo/balance/transactions/summary/live/paymentMethods/removePaymentMethod` |
 | `sandbox` | `Sandbox.create/connect/list/restore/snapshots/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/exposePort/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
 | `volume` | `Volume.*`, project-bound `client.volumes.*`, `projects.volumeLimits` |
 | `workspace`, `keys`, `regions`, `whoami` | `workspaces.*`, `apiKeys.*`, `regions.list`, `whoami` |
 
-API methods take explicit IDs. Interactive pickers and directory links belong to the CLI. `services.upload` takes tar.gz bytes; the CLI handles directory packing and `.gitignore`. GitHub App installation and card setup return a URL the caller opens to finish consent or payment.
+API methods take explicit IDs. Interactive pickers and directory links belong to the CLI. `services.upload` takes tar.gz bytes; the CLI handles directory packing and `.gitignore`. GitHub App installation and Pro Checkout return a URL the caller opens to finish consent or payment.
 
 ## Optional CLI adapter
 
@@ -45,17 +45,15 @@ if result.code:
 
 These are CLI-backed operations, not native HTTP implementations. The CLI must be installed. Native platform methods do not need it.
 
-### x402
-
-`billing.payX402(creditCents, {maxTotalCents, requestId})` and `billing.pay_x402(credit_cents, max_total_cents=..., request_id=...)` use the CLI's x402 signer, trusted-origin checks, spending cap and durable authorization journal. Both amounts are integer cents. Calling this method authorizes payment up to the given cap; quote first and obtain the caller's consent. The wallet key stays in `LIZARD_X402_PRIVATE_KEY`, never in method arguments. There is no automatic payment retry in the SDK.
-
-Use the same request ID to recover a payment. `pending` or a network error is not proof of failure. Check `paymentStatus` before starting another payment. A completed purchase requires a new explicit request ID for a new charge.
-
 ## Backend limits
 
 Sandbox pause/resume (memory and processes kept), snapshot creation/restoration and fork are supported on Firecracker sandboxes. Both SDKs also expose snapshot get/list/delete and wait helpers, plus warm-pool resizing and pool pause/resume for container snapshots.
 
 Sandbox file upload accepts UTF-8 text. Passing invalid UTF-8 bytes fails locally instead of corrupting data. Use `readBytes` / `read_bytes` for binary downloads.
+
+## Pro billing
+
+Pro replaces prepaid credits. `billing.subscription`, `startCheckout`, `startProNow`, `cancel` and `resume` are new, and `redeemPromo` returns the trial the code gives. `purchase` (card and crypto), `autoTopup`, `setAutoTopup`, `runAutoTopup`, `setupPaymentMethod`, `x402Quote`, `paymentStatus` and `payX402` are removed, with their Python twins: the platform refuses those calls for every account outside the old prepaid credits, and x402 and crypto payments are retired. Python's `redeem_promo` returns a `PromoRedemption` instead of a dict. An HTTP 402 raises `PaymentRequiredError`, a `LizardError` subclass.
 
 ## Changes from 0.1.8
 

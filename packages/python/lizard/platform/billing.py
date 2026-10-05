@@ -8,6 +8,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class Balance:
+    """Prepaid credits balance: old credits accounts (``plan == "payg"``) until
+    1 November 2026, and enterprise usage."""
+
     plan: str
     status: str
     #: Current balance in cents. Negative means the account is in debt.
@@ -63,28 +66,253 @@ class TransactionPage:
     next_cursor: str | None = None
 
 
+@dataclass
+class TrialInfo:
+    #: The account can start a trial now.
+    eligible: bool = False
+    #: Trial length it would get, or got.
+    days: int | None = None
+    #: Trial credits, in cents.
+    credit_cents: int | None = None
+    #: Promo code held for the trial, if any.
+    promo_code: str | None = None
+    #: Trial end (ms); None when not trialing.
+    ends_at: int | None = None
+    #: Trial credits used (trialing only).
+    used_cents: int | None = None
+    remaining_cents: int | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "TrialInfo":
+        return cls(
+            eligible=bool(d.get("eligible")),
+            days=d.get("days"),
+            credit_cents=d.get("creditCents"),
+            promo_code=d.get("promoCode"),
+            ends_at=d.get("endsAt"),
+            used_cents=d.get("usedCents"),
+            remaining_cents=d.get("remainingCents"),
+        )
+
+
+@dataclass
+class BillingPeriod:
+    #: ``"trial"`` or ``"paid"``.
+    kind: str
+    start: int
+    end: int
+    #: 500 in the trial, 1900 in a paid month.
+    included_cents: int
+    used_cents: int
+    #: Paid month: usage above the included credits.
+    overage_cents: int = 0
+    #: Of the overage, already invoiced.
+    billed_overage_cents: int = 0
+    unbilled_overage_cents: int = 0
+    #: Paid month: unbilled overage at which the next invoice goes out.
+    next_overage_charge_at_cents: int | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "BillingPeriod":
+        return cls(
+            kind=d.get("kind", ""),
+            start=int(d.get("start") or 0),
+            end=int(d.get("end") or 0),
+            included_cents=int(d.get("includedCents") or 0),
+            used_cents=int(d.get("usedCents") or 0),
+            overage_cents=int(d.get("overageCents") or 0),
+            billed_overage_cents=int(d.get("billedOverageCents") or 0),
+            unbilled_overage_cents=int(d.get("unbilledOverageCents") or 0),
+            next_overage_charge_at_cents=d.get("nextOverageChargeAtCents"),
+        )
+
+
+@dataclass
+class Subscription:
+    """The account's plan.
+
+    ``plan``: ``"none"`` (no plan yet; creating anything raises
+    :class:`~lizard.PaymentRequiredError`), ``"pro"``, ``"payg"`` (old prepaid credits,
+    until 1 November 2026) or ``"enterprise"`` (pay as you go, invoiced monthly).
+    ``status`` for Pro: ``"trialing"``, ``"active"``, ``"past_due"``, ``"canceled"``;
+    ``"none"`` when there is no subscription.
+    """
+
+    plan: str
+    status: str
+    #: False when read for a workspace the caller does not own; card and invoice fields are then None.
+    is_owner: bool = True
+    #: 1900: $19/month, taxes included.
+    price_cents: int = 1900
+    tax_included: bool = True
+    #: Credits included each paid month, in cents.
+    included_cents: int = 1900
+    trial: TrialInfo = field(default_factory=TrialInfo)
+    #: The current Pro period; None when there is none.
+    period: BillingPeriod | None = None
+    #: ``{"at": ms, "amountCents": int}``; None when there is none, or the subscription is cancelling.
+    next_charge: dict | None = None
+    #: When a cancelled subscription ends (ms).
+    cancel_at: int | None = None
+    #: An invoice is unpaid.
+    past_due: bool = False
+    #: Stripe page that pays it (owner only).
+    open_invoice_url: str | None = None
+    #: ``{"brand", "last4", "expMonth", "expYear"}``.
+    payment_method: dict | None = None
+    #: Pro only: ``{"tier": "trial" | "pro", "replicasPerApp": int}``.
+    limits: dict | None = None
+    #: Pro Checkout is open for this account.
+    checkout_available: bool = False
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "Subscription":
+        return cls(
+            plan=d.get("plan", ""),
+            status=d.get("status", ""),
+            is_owner=bool(d.get("isOwner", True)),
+            price_cents=int(d.get("priceCents") or 1900),
+            tax_included=bool(d.get("taxIncluded", True)),
+            included_cents=int(d.get("includedCents") or 1900),
+            trial=TrialInfo._from_dict(d.get("trial") or {}),
+            period=BillingPeriod._from_dict(d["period"]) if d.get("period") else None,
+            next_charge=d.get("nextCharge"),
+            cancel_at=d.get("cancelAt"),
+            past_due=bool(d.get("pastDue")),
+            open_invoice_url=d.get("openInvoiceUrl"),
+            payment_method=d.get("paymentMethod"),
+            limits=d.get("limits"),
+            checkout_available=bool(d.get("checkoutAvailable")),
+        )
+
+
+@dataclass
+class CheckoutSession:
+    #: Stripe Checkout page. The user finishes it in a browser.
+    url: str
+    session_id: str
+    #: None when the account already had a trial: Pro starts at once and charges $19.
+    trial_days: int | None = None
+    trial_credit_cents: int | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "CheckoutSession":
+        return cls(url=d.get("url", ""), session_id=d.get("sessionId", ""),
+                   trial_days=d.get("trialDays"), trial_credit_cents=d.get("trialCreditCents"))
+
+
+@dataclass
+class StartProNowResult:
+    """``status``: ``"active"`` (charged $19, the first paid month started),
+    ``"requires_action"`` (the bank wants a confirmation, or declined: open
+    ``invoice_url``; the trial continues) or ``"failed"`` (the trial continues)."""
+
+    status: str
+    invoice_url: str | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "StartProNowResult":
+        return cls(status=d.get("status", ""), invoice_url=d.get("invoiceUrl"))
+
+
+@dataclass
+class PromoRedemption:
+    #: ``"pending_payment_method"``: held for the trial Checkout starts. ``"applied"``: applied now.
+    status: str
+    #: The trial credits (older servers: the credit amount).
+    credit_cents: int = 0
+    code: str | None = None
+    expires_at: int | None = None
+    #: Kept for older clients.
+    balance_cents: int = 0
+    #: Trial length the code gives. None from servers before Pro.
+    trial_days: int | None = None
+    trial_credit_cents: int | None = None
+    #: ``"next_checkout"``: held for the trial :meth:`BillingAPI.start_checkout` opens.
+    #: ``"current_trial"``: extended the running trial.
+    applies_to: str | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "PromoRedemption":
+        return cls(
+            status=d.get("status", ""),
+            credit_cents=int(d.get("creditCents") or 0),
+            code=d.get("code"),
+            expires_at=d.get("expiresAt"),
+            balance_cents=int(d.get("balanceCents") or 0),
+            trial_days=d.get("trialDays"),
+            trial_credit_cents=d.get("trialCreditCents"),
+            applies_to=d.get("appliesTo"),
+        )
+
+
 class BillingAPI:
     """
-    Account balance and usage.
+    The account's plan, balance and usage.
+
+    Pro costs $19/month, taxes included, with $19 of credits each month; usage above
+    that is pay as you go, invoiced as it builds up. A new account starts with a
+    7-day trial with $5 of credits. Enterprise is pay as you go, invoiced monthly. Old
+    prepaid credits accounts (``plan == "payg"``) keep :meth:`balance` and
+    :meth:`transactions` until 1 November 2026.
 
     Billing is **account-scoped, not workspace-scoped**: every workspace you create
     for a user bills to the account that owns the key. That is what makes per-user
-    workspaces a safe pattern -- your users get isolation, you keep one bill -- and
-    also what makes :attr:`Balance.runway_hours` worth watching before you
-    provision more.
+    workspaces a safe pattern -- your users get isolation, you keep one bill.
 
-    **Requires an unscoped key.** A scoped key is refused with 403
-    ``ACCOUNT_SCOPE_REQUIRED``, because there is no workspace-scoped view of one
-    shared balance, ledger and set of saved cards -- and because a scoped key is
-    meant to be handed to an end user, who should not be reading your card details
-    or spending against them. For per-workspace spend, use :class:`MetricsAPI`.
+    **Requires an unscoped key**, except :meth:`subscription` with a ``workspace_id``
+    the key can reach. A scoped key is refused with 403 ``ACCOUNT_SCOPE_REQUIRED``,
+    because a scoped key is meant to be handed to an end user, who should not be
+    reading your card details or changing your plan. For per-workspace spend, use
+    :class:`MetricsAPI`.
+
+    Checkout and invoices are web pages: methods return their URL for the user to
+    open. Nothing here retries a payment.
     """
 
     def __init__(self, client: "PlatformClient") -> None:
         self._client = client
 
+    def subscription(self, *, workspace_id: str | None = None) -> Subscription:
+        """The plan: trial, this month's credits, overage, next charge, cancel date.
+
+        With ``workspace_id``, the plan of that workspace's owner (``is_owner`` False,
+        no card or invoice fields).
+        """
+        from .client import query
+        return Subscription._from_dict(self._client.get(query("/api/billing/subscription", workspaceId=workspace_id)))
+
+    def start_checkout(self, *, return_url: str | None = None) -> CheckoutSession:
+        """Open Stripe Checkout for Pro: the trial when the account can have one,
+        otherwise Pro at once ($19 today). Returns the page for the user to finish;
+        a second call while it is open returns the same session."""
+        body = {"returnUrl": return_url} if return_url is not None else {}
+        return CheckoutSession._from_dict(self._client.post("/api/billing/subscription/checkout", body))
+
+    def start_pro_now(self) -> StartProNowResult:
+        """End the trial now: charge $19 and start the first paid month with $19 of credits."""
+        return StartProNowResult._from_dict(self._client.post("/api/billing/subscription/start-now", {}))
+
+    def cancel(self) -> int | None:
+        """Cancel Pro at the end of the current month or trial; returns when it ends (ms).
+
+        Cancelling in the trial costs nothing.
+        """
+        return (self._client.post("/api/billing/subscription/cancel", {}) or {}).get("cancelAt")
+
+    def resume(self) -> None:
+        """Undo :meth:`cancel`: Pro renews as usual."""
+        self._client.post("/api/billing/subscription/resume", {})
+
+    def redeem_promo(self, code: str) -> PromoRedemption:
+        """Redeem a promo code: a longer trial with more trial credits.
+
+        Works only before the first payment.
+        """
+        return PromoRedemption._from_dict(self._client.post("/api/billing/promo/redeem", {"code": code}))
+
     def balance(self) -> Balance:
-        """Current balance, status, burn rate, and runway."""
+        """Prepaid credits balance, status, burn rate and runway (old ``payg`` accounts and enterprise)."""
         return Balance._from_dict(self._client.get("/api/billing/balance"))
 
     def transactions(
@@ -94,7 +322,7 @@ class BillingAPI:
         cursor: str | None = None,
         include_usage: bool = False,
     ) -> TransactionPage:
-        """A page of balance transactions, newest first."""
+        """A page of balance transactions, newest first (old ``payg`` accounts and enterprise)."""
         from .client import query
         body = self._client.get(query("/api/billing/transactions", limit=limit, cursor=cursor,
                                       includeUsage=1 if include_usage else None))
@@ -112,54 +340,9 @@ class BillingAPI:
         return self._client.get("/api/billing/live")
 
     def payment_methods(self):
+        """Saved cards. Cards are added in Checkout or on the Billing page."""
         return self._client.get("/api/billing/payment-methods")
-
-    def setup_payment_method(self, return_url: str | None = None):
-        return self._client.post("/api/billing/payment-methods/setup", {"returnUrl": return_url} if return_url else {})
 
     def remove_payment_method(self, id: str):
         from .client import segment
         return self._client.delete(f"/api/billing/payment-methods/{segment(id)}")
-
-    def purchase(self, credit_cents: int, *, payment_method: str = "card", return_url: str | None = None):
-        if type(credit_cents) is not int or credit_cents <= 0:
-            raise ValueError("credit_cents must be a positive integer")
-        if payment_method not in ("card", "crypto"):
-            raise ValueError("payment_method must be card or crypto")
-        body = {"creditCents": credit_cents, "paymentMethod": payment_method}
-        if return_url is not None:
-            body["returnUrl"] = return_url
-        return self._client.post("/api/billing/purchase", body)
-
-    def auto_topup(self):
-        return self._client.get("/api/billing/auto-topup")
-
-    def set_auto_topup(self, *, enabled: bool, threshold_cents: int, amount_cents: int, payment_method_ids: list[str]):
-        return self._client.put("/api/billing/auto-topup", {"enabled": enabled, "thresholdCents": threshold_cents, "amountCents": amount_cents, "paymentMethodIds": payment_method_ids})
-
-    def run_auto_topup(self):
-        return self._client.post("/api/billing/auto-topup/run", {})
-
-    def redeem_promo(self, code: str):
-        return self._client.post("/api/billing/promo/redeem", {"code": code})
-
-    def x402_quote(self, credit_cents: int):
-        return self._client.post("/api/billing/purchase/x402/quote", {"creditCents": credit_cents})
-
-    def payment_status(self, attempt_id: str):
-        from .client import segment
-        return self._client.get(f"/api/billing/purchase/x402/{segment(attempt_id)}")
-
-    def pay_x402(self, credit_cents: int, *, max_total_cents: int, request_id: str | None = None, executable: str = "lizard"):
-        """Pay using the CLI's durable x402 journal. Requires CLI >= 4.0.8."""
-        from ..cli import LizardCLI
-        if any(type(n) is not int or n <= 0 for n in (credit_cents, max_total_cents)):
-            raise ValueError("Payment amounts must be positive integer cents")
-        args = ["credits", "topup", f"{credit_cents // 100}.{credit_cents % 100:02}", "--method", "x402", "--max-total", f"{max_total_cents // 100}.{max_total_cents % 100:02}", "--yes"]
-        if request_id:
-            args += ["--request-id", request_id]
-        config = self._client._config
-        result = LizardCLI(api_key=config.api_key, api_url=config.api_url, executable=executable).run(args)
-        if result.code:
-            raise RuntimeError(f"x402 CLI exited with code {result.code}; inspect the payment journal or query payment_status before retrying")
-        return result.events[0] if result.events else None

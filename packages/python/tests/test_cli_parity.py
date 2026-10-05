@@ -162,6 +162,78 @@ def test_regions_and_balance(calls):
     assert client.billing.balance().hourly_rate_cents == 22
 
 
+def test_subscription_is_parsed(calls):
+    seed(calls, {"plan": "pro", "status": "trialing", "isOwner": False, "priceCents": 1900, "taxIncluded": True,
+                 "includedCents": 1900,
+                 "trial": {"eligible": False, "days": 7, "creditCents": 500, "promoCode": "ROST", "endsAt": 2,
+                           "usedCents": 120, "remainingCents": 380},
+                 "period": {"kind": "trial", "start": 1, "end": 2, "includedCents": 500, "usedCents": 120,
+                            "overageCents": 0, "billedOverageCents": 0, "unbilledOverageCents": 0,
+                            "nextOverageChargeAtCents": None},
+                 "nextCharge": {"at": 2, "amountCents": 1900}, "cancelAt": None, "pastDue": False,
+                 "openInvoiceUrl": None, "paymentMethod": None, "limits": {"tier": "trial", "replicasPerApp": 1},
+                 "checkoutAvailable": True})
+    sub = lz.Lizard(**KW).billing.subscription(workspace_id="w 1")
+    assert calls[0]["url"] == "/api/billing/subscription?workspaceId=w+1"
+    assert isinstance(sub, lz.Subscription)
+    assert (sub.plan, sub.status, sub.is_owner) == ("pro", "trialing", False)
+    assert sub.trial.remaining_cents == 380 and sub.trial.promo_code == "ROST"
+    assert sub.period.kind == "trial" and sub.period.used_cents == 120
+    assert sub.next_charge == {"at": 2, "amountCents": 1900}
+    assert sub.limits == {"tier": "trial", "replicasPerApp": 1}
+
+
+def test_subscription_without_a_plan(calls):
+    seed(calls, {"plan": "none", "status": "none", "trial": {"eligible": True, "days": 7, "creditCents": 500},
+                 "period": None, "nextCharge": None, "checkoutAvailable": True})
+    sub = lz.Lizard(**KW).billing.subscription()
+    assert calls[0]["url"] == "/api/billing/subscription"
+    assert sub.period is None and sub.trial.eligible and sub.trial.days == 7
+
+
+def test_checkout_start_now_cancel_resume(calls):
+    seed(calls,
+         {"url": "https://checkout.test/cs_1", "sessionId": "cs_1", "trialDays": 7, "trialCreditCents": 500},
+         {"status": "requires_action", "invoiceUrl": "https://invoice.test/i"},
+         {"cancelAt": 1791800000000},
+         {"cancelAt": None})
+    billing = lz.Lizard(**KW).billing
+    session = billing.start_checkout()
+    assert (session.url, session.session_id, session.trial_days, session.trial_credit_cents) == \
+        ("https://checkout.test/cs_1", "cs_1", 7, 500)
+    now = billing.start_pro_now()
+    assert (now.status, now.invoice_url) == ("requires_action", "https://invoice.test/i")
+    assert billing.cancel() == 1791800000000
+    assert billing.resume() is None
+    assert [(c["method"], c["url"], c["body"]) for c in calls] == [
+        ("POST", "/api/billing/subscription/checkout", {}),
+        ("POST", "/api/billing/subscription/start-now", {}),
+        ("POST", "/api/billing/subscription/cancel", {}),
+        ("POST", "/api/billing/subscription/resume", {}),
+    ]
+
+
+def test_promo_returns_the_trial(calls):
+    seed(calls, {"status": "pending_payment_method", "code": "ROST", "creditCents": 10000, "expiresAt": None,
+                 "balanceCents": 0, "trialDays": 31, "trialCreditCents": 10000, "appliesTo": "next_checkout"})
+    out = lz.Lizard(**KW).billing.redeem_promo("ROST")
+    assert isinstance(out, lz.PromoRedemption)
+    assert (out.trial_days, out.trial_credit_cents, out.applies_to) == (31, 10000, "next_checkout")
+
+
+def test_promo_from_an_older_server(calls):
+    seed(calls, {"status": "applied", "creditCents": 2500, "expiresAt": None, "balanceCents": 3000})
+    out = lz.Lizard(**KW).billing.redeem_promo("OLD")
+    assert (out.credit_cents, out.balance_cents, out.trial_days, out.applies_to) == (2500, 3000, None, None)
+
+
+def test_removed_billing_methods_are_gone():
+    billing = lz.Lizard(**KW).billing
+    for gone in ("purchase", "auto_topup", "set_auto_topup", "run_auto_topup", "x402_quote", "pay_x402",
+                 "payment_status", "setup_payment_method"):
+        assert not hasattr(billing, gone)
+
+
 def test_transactions_query_is_built_from_options(calls):
     seed(calls, {"items": [], "nextCursor": None})
     lz.Lizard(**KW).billing.transactions(limit=5, include_usage=True)

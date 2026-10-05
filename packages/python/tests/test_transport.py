@@ -87,11 +87,6 @@ def test_cli_error_status():
     assert LizardCLI(executable=FAKE_CLI).run(["fail"]).code == 3
 
 
-def test_x402_cli_args():
-    result = Lizard(**CONFIG).billing.pay_x402(2000, max_total_cents=2100, request_id="request-1", executable=FAKE_CLI)
-    assert result == {"args": ["--json", "credits", "topup", "20.00", "--method", "x402", "--max-total", "21.00", "--yes", "--request-id", "request-1"], "input": ""}
-
-
 def test_failed_build_is_not_old_running_service():
     calls = []
     def handler(request):
