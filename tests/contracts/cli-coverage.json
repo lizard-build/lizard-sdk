@@ -1,6 +1,6 @@
 {
-  "cliVersion": "4.0.8",
-  "cliCommit": "92de61f4ecebb56a192a0316dfbccd2842cb6a93",
+  "cliVersion": "4.0.24",
+  "cliCommit": "d717ff5f818a33298ed1fbad8d2ad7a0599cdfe2",
   "commands": [
     {
       "command": "add",
@@ -496,6 +496,86 @@
       "command": "workspace rm",
       "mode": "native",
       "sdk": "workspaces.delete"
+    },
+    {
+      "command": "agents",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "agents add",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "agents login",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "agents remove",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "agents status",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "agents use",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox desktop",
+      "mode": "native",
+      "sdk": "sandbox.desktop"
+    },
+    {
+      "command": "volume resize",
+      "mode": "native",
+      "sdk": "Volume.resize"
+    },
+    {
+      "command": "sandbox conversations",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox interrupt",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox prompt",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox snapshot-pause",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox snapshot-resume",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox snapshot-warm",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox ssh",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
+    },
+    {
+      "command": "sandbox vnc",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run"
     }
   ],
   "legacyCommands": [
