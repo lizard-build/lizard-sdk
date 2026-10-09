@@ -12,7 +12,7 @@ Sandboxes are Linux environments, each a Firecracker microVM with its own kernel
 | `projectId` | `project_id` | Exact ID for static `Sandbox.create()`; takes precedence over `project` |
 | `apiKey` | `api_key` | API key; defaults to `LIZARD_API_KEY` |
 | `apiUrl` | `api_url` | API base URL; defaults to `LIZARD_API_URL` or `https://lizard.build` |
-| `size` | `size` | `'small'` (2 vCPU / 4 GB, $0.009/h), `'medium'` (4 vCPU / 8 GB, $0.018/h) or `'large'` (8 vCPU / 16 GB, $0.036/h); default `'medium'`. Cannot be combined with a private snapshot |
+| `size` | `size` | `'small'` (2 vCPU / 4 GB, $0.018/h), `'medium'` (4 vCPU / 8 GB, $0.036/h) or `'large'` (8 vCPU / 16 GB, $0.072/h), from 2026-11-01 (half that until then); default `'medium'`. Cannot be combined with a private snapshot |
 | `snapshotId` | `snapshot_id` | Create from a private saved snapshot; see [Snapshots](#pause-resume-snapshots-and-fork) |
 | `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
 | `envs` | `envs` | Environment variables set in the sandbox, visible to every command |

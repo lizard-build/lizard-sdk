@@ -37,7 +37,7 @@ The context manager kills the sandbox when the block ends, including when it rai
 
 ## Machine size
 
-Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.009/h), `medium` (4 vCPU / 8 GB, $0.018/h, the default) and `large` (8 vCPU / 16 GB, $0.036/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.018/h), `medium` (4 vCPU / 8 GB, $0.036/h, the default) and `large` (8 vCPU / 16 GB, $0.072/h). These prices apply from 2026-11-01; until then each size costs half. Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
 
 ```python
 sandbox = lizard.create("base", size="large")

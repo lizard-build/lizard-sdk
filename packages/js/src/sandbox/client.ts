@@ -55,9 +55,11 @@ export interface SandboxOpts extends ConnectionOpts {
   snapshotId?: string
   /**
    * Machine size, billed flat per hour (per second of running time):
-   * - `'small'`  — 2 vCPU / 4 GB, $0.009/h
-   * - `'medium'` — 4 vCPU / 8 GB, $0.018/h (default)
-   * - `'large'`  — 8 vCPU / 16 GB, $0.036/h
+   * - `'small'`  — 2 vCPU / 4 GB, $0.018/h
+   * - `'medium'` — 4 vCPU / 8 GB, $0.036/h (default)
+   * - `'large'`  — 8 vCPU / 16 GB, $0.072/h
+   *
+   * Prices from 2026-11-01; until then each size costs half.
    *
    * Measured CPU/RAM are not charged and egress is free. Ignored with {@link SandboxOpts.snapshotId}.
    */
