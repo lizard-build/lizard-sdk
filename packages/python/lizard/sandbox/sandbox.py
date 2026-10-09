@@ -195,8 +195,7 @@ class Sandbox:
         :param size: Machine size, billed flat per hour (per second of running
             time): ``"small"`` (2 vCPU / 4 GB, $0.018/h), ``"medium"`` (4 vCPU /
             8 GB, $0.036/h, the default) or ``"large"`` (8 vCPU / 16 GB,
-            $0.072/h), from 2026-11-01 (half that until then). Measured CPU/RAM
-            are not charged and egress is free;
+            $0.072/h). Measured CPU/RAM are not charged and egress is free;
             attached volumes bill separately.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param metadata: Your own key/value labels for the sandbox, returned by

@@ -59,8 +59,6 @@ export interface SandboxOpts extends ConnectionOpts {
    * - `'medium'` — 4 vCPU / 8 GB, $0.036/h (default)
    * - `'large'`  — 8 vCPU / 16 GB, $0.072/h
    *
-   * Prices from 2026-11-01; until then each size costs half.
-   *
    * Measured CPU/RAM are not charged and egress is free. Ignored with {@link SandboxOpts.snapshotId}.
    */
   size?: 'small' | 'medium' | 'large'

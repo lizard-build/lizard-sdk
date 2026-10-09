@@ -108,10 +108,9 @@ class Lizard:
 
         :param size: ``"small"`` (2 vCPU / 4 GB, $0.018/h), ``"medium"``
             (4 vCPU / 8 GB, $0.036/h, the default) or ``"large"`` (8 vCPU /
-            16 GB, $0.072/h), from 2026-11-01 (half that until then). Billed
-            flat per second of running time; ignored with ``snapshot_id``,
-            which runs on the snapshot's machine and is billed by measured
-            usage.
+            16 GB, $0.072/h). Billed flat per second of running time; ignored
+            with ``snapshot_id``, which runs on the snapshot's machine and is
+            billed by measured usage.
         """
         return Sandbox.create(
             template,
