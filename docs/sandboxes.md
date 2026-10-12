@@ -323,6 +323,8 @@ Sandbox.set_snapshot_scope(saved["id"], "project")
 mine = Sandbox.my_snapshots()
 ```
 
+**Restoring with a volume.** `Sandbox.restore(id, { volumeId })` / `Sandbox.restore(id, volume_id=...)` mounts a volume at `/workspace` in the restored sandbox, so one snapshot (say, an agent with its tools loaded in memory) can start many sandboxes that each keep their own files. The volume must be in the snapshot's region and not attached elsewhere; with no `projectId`, the sandbox goes to the volume's project. Take that snapshot from a sandbox **without** a volume: a snapshot taken with one attached (`sourceVolume: true`) has that volume mounted in its saved memory and cannot take a different one. Snapshots from before this feature (`sourceVolume: null`) cannot take a volume either.
+
 Only the user who took a snapshot can change its scope. Snapshots taken before snapshots belonged to a user report `scope: 'project'` and restore only in their own project. A restore the scope forbids fails with `403` (`SNAPSHOT_SCOPE`).
 
 Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect a snapshot, `Sandbox.snapshots(projectId)` to list a project's, and `Sandbox.deleteSnapshot(id)` / `Sandbox.delete_snapshot(id)` to remove one; deleting a snapshot keeps sandboxes already restored from it running. `Sandbox.create({ snapshotId, projectId })` / `Sandbox.create(snapshot_id=..., project_id=...)` is the same as `restore`. `waitForSnapshot` / `wait_for_snapshot` returns immediately for a Firecracker snapshot.

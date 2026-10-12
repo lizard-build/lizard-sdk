@@ -28,6 +28,9 @@ class SandboxSnapshot(TypedDict):
     scope: "SnapshotScope"
     #: The user who took it; ``None`` for snapshots from before snapshots belonged to a user.
     createdBy: str | None
+    #: Whether the source had a volume attached (a restore then cannot attach another);
+    #: ``None`` for older snapshots, which cannot take one.
+    sourceVolume: bool | None
 
 
 #: Where a snapshot may be restored, always in its own region: ``"user"`` (the default) into any
@@ -595,14 +598,22 @@ class Sandbox:
             return pc.get(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
 
     @classmethod
-    def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, project_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
+    def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, project_id: str | None = None, volume_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
         """Start a new sandbox from a snapshot, in its region. ``project_id`` puts it in another
         project, in any of your workspaces, as the snapshot's scope allows; default: the
-        snapshot's own project."""
+        volume's project, else the snapshot's own. ``volume_id`` mounts that volume at
+        ``/workspace`` (a Firecracker snapshot of a sandbox that had no volume attached; the
+        volume must be in the snapshot's region)."""
         from ..platform.client import PlatformClient
         snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as client:
-            result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": project_id or snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
+            body = {"snapshotId": snapshot_id, "region": snapshot["region"], "timeoutMs": timeout_ms}
+            project = project_id or (None if volume_id else snapshot["projectId"])
+            if project:
+                body["projectId"] = project
+            if volume_id:
+                body["volumeId"] = volume_id
+            result = client.post("/api/sandboxes", body)
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
 
     @classmethod

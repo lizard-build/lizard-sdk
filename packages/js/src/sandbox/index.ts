@@ -25,6 +25,8 @@ export interface SandboxSnapshot {
   createdAt: number
   /** Where it may be restored; see {@link SnapshotScope}. */
   scope: SnapshotScope
+  /** Whether the source had a volume attached (a restore then cannot attach another); `null` for older snapshots, which cannot take one. */
+  sourceVolume: boolean | null
   /** The user who took it; `null` for snapshots from before snapshots belonged to a user. */
   createdBy: string | null
 }
@@ -377,13 +379,16 @@ export class Sandbox extends SandboxClient {
   }
   /**
    * Start a new sandbox from a snapshot, in its region. `projectId` puts it in another project,
-   * in any of your workspaces, as the snapshot's scope allows; default: the snapshot's own project.
+   * in any of your workspaces, as the snapshot's scope allows; default: the volume's project, else
+   * the snapshot's own. `volumeId` mounts that volume at `/workspace` (a Firecracker snapshot of a
+   * sandbox that had no volume attached; the volume must be in the snapshot's region).
    */
-  static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number; projectId?: string }): Promise<Sandbox> {
+  static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number; projectId?: string; volumeId?: string }): Promise<Sandbox> {
     const client = new PlatformClient(opts ?? {})
     const snapshot = await this.getSnapshot(snapshotId, opts)
     const result = await client.post<{ id: string; sandboxId?: string }>('/api/sandboxes', {
-      snapshotId, projectId: opts?.projectId ?? snapshot.projectId, region: snapshot.region,
+      snapshotId, projectId: opts?.projectId ?? (opts?.volumeId ? undefined : snapshot.projectId), region: snapshot.region,
+      volumeId: opts?.volumeId,
       timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
     })
     return new this({ ...opts, sandboxId: result.sandboxId ?? result.id })
