@@ -303,7 +303,29 @@ finally:
 
 `fork()` returns one entry per requested copy, in order: `{ sandbox, info }` (Python: a `ForkResult` with `sandbox` and `info`) or `{ error }` for a copy that could not be made, e.g. because of the account's sandbox limit. Each copy is billed like its source. A sandbox with a volume attached cannot be forked (`ConflictError`).
 
-Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect a snapshot, `Sandbox.snapshots(projectId)` to list them, and `Sandbox.deleteSnapshot(id)` / `Sandbox.delete_snapshot(id)` to remove one; deleting a snapshot keeps sandboxes already restored from it running. `Sandbox.create({ snapshotId, projectId })` / `Sandbox.create(snapshot_id=..., project_id=...)` is the same as `restore`. `waitForSnapshot` / `wait_for_snapshot` returns immediately for a Firecracker snapshot.
+A snapshot belongs to the user who took it. By default it restores into **any project you can use, in any of your workspaces** (always in its own region): `Sandbox.restore(id, { projectId })` / `Sandbox.restore(id, project_id=...)`, or `Sandbox.create({ snapshotId, projectId })`. To keep one closer, pass a scope when you take it, or change it later:
+
+| Scope | Restores into |
+| --- | --- |
+| `'user'` (default) | Any project you can use, in any of your workspaces |
+| `'workspace'` | Only projects in the snapshot's own workspace |
+| `'project'` | Only the snapshot's own project |
+
+```ts
+const saved = await sbx.snapshot('base', { scope: 'workspace' })
+await Sandbox.setSnapshotScope(saved.id, 'project')
+const mine = await Sandbox.mySnapshots()   // every snapshot you took, all workspaces
+```
+
+```python
+saved = sbx.snapshot("base", scope="workspace")
+Sandbox.set_snapshot_scope(saved["id"], "project")
+mine = Sandbox.my_snapshots()
+```
+
+Only the user who took a snapshot can change its scope. Snapshots taken before snapshots belonged to a user report `scope: 'project'` and restore only in their own project. A restore the scope forbids fails with `403` (`SNAPSHOT_SCOPE`).
+
+Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect a snapshot, `Sandbox.snapshots(projectId)` to list a project's, and `Sandbox.deleteSnapshot(id)` / `Sandbox.delete_snapshot(id)` to remove one; deleting a snapshot keeps sandboxes already restored from it running. `Sandbox.create({ snapshotId, projectId })` / `Sandbox.create(snapshot_id=..., project_id=...)` is the same as `restore`. `waitForSnapshot` / `wait_for_snapshot` returns immediately for a Firecracker snapshot.
 
 Container sandboxes (the older runtime, `runtime: 'container'` in `getInfo()`) build snapshots asynchronously into a pool of warm copies instead: there `poolSize` (default five), `setSnapshotWarmPool`, `pauseSnapshot` / `resumeSnapshot` and `waitForSnapshot` matter, and `fork()` is not supported. These options are ignored for Firecracker snapshots.
 

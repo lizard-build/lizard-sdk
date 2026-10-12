@@ -1,6 +1,6 @@
 from .client import Lizard
 from .project import resolve_project_id
-from .sandbox import Sandbox, SandboxInfo, SandboxSnapshot, ExposedPort, ForkResult, ProcessResult, ProcessInfo, FileInfo, Desktop, DesktopInfo
+from .sandbox import Sandbox, SandboxInfo, SandboxSnapshot, SnapshotScope, ExposedPort, ForkResult, ProcessResult, ProcessInfo, FileInfo, Desktop, DesktopInfo
 from .errors import ConfigApplyError, LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError, PaymentRequiredError
 from .code_interpreter import CodeSandbox, Execution, ExecutionError, CodeContext
 from .volume import Volume, VolumeInfo
@@ -47,6 +47,7 @@ __all__ = [
     "Sandbox",
     "SandboxInfo",
     "SandboxSnapshot",
+    "SnapshotScope",
     "ExposedPort",
     "ForkResult",
     "ProcessResult",

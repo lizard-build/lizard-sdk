@@ -24,6 +24,16 @@ class SandboxSnapshot(TypedDict):
     memoryMb: int
     #: Unix milliseconds.
     createdAt: int
+    #: Where it may be restored; see :data:`SnapshotScope`.
+    scope: "SnapshotScope"
+    #: The user who took it; ``None`` for snapshots from before snapshots belonged to a user.
+    createdBy: str | None
+
+
+#: Where a snapshot may be restored, always in its own region: ``"user"`` (the default) into any
+#: project you can use, in any of your workspaces; ``"workspace"`` only its own workspace;
+#: ``"project"`` only its own project.
+SnapshotScope = Literal["user", "workspace", "project"]
 
 
 @dataclass
@@ -520,15 +530,19 @@ class Sandbox:
             ))
         return out
 
-    def snapshot(self, name: str | None = None, *, pool_size: int = 5) -> SandboxSnapshot:
+    def snapshot(self, name: str | None = None, *, pool_size: int = 5, scope: SnapshotScope | None = None) -> SandboxSnapshot:
         """Save this sandbox -- memory, running processes and files -- as a private
         snapshot.
 
         A Firecracker snapshot is ``ready`` as soon as this returns (about 2 s);
         start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
-        running. ``pool_size`` applies to container sandboxes only.
+        running. ``pool_size`` applies to container sandboxes only. ``scope`` says where it
+        may be restored (:data:`SnapshotScope`); by default any of your projects and workspaces.
         """
-        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size})
+        body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
+        if scope is not None:
+            body["scope"] = scope
+        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", body)
 
     def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
         from ..errors import ConflictError, TimeoutError
@@ -568,19 +582,35 @@ class Sandbox:
             return pc.get(f"/api/projects/{segment(project_id)}/snapshots")
 
     @classmethod
+    def my_snapshots(cls, *, api_key: str | None = None, api_url: str | None = None) -> list[SandboxSnapshot]:
+        """Every snapshot you took, across all your workspaces and projects."""
+        from ..platform.client import PlatformClient
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get("/api/sandbox-snapshots")
+
+    @classmethod
     def get_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         from ..platform.client import PlatformClient, segment
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
             return pc.get(f"/api/sandbox-snapshots/{segment(snapshot_id)}")
 
     @classmethod
-    def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
-        """Start a new sandbox from a snapshot, in the snapshot's project and region."""
+    def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, project_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
+        """Start a new sandbox from a snapshot, in its region. ``project_id`` puts it in another
+        project, in any of your workspaces, as the snapshot's scope allows; default: the
+        snapshot's own project."""
         from ..platform.client import PlatformClient
         snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as client:
-            result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
+            result = client.post("/api/sandboxes", {"snapshotId": snapshot_id, "projectId": project_id or snapshot["projectId"], "region": snapshot["region"], "timeoutMs": timeout_ms})
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
+
+    @classmethod
+    def set_snapshot_scope(cls, snapshot_id: str, scope: SnapshotScope, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
+        """Change where a snapshot you took may be restored."""
+        from ..platform.client import PlatformClient, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.patch(f"/api/sandbox-snapshots/{segment(snapshot_id)}", {"scope": scope})
 
     @classmethod
     def set_snapshot_warm_pool(cls, snapshot_id: str, pool_size: int, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:

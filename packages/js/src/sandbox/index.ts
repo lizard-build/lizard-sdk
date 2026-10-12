@@ -23,10 +23,22 @@ export interface SandboxSnapshot {
   memoryMb: number
   /** Unix milliseconds. */
   createdAt: number
+  /** Where it may be restored; see {@link SnapshotScope}. */
+  scope: SnapshotScope
+  /** The user who took it; `null` for snapshots from before snapshots belonged to a user. */
+  createdBy: string | null
 }
+/**
+ * Where a snapshot may be restored, always in its own region: `'user'` (the default) into any
+ * project you can use, in any of your workspaces; `'workspace'` only its own workspace;
+ * `'project'` only its own project.
+ */
+export type SnapshotScope = 'user' | 'workspace' | 'project'
 export interface SnapshotOpts {
   /** Warm copies to keep ready (container sandboxes only; ignored for Firecracker, whose snapshots restore from disk). */
   poolSize?: number
+  /** Where it may be restored. Default `'user'`: any of your projects and workspaces. */
+  scope?: SnapshotScope
 }
 
 /**
@@ -344,7 +356,7 @@ export class Sandbox extends SandboxClient {
    * keeps running. `poolSize` applies to container sandboxes only.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5 })
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope })
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
@@ -356,18 +368,29 @@ export class Sandbox extends SandboxClient {
   static snapshots(projectId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot[]> {
     return new PlatformClient(opts ?? {}).get(`/api/projects/${encodeURIComponent(projectId)}/snapshots`)
   }
+  /** Every snapshot you took, across all your workspaces and projects. */
+  static mySnapshots(opts?: ConnectionOpts): Promise<SandboxSnapshot[]> {
+    return new PlatformClient(opts ?? {}).get('/api/sandbox-snapshots')
+  }
   static getSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).get(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
   }
-  /** Start a new sandbox from a snapshot, in the snapshot's project and region. */
-  static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number }): Promise<Sandbox> {
+  /**
+   * Start a new sandbox from a snapshot, in its region. `projectId` puts it in another project,
+   * in any of your workspaces, as the snapshot's scope allows; default: the snapshot's own project.
+   */
+  static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number; projectId?: string }): Promise<Sandbox> {
     const client = new PlatformClient(opts ?? {})
     const snapshot = await this.getSnapshot(snapshotId, opts)
     const result = await client.post<{ id: string; sandboxId?: string }>('/api/sandboxes', {
-      snapshotId, projectId: snapshot.projectId, region: snapshot.region,
+      snapshotId, projectId: opts?.projectId ?? snapshot.projectId, region: snapshot.region,
       timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
     })
     return new this({ ...opts, sandboxId: result.sandboxId ?? result.id })
+  }
+  /** Change where a snapshot you took may be restored. */
+  static setSnapshotScope(snapshotId: string, scope: SnapshotScope, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
+    return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { scope })
   }
   static setSnapshotWarmPool(snapshotId: string, poolSize: number, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { poolSize })
