@@ -20,15 +20,16 @@ export class PlatformClient {
     const text = await res.text()
     return (text ? JSON.parse(text) : undefined) as T
   }
-  request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  /** `timeoutMs` overrides the connection's requestTimeoutMs for a call known to be slow, never shortening it. */
+  request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
     return fetch(`${this.config.apiUrl}${path}`, {
       method, headers: this.config.headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(this.config.requestTimeoutMs),
+      signal: AbortSignal.timeout(Math.max(this.config.requestTimeoutMs, timeoutMs ?? 0)),
     }).then(res => this.json<T>(res))
   }
   get<T>(path: string): Promise<T> { return this.request('GET', path) }
-  post<T>(path: string, body?: unknown): Promise<T> { return this.request('POST', path, body) }
+  post<T>(path: string, body?: unknown, timeoutMs?: number): Promise<T> { return this.request('POST', path, body, timeoutMs) }
   put<T>(path: string, body: unknown): Promise<T> { return this.request('PUT', path, body) }
   patch<T>(path: string, body: unknown): Promise<T> { return this.request('PATCH', path, body) }
   delete<T = void>(path: string, body?: unknown): Promise<T> { return this.request('DELETE', path, body) }

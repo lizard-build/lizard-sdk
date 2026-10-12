@@ -537,15 +537,17 @@ class Sandbox:
         """Save this sandbox -- memory, running processes and files -- as a private
         snapshot.
 
-        A Firecracker snapshot is ``ready`` as soon as this returns (about 2 s);
-        start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
+        A Firecracker snapshot is ``ready`` as soon as this returns: about 2 s, up to a few
+        minutes for a sandbox that filled most of its memory (its memory is uploaded first),
+        so the call waits up to 11 minutes. Start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
         running. ``pool_size`` applies to container sandboxes only. ``scope`` says where it
         may be restored (:data:`SnapshotScope`); by default any of your projects and workspaces.
         """
         body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
         if scope is not None:
             body["scope"] = scope
-        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", body)
+        # The server allows a snapshot 10 minutes (its memory upload); a little more here.
+        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", body, timeout=11 * 60)
 
     def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
         from ..errors import ConflictError, TimeoutError

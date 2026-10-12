@@ -6,6 +6,9 @@ import { Desktop } from './desktop'
 import { SandboxClient, SandboxInfo, SandboxOpts, ExposedPort } from './client'
 import { TimeoutError, ConflictError } from '../errors'
 
+/** The server allows a snapshot 10 minutes (its memory upload); a little more here. */
+const SNAPSHOT_TIMEOUT_MS = 11 * 60_000
+
 export { SandboxOpts, SandboxInfo, ExposedPort }
 
 export interface SandboxSnapshot {
@@ -353,12 +356,13 @@ export class Sandbox extends SandboxClient {
 
   /**
    * Save this sandbox -- memory, running processes and files -- as a private
-   * snapshot. A Firecracker snapshot is `ready` as soon as this returns (about 2 s);
-   * start copies of it with {@link Sandbox.restore} (about 0.4 s each). The source
-   * keeps running. `poolSize` applies to container sandboxes only.
+   * snapshot. A Firecracker snapshot is `ready` as soon as this returns: about 2 s, up to
+   * a few minutes for a sandbox that filled most of its memory (its memory is uploaded
+   * first), so the call waits up to 11 minutes. Start copies of it with {@link Sandbox.restore}
+   * (about 0.4 s each). The source keeps running. `poolSize` applies to container sandboxes only.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope })
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope }, SNAPSHOT_TIMEOUT_MS)
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)

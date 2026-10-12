@@ -40,8 +40,10 @@ class PlatformClient:
     def get(self, path: str) -> Any:
         return self._json(self._http.get(path))
 
-    def post(self, path: str, body: Any = None) -> Any:
-        return self._json(self._http.post(path, content=json.dumps(body) if body is not None else None))
+    def post(self, path: str, body: Any = None, *, timeout: float | None = None) -> Any:
+        """``timeout`` (seconds) replaces the client's 120 s for a call known to be slow."""
+        kwargs = {} if timeout is None else {"timeout": max(timeout, 120)}
+        return self._json(self._http.post(path, content=json.dumps(body) if body is not None else None, **kwargs))
 
     def put(self, path: str, body: Any) -> Any:
         return self._json(self._http.put(path, json=body))
