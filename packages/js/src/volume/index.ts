@@ -133,9 +133,9 @@ export class Volume {
   /**
    * Resize a volume, by name or by id, to `sizeGb`.
    *
-   * **Firecracker volumes cannot be resized yet**: volumes created for the default
-   * Firecracker sandboxes throw `LizardError` (400) with `code: 'volume_not_resizable'`.
-   * Create the volume at the size you need, or copy the data to a new, larger one.
+   * A Firecracker volume (the default) can only grow. The change is in place and
+   * online: a sandbox with the volume attached keeps running and sees the new size.
+   * A smaller size throws `LizardError` (400) with `code: 'volume_shrink_unsupported'`.
    *
    * On a container volume the change is in place and online: the size is a quota,
    * so no data is copied and a mounted sandbox sees the new size immediately. Both
@@ -143,12 +143,13 @@ export class Volume {
    * new size free — otherwise it throws `ConflictError` with
    * `code: 'volume_too_full_to_shrink'`.
    *
-   * Other failures carry a `code` too: `invalid_volume_size`, `volume_not_resizable`,
+   * Other failures carry a `code` too: `invalid_volume_size`, `volume_too_large`,
+   * `volume_not_resizable` (an app's volume, not a sandbox volume),
    * `volume_resize_in_progress`, `volume_not_provisioned`,
    * `volume_capacity_unavailable`, and `volume_resize_timeout` (a `TimeoutError`;
    * the size is left unchanged).
    *
-   * @returns The volume's updated info, including `sizeEnforced`.
+   * @returns The volume's updated info, including `sizeEnforced` for a container volume.
    */
   static async resize(projectId: string, nameOrId: string, sizeGb: number, opts?: ConnectionOpts): Promise<VolumeInfo> {
     const config = new ConnectionConfig(opts)
@@ -169,7 +170,7 @@ export class Volume {
     return res.json() as Promise<VolumeInfo>
   }
 
-  /** Resize this volume — see the static {@link Volume.resize} (not supported for Firecracker volumes yet). */
+  /** Resize this volume — see the static {@link Volume.resize} (a Firecracker volume can only grow). */
   async resize(projectId: string, sizeGb: number): Promise<VolumeInfo> {
     return Volume.resize(projectId, this.volumeId, sizeGb, {
       apiKey: this.config.apiKey,

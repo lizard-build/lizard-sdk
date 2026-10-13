@@ -32,7 +32,11 @@ class ProjectsAPI:
         return Project._from_dict(self._client.get(f"/api/projects/{id}"))
 
     def create(self, *, workspace_id: str, name: str) -> Project:
-        """Create a new project."""
+        """Create a new project.
+
+        A scoped key can create one only in a workspace it covers; anywhere else it
+        gets HTTP 403 with ``code == "PROJECT_OUT_OF_SCOPE"``.
+        """
         return Project._from_dict(self._client.post("/api/projects", {"workspaceId": workspace_id, "name": name}))
 
     def update(self, id: str, *, name: str | None = None) -> Project:

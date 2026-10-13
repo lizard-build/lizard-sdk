@@ -37,7 +37,7 @@ class CodeSandbox(Sandbox):
 
     - ``javascript`` (node) and ``bash`` run each call as a fresh process: no
       state carries over and ``results`` stays empty. ``node`` must be installed
-      in the template; the ``interpreter`` template does not ship it.
+      in the template; the ``interpreter`` template ships Node 22.
     - On a template without Jupyter (e.g. ``base``), Python also runs as a fresh
       process per call.
     - ``stdout``/``stderr`` are delivered in the chunks the kernel or process

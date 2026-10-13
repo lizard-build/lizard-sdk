@@ -44,7 +44,7 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 
 ## Workspaces and scoped keys
 
-For an application with separate users, you can create a workspace and project for each user, then issue a key scoped to that workspace. Run this from your trusted application server with a key that has access to create these resources.
+For an application with separate users, you can create a workspace and project for each user, then issue a key scoped to that workspace. Run this from your trusted application server with a key that has no scopes.
 
 ```ts
 import { Lizard } from '@lizard-build/sdk'
@@ -69,7 +69,7 @@ key = lizard.api_keys.create(name="example-user", workspaces=[workspace.id])
 # Store key.key in your secret store now; the API returns it only once.
 ```
 
-A key with no scopes has access to all resources the creating account can reach. Pass `workspaces` or `projects` to limit that access. Scoped keys cannot create broader keys.
+A key with no scopes has access to all resources the creating account can reach. Pass `workspaces` or `projects` to limit that access. Scoped keys cannot create broader keys. Creating a workspace needs a key with no scopes; a scoped key gets HTTP 403 with `code: 'ACCOUNT_SCOPE_REQUIRED'`. A scoped key can create projects only in a workspace it covers; anywhere else it gets HTTP 403 with `code: 'PROJECT_OUT_OF_SCOPE'`.
 
 If tools inside a sandbox need Lizard access, pass a scoped key through `lizardToken` / `lizard_token`. Any code in that sandbox can read the key and use its permissions. Choose a template with the CLI installed when running CLI commands.
 
@@ -77,7 +77,7 @@ If tools inside a sandbox need Lizard access, pass a scoped key through `lizardT
 
 Billing belongs to the account, across all its workspaces. Scoped keys cannot access account billing or account-wide usage; those routes return HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. The one exception is `billing.subscription({ workspaceId })` / `billing.subscription(workspace_id=...)`, which any member's key that reaches the workspace can call to see why the owner's account is blocked; it leaves out the card and invoice. A scoped key's `whoami()` response includes identity and scopes, without the account's email, balance or plan. Use scoped `metrics` calls for project costs.
 
-`workspaces.delete()` requires an empty workspace by default. The `force` option removes the workspace and its resources. Revoking a key or deleting a resource takes effect immediately.
+`workspaces.delete()` requires an empty workspace by default. The `force` option deletes the workspace with its apps, addons and projects, but not its sandboxes, sandbox volumes or snapshots: a running sandbox keeps running with no workspace left to find it in. Kill the workspace's sandboxes and delete its volumes and snapshots before you pass `force`. Revoking a key or deleting a resource takes effect immediately.
 
 ## Billing
 

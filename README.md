@@ -133,7 +133,7 @@ Each sandbox is a **Firecracker microVM** with its own kernel. Files outside an 
 - `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
 - `fork()` clones a running sandbox, processes and all.
 
-See the [snapshot guide](docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available on Firecracker sandboxes yet; a volume cannot be resized yet, and a sandbox with a volume attached cannot be forked.
+See the [snapshot guide](docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available on Firecracker sandboxes yet. A volume can grow but not shrink, and a sandbox with a volume attached cannot be forked.
 
 ## Documentation
 

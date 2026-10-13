@@ -109,8 +109,8 @@ class Lizard:
         :param size: ``"small"`` (2 vCPU / 4 GB, $0.0162/h), ``"medium"``
             (4 vCPU / 8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU /
             16 GB, $0.0648/h). Billed flat per second of running time; ignored
-            with ``snapshot_id``, which runs on the snapshot's machine and is
-            billed by measured usage.
+            with ``snapshot_id``, which runs at the source sandbox's size and is
+            billed flat at that size.
         """
         return Sandbox.create(
             template,
@@ -195,7 +195,7 @@ class _ProjectVolumes:
         return Volume.list(self._parent.project_id(), **self._kw())
 
     def resize(self, name_or_id: str, size_gb: int) -> VolumeInfo:
-        """Resize a volume -- see :meth:`Volume.resize` (not supported for Firecracker volumes yet)."""
+        """Resize a volume -- see :meth:`Volume.resize` (a Firecracker volume can only grow)."""
         return Volume.resize(self._parent.project_id(), name_or_id, size_gb, **self._kw())
 
     def delete(self, name_or_id: str) -> None:

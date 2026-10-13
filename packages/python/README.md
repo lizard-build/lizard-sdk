@@ -60,7 +60,7 @@ if result.exit_code != 0:
 
 ## Desktop (computer use)
 
-The `desktop` template runs XFCE and Chromium you can watch in a browser and an agent can drive:
+The `desktop` template runs an Openbox desktop with Chromium, streamed to a browser over WebRTC (with noVNC as the fallback). You can watch it, and an agent can drive it:
 
 ```python
 from lizard import Sandbox
@@ -106,7 +106,7 @@ with CodeSandbox.create(project_id="proj_123") as sandbox:
     print(run.results[0].data)  # "42"
 ```
 
-`language="bash"` (and `"javascript"` where `node` is installed; the `interpreter` template does not ship it) runs each call as a fresh process with no shared state.
+`language="bash"` and `language="javascript"` (the `interpreter` template ships Node 22) run each call as a fresh process with no shared state.
 
 ## Configuration
 
@@ -116,7 +116,7 @@ Pass `timeout_ms` to `create()` to set the sandbox lifetime. The default is five
 
 ## Runtime limits
 
-Each sandbox is a Firecracker microVM with its own kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet, volumes cannot be resized yet, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
+Each sandbox is a Firecracker microVM with its own kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet. Volumes can grow but not shrink, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
 
 `get_host()` returns a hostname without `https://`; the port is private, so send `sandbox.access_token` as the `X-Lizard-Access-Token` header (or use `expose_port()`, which also returns a browser `url` carrying the token). File writes accept text or bytes (binary is sent exactly); `read_bytes()` supports binary downloads.
 

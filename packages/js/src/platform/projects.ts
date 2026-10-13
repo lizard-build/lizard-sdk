@@ -27,7 +27,10 @@ export class ProjectsAPI {
     return this.client.get(`/api/projects/${id}`)
   }
 
-  /** Create a new project. */
+  /**
+   * Create a new project. A scoped key can create one only in a workspace it
+   * covers; anywhere else it gets HTTP 403 with `code: 'PROJECT_OUT_OF_SCOPE'`.
+   */
   create(opts: CreateProjectOpts): Promise<Project> {
     return this.client.post('/api/projects', opts)
   }

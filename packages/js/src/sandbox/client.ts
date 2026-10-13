@@ -13,9 +13,9 @@ export interface SandboxInfo {
   /** The sandbox runtime: `'firecracker'` (a microVM), `'container'`, or `null` when unknown. */
   runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
-  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox created from a private snapshot. */
+  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage, such as one restored from a container snapshot. */
   size?: 'small' | 'medium' | 'large' | null
-  /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage (private snapshot). */
+  /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage (a container snapshot). */
   pricePerHour?: number | null
   cpus?: number
   memoryMb?: number
@@ -49,8 +49,8 @@ export interface SandboxOpts extends ConnectionOpts {
   projectId?: string
   template?: string
   /**
-   * Create from a private saved snapshot. The sandbox runs on the machine the
-   * snapshot was captured on and is billed by measured usage; `size` is ignored.
+   * Create from a private saved snapshot. The sandbox runs at the source sandbox's
+   * size and is billed flat at that size; `size` is ignored.
    */
   snapshotId?: string
   /**

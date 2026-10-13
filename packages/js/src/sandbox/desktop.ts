@@ -8,7 +8,7 @@ import { Fs } from './fs'
  * State of a sandbox's desktop, and the URLs that stream it.
  *
  * **Both URLs are credentials.** The port is published on a public hostname, and each
- * URL carries the stream token and a VNC password. Anyone holding `url` can see and
+ * URL carries the stream token and a password. Anyone holding `url` can see and
  * control the desktop; anyone holding `viewOnlyUrl` can watch it. Do not log them or
  * put them anywhere you would not put an API key.
  */
@@ -17,9 +17,9 @@ export interface DesktopInfo {
   /** Screen width in pixels, or `null` when the desktop has never been started. */
   width: number | null
   height: number | null
-  /** noVNC page with full control (mouse and keyboard). Treat like a credential. */
+  /** Viewer page with full control (mouse and keyboard): WebRTC, with noVNC as the fallback. Treat like a credential. */
   url: string
-  /** noVNC page that can only watch; enforced by the VNC server, not the page. */
+  /** Viewer page that can only watch; enforced by the stream server in the sandbox, not the page. */
   viewOnlyUrl: string
 }
 
@@ -50,8 +50,9 @@ const TYPE_DELAY_MS = 12
 /**
  * A graphical desktop in the sandbox, for computer-use agents and for people to watch.
  *
- * Only the `desktop` template has one (Xvfb + XFCE + Chromium on `DISPLAY=:1`); on
- * any other template the calls fail with `code === 'DESKTOP_NOT_SUPPORTED'`.
+ * Only the `desktop` template has one (Xvfb + Openbox + Chromium on `DISPLAY=:1`,
+ * streamed over WebRTC with noVNC as the fallback); on any other template the calls
+ * fail with `code === 'DESKTOP_NOT_SUPPORTED'`.
  *
  * Input and screenshots run inside the sandbox with `xdotool` and `scrot`. Every
  * argument goes to the sandbox as an argv array and is never parsed by a shell, so

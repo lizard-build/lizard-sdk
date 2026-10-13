@@ -12,7 +12,7 @@ Sandboxes are Linux environments, each a Firecracker microVM with its own kernel
 | `projectId` | `project_id` | Exact ID for static `Sandbox.create()`; takes precedence over `project` |
 | `apiKey` | `api_key` | API key; defaults to `LIZARD_API_KEY` |
 | `apiUrl` | `api_url` | API base URL; defaults to `LIZARD_API_URL` or `https://lizard.build` |
-| `size` | `size` | `'small'` (2 vCPU / 4 GB, $0.0162/h), `'medium'` (4 vCPU / 8 GB, $0.0324/h) or `'large'` (8 vCPU / 16 GB, $0.0648/h); default `'medium'`. Cannot be combined with a private snapshot |
+| `size` | `size` | `'small'` (2 vCPU / 4 GB, $0.0162/h), `'medium'` (4 vCPU / 8 GB, $0.0324/h) or `'large'` (8 vCPU / 16 GB, $0.0648/h); default `'medium'`. Ignored when restoring a snapshot |
 | `snapshotId` | `snapshot_id` | Create from a private saved snapshot; see [Snapshots](#pause-resume-snapshots-and-fork) |
 | `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
 | `envs` | `envs` | Environment variables set in the sandbox, visible to every command |
@@ -23,7 +23,7 @@ Sandboxes are Linux environments, each a Firecracker microVM with its own kernel
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
-Pricing is flat by size: the hourly price above, billed per second while the sandbox runs. Measured CPU and RAM are not charged, and sandbox egress is free. Attached volumes bill separately. A sandbox created from a private snapshot runs on the machine the snapshot was captured on and is billed by measured usage; `size` is ignored there. There are no `cpus` / `memoryMb` options.
+Pricing is flat by size: the hourly price above, billed per second while the sandbox runs. Measured CPU and RAM are not charged, and sandbox egress is free. Attached volumes bill separately. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. Only a snapshot of an older container sandbox is billed by measured usage. There are no `cpus` / `memoryMb` options.
 
 The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, `interpreter` and `desktop` (see [Desktop](#desktop-computer-use)); availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
@@ -55,7 +55,7 @@ if result.exit_code != 0:
 
 Both return stdout, stderr and an exit code. A nonzero command exit code is a result you must check; request failures throw or raise. Adding an output callback enables streaming while the method still waits for completion. `onPid` / `on_pid` is called once with the process's pid before any output, so a running command can be signalled with `process.kill(pid)`.
 
-Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. The options `envs`, `workdir` and `user` (e.g. `user: 'user'`, the template's unprivileged account) apply to that command; create-time `envs` apply to every command.
+Command results contain stdout, stderr, and the exit code. Command timeouts are limited to 1–600 seconds. Without `timeoutMs` / `timeout_ms`, the SDK stops waiting after 60 s, though the server would wait up to 150 s; then TypeScript throws a `DOMException` named `TimeoutError` (not the SDK's `TimeoutError` class) and Python raises `httpx.ReadTimeout`, not a `LizardError`. Set `timeoutMs` for any command that may run longer than a minute. The options `envs`, `workdir` and `user` (e.g. `user: 'user'`, the template's unprivileged account) apply to that command; create-time `envs` apply to every command.
 
 | Process control | TypeScript | Python |
 | --- | --- | --- |
@@ -118,8 +118,9 @@ import { CodeSandbox } from '@lizard-build/sdk'
 const sandbox = await CodeSandbox.create({ projectId })
 try {
   await sandbox.runCode('import pandas as pd\ndf = pd.DataFrame({"x": [1, 2, 3]})')
-  const run = await sandbox.runCode('df.x.sum()', { onStdout: s => process.stdout.write(s) })
-  console.log(run.results[0].data)   // "6"
+  const run = await sandbox.runCode('int(df.x.sum())')
+  const out = run.results[0]
+  if (out?.type === 'result') console.log(out.data)   // "6"
   const bad = await sandbox.runCode('1/0')
   console.log(bad.error?.name)       // "ZeroDivisionError"
 } finally {
@@ -132,7 +133,7 @@ from lizard import CodeSandbox
 
 with CodeSandbox.create(project_id=project_id) as sandbox:
     sandbox.run_code('import pandas as pd\ndf = pd.DataFrame({"x": [1, 2, 3]})')
-    run = sandbox.run_code("df.x.sum()", on_stdout=lambda s: print(s, end=""))
+    run = sandbox.run_code("int(df.x.sum())")
     print(run.results[0].data)      # "6"
     print(sandbox.run_code("1/0").error.name)  # "ZeroDivisionError"
 ```
@@ -142,7 +143,7 @@ An `Execution` has `stdout`, `stderr`, `results` (rich output: the value of the 
 - **Contexts.** `createContext({ language, cwd })` / `create_context(language, cwd)` starts a separate kernel with its own variables and working directory; pass it as `context`. `listContexts()`, `restartContext(ctx)` (clears its state) and `deleteContext(ctx)` manage them. Without a context, each language uses its own default one.
 - **Timeouts.** `timeoutMs` / `timeout_ms` (default 60 s) bounds one call. A Python kernel that runs past it is interrupted, keeps its state, and the result's `error.name` is `TimeoutError`.
 - **`envs`** apply to that one call.
-- **Other languages.** `bash` and `javascript` run each call as a fresh process: no state carries over and `results` stays empty. `javascript` needs `node`, which the `interpreter` template does not ship. On a template without Jupyter (e.g. `base`), Python also runs as a fresh process per call.
+- **Other languages.** `bash` and `javascript` run each call as a fresh process: no state carries over and `results` stays empty. `javascript` needs `node`; the `interpreter` template ships Node 22. On a template without Jupyter (e.g. `base`), Python also runs as a fresh process per call.
 - Kernels live in the microVM, so they survive `pause()`/`resume()` and are copied by `snapshot()` and `fork()`.
 
 ## HTTP ports
@@ -209,9 +210,9 @@ This example keeps the volume for future sessions. A volume's name is unique wit
 
 ### Resizing a volume
 
-**Firecracker volumes (the default) cannot be resized yet**: `volumes.resize()` fails with `LizardError` (HTTP 400, `code: 'volume_not_resizable'`). Create a volume at the size you need, or copy the data to a new, larger volume.
+`volumes.resize(nameOrId, sizeGb)` grows a Firecracker volume (the default) in place. It works while a sandbox has the volume attached: the sandbox keeps running and sees the new size. A Firecracker volume cannot shrink; a smaller size fails with `LizardError` (HTTP 400, `code: 'volume_shrink_unsupported'`). `getOrCreate` never changes an existing volume's size.
 
-On a container volume, `volumes.resize(nameOrId, sizeGb)` grows or shrinks it in place, even while a sandbox has it mounted; a shrink must leave at least 10% of the new size free, otherwise it fails with `code: 'volume_too_full_to_shrink'`. `getOrCreate` never changes an existing volume's size.
+On a container volume (the older runtime), `resize` grows or shrinks it in place, even while a sandbox has it mounted; a shrink must leave at least 10% of the new size free, otherwise it fails with `code: 'volume_too_full_to_shrink'`.
 
 ```ts
 const info = await lizard.volumes.resize('agent-files', 20)   // VolumeInfo, sizeGb: 20
@@ -223,7 +224,7 @@ info = lizard.volumes.resize("agent-files", 20)               # VolumeInfo, size
 
 In Python the classmethod is `Volume.resize(project_id, name_or_id, size_gb)` and the instance method is `volume.resize_to(project_id, size_gb)`, because a class cannot have both under one name (the same reason delete is `Volume.remove` / `volume.delete`).
 
-Error codes: `volume_not_resizable` (a Firecracker volume) raises `LizardError`; `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volume_not_provisioned` (a just-created volume; retry in a few seconds) raise `ConflictError`; `volume_capacity_unavailable` (no room on the volume's node) raises `LizardError`; `volume_resize_timeout` raises `TimeoutError` and leaves the size unchanged; `invalid_volume_size` means outside the project's limits.
+Error codes: `volume_shrink_unsupported` (a smaller size for a Firecracker volume), `volume_too_large` (above the size limit) and `volume_not_resizable` (an app's volume, not a sandbox volume) raise `LizardError`; `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volume_not_provisioned` (a just-created volume; retry in a few seconds) raise `ConflictError`; `volume_capacity_unavailable` (no room on the volume's node) raises `LizardError`; `volume_resize_timeout` raises `TimeoutError` and leaves the size unchanged; `invalid_volume_size` means outside the project's limits.
 
 ## Lifecycle
 
@@ -246,7 +247,7 @@ A sandbox is a microVM, so all of these keep **memory and running processes**, n
 | Pause / resume | `pause()`, `resume()`, `waitForStatus(s)` | `pause()`, `resume()`, `wait_for_status(s)` | Same ID; processes continue where they stopped |
 | Snapshot | `snapshot(name)` | `snapshot(name)` | `ready` when the call returns (about 2 s); the source keeps running |
 | Restore | `Sandbox.restore(snapshotId)` | `Sandbox.restore(snapshot_id)` | A new sandbox from the snapshot in about 0.4 s; restore as often as you like |
-| Fork | `fork({ count })` | `fork(count=...)` | 1–10 live copies of a running sandbox; the source keeps running |
+| Fork | `fork({ count })` | `fork(count=...)` | 1–100 live copies of a running sandbox, within the account's running-sandbox limit; the source keeps running |
 
 ```ts
 const source = await Sandbox.create('base', { projectId })
@@ -301,7 +302,7 @@ finally:
     source.kill()
 ```
 
-`fork()` returns one entry per requested copy, in order: `{ sandbox, info }` (Python: a `ForkResult` with `sandbox` and `info`) or `{ error }` for a copy that could not be made, e.g. because of the account's sandbox limit. Each copy is billed like its source. A sandbox with a volume attached cannot be forked (`ConflictError`).
+`fork()` returns one entry per requested copy, in order: `{ sandbox, info }` (Python: a `ForkResult` with `sandbox` and `info`) or `{ error }` for a copy that could not be made, e.g. because of the account's sandbox limit. Each copy counts as a sandbox start against that limit and is billed like its source. A sandbox with a volume attached cannot be forked (`ConflictError`).
 
 A snapshot belongs to the user who took it. By default it restores into **any project you can use, in any of your workspaces** (always in its own region): `Sandbox.restore(id, { projectId })` / `Sandbox.restore(id, project_id=...)`, or `Sandbox.create({ snapshotId, projectId })`. To keep one closer, pass a scope when you take it, or change it later:
 
@@ -333,7 +334,7 @@ Container sandboxes (the older runtime, `runtime: 'container'` in `getInfo()`) b
 
 ## Desktop (computer use)
 
-The `desktop` template runs a graphical desktop — Xvfb, XFCE and Chromium on `DISPLAY=:1` — that you can watch in a browser and an agent can drive with screenshots, mouse and keyboard. The desktop is not running when the sandbox boots; `desktop.start()` starts it (about a second) and publishes its noVNC stream. `DISPLAY` is set in the image, so anything you `exec` (for example a Playwright script or `xdotool`) talks to the same screen.
+The `desktop` template runs a graphical desktop — Xvfb, the Openbox window manager with a top bar and dock, and Chromium on `DISPLAY=:1` — that you can watch in a browser and an agent can drive with screenshots, mouse and keyboard. The desktop is not running when the sandbox boots; `desktop.start()` starts it (about a second) and publishes its stream, sent over WebRTC with noVNC as the fallback. `DISPLAY` is set in the image, so anything you `exec` (for example a Playwright script or `xdotool`) talks to the same screen.
 
 ```ts
 import { writeFileSync } from 'node:fs'
@@ -384,7 +385,7 @@ with Sandbox.create("desktop", project="my-project") as sandbox:
 
 Input and screenshots run inside the sandbox with `xdotool` and `scrot` through the normal exec path. Every argument is sent as an argv array and never passes through a shell, so text a model or user asks you to type cannot run commands. `process.exec` / `process.exec_` accept an argv array too, for your own commands.
 
-**Treat both URLs like credentials.** The stream is published on a public hostname, and each URL carries its access token and a VNC password. Anyone with `url` can see and control the desktop, including everything signed in inside it. `viewOnlyUrl` can only watch — the VNC server enforces this, not the page — so share that one when someone only needs to look. Do not log either URL. Stopping and restarting the desktop keeps the same URLs; killing the sandbox revokes them.
+**Treat both URLs like credentials.** The stream is published on a public hostname, and each URL carries its access token and a password. Anyone with `url` can see and control the desktop, including everything signed in inside it. `viewOnlyUrl` can only watch — the stream server in the sandbox enforces this, not the page — so share that one when someone only needs to look. Do not log either URL. Stopping and restarting the desktop keeps the same URLs; killing the sandbox revokes them.
 
 On any other template the desktop calls fail with HTTP 400 and `code === 'DESKTOP_NOT_SUPPORTED'`. `screenshot()` has the desktop write a PNG to a temporary file in `/tmp`, downloads it with the binary file read, then deletes it, so full-size screenshots are not limited by exec output.
 

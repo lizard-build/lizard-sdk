@@ -62,7 +62,11 @@ class WorkspacesAPI:
         return [Workspace._from_dict(w) for w in self._client.get("/api/workspaces")]
 
     def create(self, *, name: str) -> Workspace:
-        """Create a workspace. The caller becomes its owner."""
+        """Create a workspace. The caller becomes its owner.
+
+        Needs a key with no scopes: a scoped key gets HTTP 403 with
+        ``code == "ACCOUNT_SCOPE_REQUIRED"``.
+        """
         return Workspace._from_dict(self._client.post("/api/workspaces", {"name": name}))
 
     def delete(self, id: str, *, force: bool = False) -> None:
@@ -70,7 +74,10 @@ class WorkspacesAPI:
 
         Empty-only by default -- the server refuses while any project, sandbox or
         volume remains, so this cannot quietly destroy a user's work. ``force=True``
-        deletes the workspace and everything in it, irreversibly.
+        deletes the workspace with its apps, addons and projects, irreversibly. It
+        does not delete sandboxes, sandbox volumes or snapshots: a running sandbox
+        keeps running with no workspace left to find it in. Kill the workspace's
+        sandboxes and delete its volumes and snapshots first.
         """
         qs = "" if force else "?requireEmpty=true"
         self._client.delete(f"/api/workspaces/{id}{qs}")

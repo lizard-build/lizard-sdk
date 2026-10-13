@@ -48,7 +48,12 @@ export class WorkspacesAPI {
     return this.client.get('/api/workspaces')
   }
 
-  /** Create a workspace. The caller becomes its owner. */
+  /**
+   * Create a workspace. The caller becomes its owner.
+   *
+   * Needs a key with no scopes: a scoped key gets HTTP 403 with
+   * `code: 'ACCOUNT_SCOPE_REQUIRED'`.
+   */
   create(opts: CreateWorkspaceOpts): Promise<Workspace> {
     return this.client.post('/api/workspaces', opts)
   }
@@ -56,9 +61,12 @@ export class WorkspacesAPI {
   /**
    * Delete a workspace.
    *
-   * Empty-only by default — the server refuses while any project or sandbox remains,
-   * so this cannot quietly destroy a user's work. Pass `{ force: true }` to delete a
-   * workspace and everything in it; that is irreversible.
+   * Empty-only by default — the server refuses while any project, sandbox or volume
+   * remains, so this cannot quietly destroy a user's work. `{ force: true }` deletes
+   * the workspace with its apps, addons and projects; that is irreversible. It does not
+   * delete sandboxes, sandbox volumes or snapshots: a running sandbox keeps running with
+   * no workspace left to find it in. Kill the workspace's sandboxes and delete its
+   * volumes and snapshots first.
    */
   delete(id: string, opts?: { force?: boolean }): Promise<void> {
     const qs = opts?.force ? '' : '?requireEmpty=true'

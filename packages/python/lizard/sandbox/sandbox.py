@@ -203,8 +203,8 @@ class Sandbox:
 
         :param template: Template name. Defaults to ``base``.
         :param snapshot_id: Create from a private saved snapshot. The sandbox runs
-            on the machine the snapshot was captured on and is billed by measured
-            usage; ``size`` is ignored.
+            at the source sandbox's size and is billed flat at that size; ``size``
+            is ignored.
         :param size: Machine size, billed flat per hour (per second of running
             time): ``"small"`` (2 vCPU / 4 GB, $0.0162/h), ``"medium"`` (4 vCPU /
             8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU / 16 GB,
@@ -499,11 +499,12 @@ class Sandbox:
             self.close()
 
     def fork(self, *, count: int = 1, timeout_ms: int = 0) -> "list[ForkResult]":
-        """Clone this running sandbox ``count`` times (1-10).
+        """Clone this running sandbox ``count`` times (1-100).
 
         Each fork is a copy of the microVM at this instant -- memory, running
         processes and files -- and is billed like its source. The source keeps
-        running.
+        running. Each copy counts as a sandbox start, so the account's
+        running-sandbox limit is the real cap.
 
         Returns one :class:`ForkResult` per requested fork, in order: its
         ``sandbox`` (a handle like this one) and ``info``, or ``error`` for a copy

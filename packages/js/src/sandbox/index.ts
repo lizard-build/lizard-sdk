@@ -327,9 +327,10 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Clone this running sandbox `count` times (1-10). Each fork is a copy of the
+   * Clone this running sandbox `count` times (1-100). Each fork is a copy of the
    * microVM at this instant -- memory, running processes and files -- and is
-   * billed like its source. The source keeps running.
+   * billed like its source. The source keeps running. Each copy counts as a
+   * sandbox start, so the account's running-sandbox limit is the real cap.
    *
    * Returns one entry per requested fork, in order: `{ sandbox, info }`, or
    * `{ error }` for a copy that could not be made (e.g. the account's sandbox

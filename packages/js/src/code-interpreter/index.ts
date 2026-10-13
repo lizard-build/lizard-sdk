@@ -35,7 +35,7 @@ type RunnerEvent = Record<string, unknown> & { type?: string }
  * Limits, honestly:
  * - `javascript` (node) and `bash` run each call as a fresh process: no state
  *   carries over and `results` stays empty. `node` must be installed in the
- *   template; the `interpreter` template does not ship it.
+ *   template; the `interpreter` template ships Node 22.
  * - On a template without Jupyter (e.g. `base`), Python also runs as a fresh
  *   process per call.
  * - `stdout`/`stderr` are delivered in the chunks the kernel or process
@@ -49,7 +49,8 @@ type RunnerEvent = Record<string, unknown> & { type?: string }
  * const sandbox = await CodeSandbox.create({ project: 'my-project' })
  * await sandbox.runCode('x = 21')
  * const run = await sandbox.runCode('x * 2')
- * console.log(run.results[0].data) // "42"
+ * const out = run.results[0]
+ * if (out?.type === 'result') console.log(out.data) // "42"
  * await sandbox.kill()
  * ```
  */
