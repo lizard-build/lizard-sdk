@@ -4794,5 +4794,156 @@
       }
     ],
     "expectRequests": 1
+  },
+  {
+    "name": "services.getSleep",
+    "ts": {
+      "path": "services.getSleep",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.get_sleep",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/apps/s1/sleep",
+        "response": {
+          "enabled": true,
+          "idleMinutes": 30,
+          "lastSleptAt": null,
+          "lastWokeAt": null,
+          "lastError": null,
+          "sleeps": 0,
+          "wakes": 0
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.getSleep",
+    "ts": {
+      "path": "addons.getSleep",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.get_sleep",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/projects/p1/addons/a1/sleep",
+        "response": {
+          "enabled": true,
+          "idleMinutes": 30,
+          "lastSleptAt": null,
+          "lastWokeAt": null,
+          "lastError": null,
+          "sleeps": 0,
+          "wakes": 0
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.setSleep",
+    "ts": {
+      "path": "services.setSleep",
+      "args": [
+        "s1",
+        {
+          "enabled": true,
+          "idleMinutes": 30
+        }
+      ]
+    },
+    "py": {
+      "path": "services.set_sleep",
+      "args": [
+        "s1"
+      ],
+      "kwargs": {
+        "enabled": true,
+        "idle_minutes": 30
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/apps/s1/sleep",
+        "body": {
+          "enabled": true,
+          "idleMinutes": 30
+        },
+        "response": {
+          "enabled": true,
+          "idleMinutes": 30,
+          "lastSleptAt": null,
+          "lastWokeAt": null,
+          "lastError": null,
+          "sleeps": 0,
+          "wakes": 0,
+          "restarted": true
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.setSleep",
+    "ts": {
+      "path": "addons.setSleep",
+      "args": [
+        "p1",
+        "a1",
+        {
+          "enabled": false
+        }
+      ]
+    },
+    "py": {
+      "path": "addons.set_sleep",
+      "args": [
+        "p1",
+        "a1"
+      ],
+      "kwargs": {
+        "enabled": false
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/projects/p1/addons/a1/sleep",
+        "body": {
+          "enabled": false
+        },
+        "response": {
+          "enabled": false,
+          "idleMinutes": 30,
+          "lastSleptAt": null,
+          "lastWokeAt": null,
+          "lastError": null,
+          "sleeps": 0,
+          "wakes": 0,
+          "restarted": false
+        }
+      }
+    ],
+    "expectRequests": 1
   }
 ]

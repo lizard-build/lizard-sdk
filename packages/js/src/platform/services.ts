@@ -1,5 +1,5 @@
 import { type PlatformClient, query } from './client'
-import type { ConfigResult, PauseState } from './projects'
+import type { ConfigResult, PauseState, SleepOpts, SleepSetting } from './projects'
 import { LizardError, TimeoutError } from '../errors'
 
 export interface Service {
@@ -211,6 +211,19 @@ export class ServicesAPI {
   /** Resume a paused service: it starts again from the same image, with its data. */
   resume(id: string): Promise<PauseState> {
     return this.client.post(`/api/apps/${id}/resume`, {})
+  }
+
+  /** Serverless setting of a service: whether it sleeps when idle, and how often it did. */
+  getSleep(id: string): Promise<SleepSetting> {
+    return this.client.get(`/api/apps/${id}/sleep`)
+  }
+
+  /**
+   * Make a service serverless (sleep when idle, wake in about a second on the next request) or
+   * always on. Turning it on restarts it once. Needs one replica and a port.
+   */
+  setSleep(id: string, opts: SleepOpts): Promise<SleepSetting> {
+    return this.client.put(`/api/apps/${id}/sleep`, opts)
   }
 
   /** Scale a service. */

@@ -1,6 +1,6 @@
 export { PlatformClient } from './client'
 export { ProjectsAPI } from './projects'
-export type { Project, CreateProjectOpts, PauseResult, PausedService, PauseState } from './projects'
+export type { Project, CreateProjectOpts, PauseResult, PausedService, PauseState, SleepSetting, SleepOpts } from './projects'
 export { ServicesAPI, DeployHandle } from './services'
 export type { Service, CreateServiceOpts, ScaleOpts, LogLine, DeployEvent } from './services'
 export { AddonsAPI } from './addons'

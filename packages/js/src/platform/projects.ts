@@ -21,6 +21,24 @@ export interface PauseResult {
   done: PausedService[]
   skipped: Array<PausedService & { reason: string }>
 }
+/**
+ * Serverless ("sleep when idle"): after `idleMinutes` with no traffic the service sleeps with
+ * its memory saved, and the next request or connection wakes it in about a second.
+ */
+export interface SleepSetting {
+  enabled: boolean
+  idleMinutes: number
+  lastSleptAt: number | null
+  lastWokeAt: number | null
+  lastError: string | null
+  sleeps: number
+  wakes: number
+  /** On a change: whether the service restarted to apply it. */
+  restarted?: boolean
+}
+/** Turn serverless on (`idleMinutes` 5-1440, default 15) or off. */
+export interface SleepOpts { enabled: boolean; idleMinutes?: number }
+
 /** What pausing or resuming one service answers. */
 export interface PauseState { ok: boolean; status: 'paused' | 'running' }
 

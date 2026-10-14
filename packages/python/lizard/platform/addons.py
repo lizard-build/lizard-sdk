@@ -113,6 +113,17 @@ class AddonsAPI:
         """Resume a paused database: same host, port, password and data."""
         return self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/resume")
 
+    def get_sleep(self, project_id: str, addon_id: str) -> dict:
+        """Serverless setting of a database (Postgres, Redis)."""
+        return self._client.get(f"/api/projects/{project_id}/addons/{addon_id}/sleep")
+
+    def set_sleep(self, project_id: str, addon_id: str, *, enabled: bool, idle_minutes: int | None = None) -> dict:
+        """Make a database serverless (sleep when idle, wake on the next connection) or always on."""
+        body: dict = {"enabled": enabled}
+        if idle_minutes is not None:
+            body["idleMinutes"] = idle_minutes
+        return self._client.put(f"/api/projects/{project_id}/addons/{addon_id}/sleep", body)
+
     def rename(self, project_id: str, addon_id: str, name: str):
         return self._client.patch(f"/api/projects/{project_id}/addons/{addon_id}", {"name": name})
 

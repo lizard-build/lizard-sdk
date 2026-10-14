@@ -27,8 +27,8 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 | TypeScript | Python | Purpose |
 | --- | --- | --- |
 | `projects` | `projects` | Projects, config, services and project logs; pause/resume a whole project |
-| `services` | `services` | Deploy, inspect, scale, pause/resume and run commands in apps |
-| `addons` | `addons` | Managed databases and other addons (pause/resume a database) |
+| `services` | `services` | Deploy, inspect, scale, pause/resume, make serverless (sleep when idle) and run commands in apps |
+| `addons` | `addons` | Managed databases and other addons (pause/resume, serverless) |
 | `secrets` | `secrets` | Environment variables and secret references |
 | `domains` | `domains` | App domains and DNS verification |
 | `storage` | `storage` | S3 object listing and uploads |

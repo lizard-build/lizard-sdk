@@ -219,6 +219,19 @@ class ServicesAPI:
         Returns ``{"ok": True, "status": "running"}``."""
         return self._client.post(f"/api/apps/{id}/resume")
 
+    def get_sleep(self, id: str) -> dict:
+        """Serverless setting of a service: ``enabled``, ``idleMinutes``, ``sleeps``, ``wakes``,
+        ``lastSleptAt``, ``lastWokeAt``, ``lastError``."""
+        return self._client.get(f"/api/apps/{id}/sleep")
+
+    def set_sleep(self, id: str, *, enabled: bool, idle_minutes: int | None = None) -> dict:
+        """Make a service serverless (sleep when idle, wake in about a second on the next
+        request) or always on. ``idle_minutes`` 5-1440. Turning it on restarts it once."""
+        body: dict = {"enabled": enabled}
+        if idle_minutes is not None:
+            body["idleMinutes"] = idle_minutes
+        return self._client.put(f"/api/apps/{id}/sleep", body)
+
     def scale(self, id: str, *, replicas: int | None = None, cpu_millis: int | None = None,
               memory_mi: int | None = None, storage_mi: int | None = None) -> None:
         if storage_mi is not None:

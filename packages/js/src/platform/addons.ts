@@ -1,5 +1,5 @@
 import type { PlatformClient } from './client'
-import type { PauseState } from './projects'
+import type { PauseState, SleepOpts, SleepSetting } from './projects'
 
 export type AddonType = 'postgres' | 'mysql' | 'mongodb' | 'mongo' | 'redis' | 's3'
 
@@ -96,6 +96,16 @@ export class AddonsAPI {
   /** Resume a paused database: same host, port, password and data. */
   resume(projectId: string, addonId: string): Promise<PauseState> {
     return this.client.post(`/api/projects/${projectId}/addons/${addonId}/resume`, {})
+  }
+
+  /** Serverless setting of a database (Postgres, Redis). */
+  getSleep(projectId: string, addonId: string): Promise<SleepSetting> {
+    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/sleep`)
+  }
+
+  /** Make a database serverless (sleep when idle, wake on the next connection) or always on. */
+  setSleep(projectId: string, addonId: string, opts: SleepOpts): Promise<SleepSetting> {
+    return this.client.put(`/api/projects/${projectId}/addons/${addonId}/sleep`, opts)
   }
   rename(projectId: string, addonId: string, name: string): Promise<unknown> {
     return this.client.patch(`/api/projects/${projectId}/addons/${addonId}`, { name })
