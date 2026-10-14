@@ -118,6 +118,7 @@ To run code snippets with state carried between calls, use `CodeSandbox` (`runCo
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
 | Manage cloud apps | `lizard.services`, `projects`, `addons` | Same namespaces |
+| Show your own prices to a workspace's scoped keys (resellers) | `lizard.workspaces.setResalePricing(id, { cpu: 4, sandbox: 4 })` | `lizard.workspaces.set_resale_pricing(id, cpu=4, sandbox=4)` |
 | Pause an app, database, project or workspace (keeps URLs, passwords, data) | `lizard.services.pause(id)`, `addons.pause(projectId, id)`, `projects.pause(id)`, `workspaces.pause(id)`; `resume` likewise | Same method names |
 | Make an app or database serverless (sleep when idle, ~1 s wake) | `lizard.services.setSleep(id, { enabled: true, idleMinutes: 15 })`, `addons.setSleep(projectId, id, …)`; `getSleep` reads it | `set_sleep(id, enabled=True, idle_minutes=15)`, `get_sleep` |
 

@@ -4945,5 +4945,120 @@
       }
     ],
     "expectRequests": 1
+  },
+  {
+    "name": "workspaces.getResalePricing",
+    "ts": {
+      "path": "workspaces.getResalePricing",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.get_resale_pricing",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/workspaces/w1/resale-pricing",
+        "response": {
+          "enabled": true,
+          "multipliers": {
+            "cpu": 4,
+            "memory": 4,
+            "storage": 1,
+            "egress": 1,
+            "objectStorage": 1,
+            "sandbox": 5
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "workspaces.setResalePricing",
+    "ts": {
+      "path": "workspaces.setResalePricing",
+      "args": [
+        "w1",
+        {
+          "cpu": 4,
+          "memory": 4,
+          "sandbox": 5
+        }
+      ]
+    },
+    "py": {
+      "path": "workspaces.set_resale_pricing",
+      "args": [
+        "w1"
+      ],
+      "kwargs": {
+        "cpu": 4,
+        "memory": 4,
+        "sandbox": 5
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/workspaces/w1/resale-pricing",
+        "body": {
+          "cpu": 4,
+          "memory": 4,
+          "sandbox": 5
+        },
+        "response": {
+          "enabled": true,
+          "multipliers": {
+            "cpu": 4,
+            "memory": 4,
+            "storage": 1,
+            "egress": 1,
+            "objectStorage": 1,
+            "sandbox": 5
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "workspaces.clearResalePricing",
+    "ts": {
+      "path": "workspaces.clearResalePricing",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.clear_resale_pricing",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/workspaces/w1/resale-pricing",
+        "body": {},
+        "response": {
+          "enabled": false,
+          "multipliers": {
+            "cpu": 1,
+            "memory": 1,
+            "storage": 1,
+            "egress": 1,
+            "objectStorage": 1,
+            "sandbox": 1
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
   }
 ]

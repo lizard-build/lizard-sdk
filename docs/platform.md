@@ -34,7 +34,7 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 | `storage` | `storage` | S3 object listing and uploads |
 | `github` | `github` | GitHub connection status and checkout |
 | `metrics` | `metrics` | Resource use and project costs |
-| `workspaces` | `workspaces` | Workspaces and resource ownership; pause/resume a whole workspace (owner) |
+| `workspaces` | `workspaces` | Workspaces and resource ownership; pause/resume a whole workspace (owner); resale prices for its scoped keys (owner) |
 | `apiKeys` | `api_keys` | API keys and scopes |
 | `regions` | `regions` | Available regions |
 | `billing` | `billing` | The account's plan, Pro Checkout, promo codes, balance and transactions |
@@ -74,6 +74,24 @@ A key with no scopes has access to all resources the creating account can reach.
 If tools inside a sandbox need Lizard access, pass a scoped key through `lizardToken` / `lizard_token`. Any code in that sandbox can read the key and use its permissions. Choose a template with the CLI installed when running CLI commands.
 
 ### Account and billing access
+
+### Resale prices
+
+If you resell Lizard, for example through your own tool running in a sandbox with a key scoped to a user's workspace, you can show that user your prices instead of Lizard's. Set a multiplier from 1 to 100 per resource on the workspace. Every key scoped to it, or to one of its projects, then sees prices and costs multiplied: sandbox prices, `metrics` costs and billing summaries. Your own dashboard, keys with no scopes and what Lizard bills you are unchanged.
+
+```ts
+await lizard.workspaces.setResalePricing(workspace.id, { cpu: 4, memory: 4, sandbox: 4 })
+await lizard.workspaces.getResalePricing(workspace.id)   // { enabled, multipliers }
+await lizard.workspaces.clearResalePricing(workspace.id)
+```
+
+```python
+lizard.workspaces.set_resale_pricing(workspace.id, cpu=4, memory=4, sandbox=4)
+lizard.workspaces.get_resale_pricing(workspace.id)
+lizard.workspaces.clear_resale_pricing(workspace.id)
+```
+
+Resources are `cpu`, `memory`, `storage` (volumes), `egress`, `objectStorage` (`object_storage` in Python) and `sandbox`. A set call replaces them all; a resource left out is 1. Only the workspace owner can read or change them, with a key that has no scopes: a scoped key gets HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. A key with resale prices also gets that 403 from the workspace's billing account, whose plan and Stripe figures are Lizard's.
 
 Billing belongs to the account, across all its workspaces. Scoped keys cannot access account billing or account-wide usage; those routes return HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. The one exception is `billing.subscription({ workspaceId })` / `billing.subscription(workspace_id=...)`, which any member's key that reaches the workspace can call to see why the owner's account is blocked; it leaves out the card and invoice. A scoped key's `whoami()` response never names the account: it carries only `scoped: true` and the key's `scopes`, each project or workspace with its name -- no id, username, email, balance or plan. Use scoped `metrics` calls for project costs.
 

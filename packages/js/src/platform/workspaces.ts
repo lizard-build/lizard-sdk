@@ -14,6 +14,27 @@ export interface Workspace {
   createdAt?: number | string
 }
 
+/**
+ * Resale prices: each resource's price as a multiple of Lizard's (1-100). API keys scoped
+ * to the workspace see prices and costs multiplied by these; the owner's bill does not change.
+ */
+export interface ResaleMultipliers {
+  cpu: number
+  memory: number
+  /** Volumes. */
+  storage: number
+  egress: number
+  objectStorage: number
+  /** Sized sandboxes' flat price. */
+  sandbox: number
+}
+
+export interface ResalePricing {
+  /** False when every multiplier is 1: scoped keys see Lizard's prices. */
+  enabled: boolean
+  multipliers: ResaleMultipliers
+}
+
 export interface CreateWorkspaceOpts {
   name: string
 }
@@ -70,6 +91,35 @@ export class WorkspacesAPI {
   /** Resume what was paused in a workspace (owner only; not what a billing freeze paused). */
   resume(id: string): Promise<PauseResult> {
     return this.client.post(`/api/workspaces/${id}/resume`, {})
+  }
+
+  /**
+   * The workspace's resale prices (owner only, key with no scopes).
+   *
+   * A scoped key gets HTTP 403 with `code: 'ACCOUNT_SCOPE_REQUIRED'`: the keys that see these
+   * prices can neither read nor change them.
+   */
+  getResalePricing(id: string): Promise<ResalePricing> {
+    return this.client.get(`/api/workspaces/${id}/resale-pricing`)
+  }
+
+  /**
+   * Set the workspace's resale prices (owner only, key with no scopes). Replaces them all:
+   * a resource left out is 1. Every API key scoped to the workspace, or to one of its
+   * projects, then sees each price and cost multiplied (sandbox `pricePerHour`, `metrics`
+   * costs, billing summaries). Display only: what Lizard bills you is unchanged.
+   *
+   * ```ts
+   * await lizard.workspaces.setResalePricing(ws.id, { cpu: 4, memory: 4, sandbox: 4 })
+   * ```
+   */
+  setResalePricing(id: string, multipliers: Partial<ResaleMultipliers>): Promise<ResalePricing> {
+    return this.client.put(`/api/workspaces/${id}/resale-pricing`, multipliers)
+  }
+
+  /** Turn resale prices off: scoped keys see Lizard's prices again (owner only). */
+  clearResalePricing(id: string): Promise<ResalePricing> {
+    return this.client.put(`/api/workspaces/${id}/resale-pricing`, {})
   }
 
   /**

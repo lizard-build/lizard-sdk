@@ -32,6 +32,36 @@ class Workspace:
         )
 
 
+@dataclass
+class ResalePricing:
+    """Resale prices: each resource's price as a multiple of Lizard's (1-100). API keys
+    scoped to the workspace see prices and costs multiplied by these; the owner's bill
+    does not change."""
+    #: False when every multiplier is 1: scoped keys see Lizard's prices.
+    enabled: bool
+    cpu: float = 1
+    memory: float = 1
+    #: Volumes.
+    storage: float = 1
+    egress: float = 1
+    object_storage: float = 1
+    #: Sized sandboxes' flat price.
+    sandbox: float = 1
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "ResalePricing":
+        m = d.get("multipliers") or {}
+        return cls(
+            enabled=bool(d.get("enabled", False)),
+            cpu=m.get("cpu", 1),
+            memory=m.get("memory", 1),
+            storage=m.get("storage", 1),
+            egress=m.get("egress", 1),
+            object_storage=m.get("objectStorage", 1),
+            sandbox=m.get("sandbox", 1),
+        )
+
+
 class WorkspacesAPI:
     """
     Workspaces -- the top of the ownership tree: a workspace holds projects, a
@@ -80,6 +110,41 @@ class WorkspacesAPI:
         """Resume what was paused in a workspace (owner only; not what a billing freeze paused)."""
         from .projects import PauseResult
         return PauseResult._from_dict(self._client.post(f"/api/workspaces/{id}/resume"))
+
+    def get_resale_pricing(self, id: str) -> ResalePricing:
+        """The workspace's resale prices (owner only, key with no scopes). A scoped key
+        gets HTTP 403 ``ACCOUNT_SCOPE_REQUIRED``: the keys that see these prices can
+        neither read nor change them."""
+        return ResalePricing._from_dict(self._client.get(f"/api/workspaces/{id}/resale-pricing"))
+
+    def set_resale_pricing(
+        self,
+        id: str,
+        *,
+        cpu: float | None = None,
+        memory: float | None = None,
+        storage: float | None = None,
+        egress: float | None = None,
+        object_storage: float | None = None,
+        sandbox: float | None = None,
+    ) -> ResalePricing:
+        """Set the workspace's resale prices (owner only, key with no scopes). Replaces
+        them all: a resource left out is 1. Every API key scoped to the workspace, or to
+        one of its projects, then sees each price and cost multiplied (sandbox
+        prices, ``metrics`` costs, billing summaries). Display only: what
+        Lizard bills you is unchanged.
+
+        ``lizard.workspaces.set_resale_pricing(ws.id, cpu=4, memory=4, sandbox=4)``
+        """
+        body = {k: v for k, v in {
+            "cpu": cpu, "memory": memory, "storage": storage, "egress": egress,
+            "objectStorage": object_storage, "sandbox": sandbox,
+        }.items() if v is not None}
+        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{id}/resale-pricing", body))
+
+    def clear_resale_pricing(self, id: str) -> ResalePricing:
+        """Turn resale prices off: scoped keys see Lizard's prices again (owner only)."""
+        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{id}/resale-pricing", {}))
 
     def delete(self, id: str, *, force: bool = False) -> None:
         """Delete a workspace.

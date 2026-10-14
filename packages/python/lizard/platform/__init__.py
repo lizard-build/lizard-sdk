@@ -11,7 +11,7 @@ from .projects import PausedService, PauseResult, Project, ProjectsAPI
 from .regions import Region, RegionsAPI
 from .secrets import Secret, SecretsAPI
 from .services import DeployHandle, LogLine, Service, ServicesAPI
-from .workspaces import Workspace, WorkspacesAPI
+from .workspaces import ResalePricing, Workspace, WorkspacesAPI
 
 __all__ = [
     "Addon", "AddonsAPI", "AddonType",
@@ -19,7 +19,7 @@ __all__ = [
     "Balance", "BillingAPI", "Transaction", "TransactionPage",
     "BillingPeriod", "CheckoutSession", "PromoRedemption", "StartProNowResult", "Subscription", "TrialInfo",
     "Region", "RegionsAPI",
-    "Workspace", "WorkspacesAPI",
+    "ResalePricing", "Workspace", "WorkspacesAPI",
     "CostMetrics", "MetricPoint", "MetricsAPI", "ServiceMetrics",
     "DeployHandle", "LogLine", "Service", "ServicesAPI",
     "DomainInfo", "DomainsAPI",
