@@ -542,7 +542,9 @@ class Sandbox:
         minutes for a sandbox that filled most of its memory (its memory is uploaded first),
         so the call waits up to 11 minutes. Start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
         running. ``pool_size`` applies to container sandboxes only. ``scope`` says where it
-        may be restored (:data:`SnapshotScope`); by default any of your projects and workspaces.
+        may be restored (:data:`SnapshotScope`); by default any of your projects and workspaces,
+        or with a key limited to a workspace or project only what the key covers (a wider scope
+        is narrowed).
         """
         body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
         if scope is not None:

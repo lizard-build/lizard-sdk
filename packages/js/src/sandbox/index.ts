@@ -42,7 +42,8 @@ export type SnapshotScope = 'user' | 'workspace' | 'project'
 export interface SnapshotOpts {
   /** Warm copies to keep ready (container sandboxes only; ignored for Firecracker, whose snapshots restore from disk). */
   poolSize?: number
-  /** Where it may be restored. Default `'user'`: any of your projects and workspaces. */
+  /** Where it may be restored. Default `'user'`: any of your projects and workspaces; with a key
+   *  limited to a workspace or project, only what the key covers (a wider scope is narrowed). */
   scope?: SnapshotScope
 }
 
