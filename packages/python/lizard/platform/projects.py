@@ -21,7 +21,7 @@ class Project:
 @dataclass
 class PausedService:
     """One app or managed database a project / workspace pause or resume acted on."""
-    kind: str  # "app" | "database"
+    kind: str  # "app" | "database" | "sandbox"
     id: str
     name: str
     reason: str | None = None  # set on skipped ones: why it was not paused / resumed

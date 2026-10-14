@@ -14,7 +14,7 @@ export interface CreateProjectOpts {
 }
 
 /** One app or managed database a project / workspace pause or resume acted on. */
-export interface PausedService { kind: 'app' | 'database'; id: string; name: string }
+export interface PausedService { kind: 'app' | 'database' | 'sandbox'; id: string; name: string }
 /** What `projects.pause/resume` and `workspaces.pause/resume` answer: what was done, and
  *  what was skipped with why (already paused, not running, busy, a storage bucket...). */
 export interface PauseResult {
