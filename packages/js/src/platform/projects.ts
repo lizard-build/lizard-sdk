@@ -13,6 +13,17 @@ export interface CreateProjectOpts {
   name: string
 }
 
+/** One app or managed database a project / workspace pause or resume acted on. */
+export interface PausedService { kind: 'app' | 'database'; id: string; name: string }
+/** What `projects.pause/resume` and `workspaces.pause/resume` answer: what was done, and
+ *  what was skipped with why (already paused, not running, busy, a storage bucket...). */
+export interface PauseResult {
+  done: PausedService[]
+  skipped: Array<PausedService & { reason: string }>
+}
+/** What pausing or resuming one service answers. */
+export interface PauseState { ok: boolean; status: 'paused' | 'running' }
+
 export class ProjectsAPI {
   constructor(private readonly client: PlatformClient) {}
 
@@ -38,6 +49,19 @@ export class ProjectsAPI {
   /** Update a project's name. */
   update(id: string, opts: { name?: string }): Promise<Project> {
     return this.client.patch(`/api/projects/${id}`, opts)
+  }
+
+  /**
+   * Pause every app and managed database of a project: each scales to 0 and keeps its URL,
+   * host, port, password, settings and volumes. Skipped ones are listed with why.
+   */
+  pause(id: string): Promise<PauseResult> {
+    return this.client.post(`/api/projects/${id}/pause`, {})
+  }
+
+  /** Resume what was paused in a project (not what a billing freeze paused). */
+  resume(id: string): Promise<PauseResult> {
+    return this.client.post(`/api/projects/${id}/resume`, {})
   }
 
   /** Delete a project. */

@@ -118,6 +118,7 @@ To run code snippets with state carried between calls, use `CodeSandbox` (`runCo
 | Reconnect to a running sandbox | `Sandbox.connect(id)` | `Sandbox.connect(id)` |
 | Keep files across sessions | `lizard.volumes.getOrCreate(name)` | `lizard.volumes.get_or_create(name)` |
 | Manage cloud apps | `lizard.services`, `projects`, `addons` | Same namespaces |
+| Pause an app, database, project or workspace (keeps URLs, passwords, data) | `lizard.services.pause(id)`, `addons.pause(projectId, id)`, `projects.pause(id)`, `workspaces.pause(id)`; `resume` likewise | Same method names |
 
 See the [sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md) for configuration, streaming, ports, volumes, errors and method names in both languages.
 

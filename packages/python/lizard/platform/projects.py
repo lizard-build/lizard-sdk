@@ -18,6 +18,35 @@ class Project:
         return cls(id=d["id"], name=d["name"], slug=d.get("slug", ""), workspace_id=d.get("workspaceId", ""))
 
 
+@dataclass
+class PausedService:
+    """One app or managed database a project / workspace pause or resume acted on."""
+    kind: str  # "app" | "database"
+    id: str
+    name: str
+    reason: str | None = None  # set on skipped ones: why it was not paused / resumed
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "PausedService":
+        return cls(kind=d.get("kind", ""), id=d["id"], name=d.get("name", ""), reason=d.get("reason"))
+
+
+@dataclass
+class PauseResult:
+    """What projects.pause/resume and workspaces.pause/resume answer: what was done, and what
+    was skipped with why (already paused, not running, busy, a storage bucket...)."""
+    done: list[PausedService]
+    skipped: list[PausedService]
+
+    @classmethod
+    def _from_dict(cls, d: dict | None) -> "PauseResult":
+        d = d or {}
+        return cls(
+            done=[PausedService._from_dict(x) for x in d.get("done", [])],
+            skipped=[PausedService._from_dict(x) for x in d.get("skipped", [])],
+        )
+
+
 class ProjectsAPI:
     def __init__(self, client: "PlatformClient") -> None:
         self._client = client
@@ -42,6 +71,15 @@ class ProjectsAPI:
     def update(self, id: str, *, name: str | None = None) -> Project:
         """Rename a project."""
         return Project._from_dict(self._client.patch(f"/api/projects/{id}", {"name": name}))
+
+    def pause(self, id: str) -> PauseResult:
+        """Pause every app and managed database of a project: each scales to 0 and keeps its
+        URL, host, port, password, settings and volumes. Skipped ones are listed with why."""
+        return PauseResult._from_dict(self._client.post(f"/api/projects/{id}/pause"))
+
+    def resume(self, id: str) -> PauseResult:
+        """Resume what was paused in a project (not what a billing freeze paused)."""
+        return PauseResult._from_dict(self._client.post(f"/api/projects/{id}/resume"))
 
     def delete(self, id: str) -> None:
         """Delete a project."""

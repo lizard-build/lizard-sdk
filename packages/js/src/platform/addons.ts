@@ -1,4 +1,5 @@
 import type { PlatformClient } from './client'
+import type { PauseState } from './projects'
 
 export type AddonType = 'postgres' | 'mysql' | 'mongodb' | 'mongo' | 'redis' | 's3'
 
@@ -7,7 +8,7 @@ export interface Addon {
   name: string
   type: AddonType
   projectId: string
-  status: 'none' | 'running' | 'crashed' | 'stopped'
+  status: 'none' | 'running' | 'crashed' | 'stopped' | 'paused'
   deployStatus: string
   version?: string
   /** Exposed connection variables (e.g. DATABASE_URL, REDIS_URL). */
@@ -82,6 +83,19 @@ export class AddonsAPI {
   /** Restart an addon. */
   redeploy(projectId: string, addonId: string): Promise<void> {
     return this.client.post(`/api/projects/${projectId}/addons/${addonId}/redeploy`, {})
+  }
+
+  /**
+   * Pause a managed database: it scales to 0 (connections are refused) and keeps its host,
+   * port, password and data. Postgres and Redis.
+   */
+  pause(projectId: string, addonId: string): Promise<PauseState> {
+    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/pause`, {})
+  }
+
+  /** Resume a paused database: same host, port, password and data. */
+  resume(projectId: string, addonId: string): Promise<PauseState> {
+    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/resume`, {})
   }
   rename(projectId: string, addonId: string, name: string): Promise<unknown> {
     return this.client.patch(`/api/projects/${projectId}/addons/${addonId}`, { name })

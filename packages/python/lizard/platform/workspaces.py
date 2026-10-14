@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .client import PlatformClient
+    from .projects import PauseResult
 
 
 @dataclass
@@ -68,6 +69,17 @@ class WorkspacesAPI:
         ``code == "ACCOUNT_SCOPE_REQUIRED"``.
         """
         return Workspace._from_dict(self._client.post("/api/workspaces", {"name": name}))
+
+    def pause(self, id: str) -> "PauseResult":
+        """Pause every app and managed database in every project of a workspace (owner only).
+        Each keeps its URL, host, port, password, settings and volumes."""
+        from .projects import PauseResult
+        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{id}/pause"))
+
+    def resume(self, id: str) -> "PauseResult":
+        """Resume what was paused in a workspace (owner only; not what a billing freeze paused)."""
+        from .projects import PauseResult
+        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{id}/resume"))
 
     def delete(self, id: str, *, force: bool = False) -> None:
         """Delete a workspace.

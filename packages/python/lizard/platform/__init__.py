@@ -7,7 +7,7 @@ from .billing import (
 from .client import PlatformClient
 from .domains import DomainInfo, DomainsAPI
 from .metrics import CostMetrics, MetricPoint, MetricsAPI, ServiceMetrics
-from .projects import Project, ProjectsAPI
+from .projects import PausedService, PauseResult, Project, ProjectsAPI
 from .regions import Region, RegionsAPI
 from .secrets import Secret, SecretsAPI
 from .services import DeployHandle, LogLine, Service, ServicesAPI
@@ -24,7 +24,7 @@ __all__ = [
     "DeployHandle", "LogLine", "Service", "ServicesAPI",
     "DomainInfo", "DomainsAPI",
     "PlatformClient",
-    "Project", "ProjectsAPI",
+    "PausedService", "PauseResult", "Project", "ProjectsAPI",
     "Secret", "SecretsAPI",
 ]
 

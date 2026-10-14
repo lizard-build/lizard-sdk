@@ -104,6 +104,15 @@ class AddonsAPI:
         """Trigger a redeploy of an addon."""
         self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/redeploy")
 
+    def pause(self, project_id: str, addon_id: str) -> dict:
+        """Pause a managed database (Postgres, Redis): it scales to 0 (connections are refused)
+        and keeps its host, port, password and data. Returns ``{"ok": True, "status": "paused"}``."""
+        return self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/pause")
+
+    def resume(self, project_id: str, addon_id: str) -> dict:
+        """Resume a paused database: same host, port, password and data."""
+        return self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/resume")
+
     def rename(self, project_id: str, addon_id: str, name: str):
         return self._client.patch(f"/api/projects/{project_id}/addons/{addon_id}", {"name": name})
 

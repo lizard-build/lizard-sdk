@@ -1,4 +1,5 @@
 import type { PlatformClient } from './client'
+import type { PauseResult } from './projects'
 
 export interface Workspace {
   id: string
@@ -56,6 +57,19 @@ export class WorkspacesAPI {
    */
   create(opts: CreateWorkspaceOpts): Promise<Workspace> {
     return this.client.post('/api/workspaces', opts)
+  }
+
+  /**
+   * Pause every app and managed database in every project of a workspace (owner only).
+   * Each keeps its URL, host, port, password, settings and volumes.
+   */
+  pause(id: string): Promise<PauseResult> {
+    return this.client.post(`/api/workspaces/${id}/pause`, {})
+  }
+
+  /** Resume what was paused in a workspace (owner only; not what a billing freeze paused). */
+  resume(id: string): Promise<PauseResult> {
+    return this.client.post(`/api/workspaces/${id}/resume`, {})
   }
 
   /**

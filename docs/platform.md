@@ -26,15 +26,15 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 
 | TypeScript | Python | Purpose |
 | --- | --- | --- |
-| `projects` | `projects` | Projects, config, services and project logs |
-| `services` | `services` | Deploy, inspect, scale and run commands in apps |
-| `addons` | `addons` | Managed databases and other addons |
+| `projects` | `projects` | Projects, config, services and project logs; pause/resume a whole project |
+| `services` | `services` | Deploy, inspect, scale, pause/resume and run commands in apps |
+| `addons` | `addons` | Managed databases and other addons (pause/resume a database) |
 | `secrets` | `secrets` | Environment variables and secret references |
 | `domains` | `domains` | App domains and DNS verification |
 | `storage` | `storage` | S3 object listing and uploads |
 | `github` | `github` | GitHub connection status and checkout |
 | `metrics` | `metrics` | Resource use and project costs |
-| `workspaces` | `workspaces` | Workspaces and resource ownership |
+| `workspaces` | `workspaces` | Workspaces and resource ownership; pause/resume a whole workspace (owner) |
 | `apiKeys` | `api_keys` | API keys and scopes |
 | `regions` | `regions` | Available regions |
 | `billing` | `billing` | The account's plan, Pro Checkout, promo codes, balance and transactions |

@@ -10,8 +10,8 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 
 | CLI group | SDK entry points |
 | --- | --- |
-| `project`, `ps`, `config apply` | `projects.list/get/create/update/delete/services/apply` |
-| `add`, `up`, `redeploy`, `restart`, `scale`, `port`, `service` | `services.deploy/upload/redeploy/restart/scale/update/get/delete`; `addons.*` |
+| `project`, `ps`, `config apply` | `projects.list/get/create/update/delete/services/apply/pause/resume` |
+| `add`, `up`, `redeploy`, `restart`, `pause`, `resume`, `scale`, `port`, `service` | `services.deploy/upload/redeploy/restart/pause/resume/scale/update/get/delete`; `addons.*` (incl. `addons.pause/resume`) |
 | `logs`, `events`, `ssh` | `services.logs/history/streamLogs/buildLogs/events/pods/exec`; Python `exec_` |
 | `secrets` | `secrets.list/set/delete/refs`; pass parsed dotenv values to `set` |
 | `domain` | `domains.info/list/add/generate/verify/delete` |

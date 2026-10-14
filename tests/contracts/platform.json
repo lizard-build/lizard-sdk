@@ -4530,5 +4530,269 @@
     ],
     "error": "has no desktop",
     "expectRequests": 1
+  },
+  {
+    "name": "services.pause",
+    "ts": {
+      "path": "services.pause",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.pause",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/pause",
+        "response": {
+          "ok": true,
+          "status": "paused"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "services.resume",
+    "ts": {
+      "path": "services.resume",
+      "args": [
+        "s1"
+      ]
+    },
+    "py": {
+      "path": "services.resume",
+      "args": [
+        "s1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/apps/s1/resume",
+        "response": {
+          "ok": true,
+          "status": "running"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.pause",
+    "ts": {
+      "path": "addons.pause",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.pause",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/addons/a1/pause",
+        "response": {
+          "ok": true,
+          "status": "paused"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "addons.resume",
+    "ts": {
+      "path": "addons.resume",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "py": {
+      "path": "addons.resume",
+      "args": [
+        "p1",
+        "a1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/addons/a1/resume",
+        "response": {
+          "ok": true,
+          "status": "running"
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.pause",
+    "ts": {
+      "path": "projects.pause",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.pause",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/pause",
+        "response": {
+          "done": [
+            {
+              "kind": "app",
+              "id": "s1",
+              "name": "web"
+            }
+          ],
+          "skipped": [
+            {
+              "kind": "database",
+              "id": "a1",
+              "name": "cache",
+              "reason": "already paused"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "projects.resume",
+    "ts": {
+      "path": "projects.resume",
+      "args": [
+        "p1"
+      ]
+    },
+    "py": {
+      "path": "projects.resume",
+      "args": [
+        "p1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/projects/p1/resume",
+        "response": {
+          "done": [
+            {
+              "kind": "app",
+              "id": "s1",
+              "name": "web"
+            }
+          ],
+          "skipped": [
+            {
+              "kind": "database",
+              "id": "a1",
+              "name": "cache",
+              "reason": "already paused"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "workspaces.pause",
+    "ts": {
+      "path": "workspaces.pause",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.pause",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/workspaces/w1/pause",
+        "response": {
+          "done": [
+            {
+              "kind": "app",
+              "id": "s1",
+              "name": "web"
+            }
+          ],
+          "skipped": [
+            {
+              "kind": "database",
+              "id": "a1",
+              "name": "cache",
+              "reason": "already paused"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "workspaces.resume",
+    "ts": {
+      "path": "workspaces.resume",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.resume",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/workspaces/w1/resume",
+        "response": {
+          "done": [
+            {
+              "kind": "app",
+              "id": "s1",
+              "name": "web"
+            }
+          ],
+          "skipped": [
+            {
+              "kind": "database",
+              "id": "a1",
+              "name": "cache",
+              "reason": "already paused"
+            }
+          ]
+        }
+      }
+    ],
+    "expectRequests": 1
   }
 ]

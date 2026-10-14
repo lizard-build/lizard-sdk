@@ -1,12 +1,12 @@
 import { type PlatformClient, query } from './client'
-import type { ConfigResult } from './projects'
+import type { ConfigResult, PauseState } from './projects'
 import { LizardError, TimeoutError } from '../errors'
 
 export interface Service {
   id: string
   name: string
   projectId: string
-  status: 'none' | 'running' | 'crashed' | 'stopped'
+  status: 'none' | 'running' | 'crashed' | 'stopped' | 'paused'
   deployStatus: 'idle' | 'building' | 'deploying' | 'restarting' | 'failed' | 'deleting'
   domain?: string
   region?: string
@@ -198,6 +198,19 @@ export class ServicesAPI {
   /** Restart a service without rebuilding. */
   restart(id: string): Promise<void> {
     return this.client.post(`/api/apps/${id}/restart`, {})
+  }
+
+  /**
+   * Pause a service: it scales to 0 (its URL answers 503) and keeps its URL, settings, env
+   * and volumes. Restart and redeploy are refused until it is resumed.
+   */
+  pause(id: string): Promise<PauseState> {
+    return this.client.post(`/api/apps/${id}/pause`, {})
+  }
+
+  /** Resume a paused service: it starts again from the same image, with its data. */
+  resume(id: string): Promise<PauseState> {
+    return this.client.post(`/api/apps/${id}/resume`, {})
   }
 
   /** Scale a service. */

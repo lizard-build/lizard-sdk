@@ -208,6 +208,17 @@ class ServicesAPI:
         """Restart a service without rebuilding."""
         self._client.post(f"/api/apps/{id}/restart")
 
+    def pause(self, id: str) -> dict:
+        """Pause a service: it scales to 0 (its URL answers 503) and keeps its URL, settings,
+        env and volumes. Restart and redeploy are refused until it is resumed.
+        Returns ``{"ok": True, "status": "paused"}``."""
+        return self._client.post(f"/api/apps/{id}/pause")
+
+    def resume(self, id: str) -> dict:
+        """Resume a paused service: it starts again from the same image, with its data.
+        Returns ``{"ok": True, "status": "running"}``."""
+        return self._client.post(f"/api/apps/{id}/resume")
+
     def scale(self, id: str, *, replicas: int | None = None, cpu_millis: int | None = None,
               memory_mi: int | None = None, storage_mi: int | None = None) -> None:
         if storage_mi is not None:
