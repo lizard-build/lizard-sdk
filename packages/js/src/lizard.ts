@@ -174,11 +174,11 @@ export class Lizard {
   /**
    * The account this credential belongs to — the SDK's `lizard whoami`.
    *
-   * A **scoped** key gets identity only: `id`, `username`, `avatarUrl`, `scoped: true`
-   * and the key's own `scopes`. The account's email, balance, plan and billing status
-   * are withheld — they belong to the account, not to the key holder, and a scoped key
-   * is meant to be handed to an end user or injected into a sandbox. An unscoped key
-   * or a session sees the full account.
+   * A **scoped** key never learns whose account it is: it gets only `scoped: true` and
+   * its `scopes`, each project or workspace with its name. No id, username, avatar,
+   * email, balance or plan -- a scoped key is meant to be handed to someone who is not
+   * the account's member, or injected into a sandbox. An unscoped key or a session
+   * sees the full account.
    *
    * Reading back `scopes` is the cheapest way to answer "what can this key reach".
    */
@@ -193,19 +193,28 @@ export class Lizard {
 }
 
 /**
- * The account behind a credential — see {@link Lizard.whoami}.
+ * The account behind a credential -- see {@link Lizard.whoami}.
  *
- * Everything past `avatarUrl` is present only for an unscoped key or a session; a
- * scoped key gets `scoped: true` and `scopes` in their place.
+ * A scoped key gets only `scoped: true` and `scopes`; every other field is present only
+ * for an unscoped key or a session.
  */
 export interface Account {
-  id: string
-  username: string
+  /** Absent for a scoped key. */
+  id?: string
+  /** Absent for a scoped key. */
+  username?: string
   avatarUrl?: string | null
-  /** True when the calling key is scoped, meaning the account fields below are absent. */
+  /** True when the calling key is scoped, meaning the account fields are absent. */
   scoped?: boolean
-  /** What the calling key may reach. Present when `scoped` is true. */
-  scopes?: Array<{ type: 'workspace' | 'project'; id: string }>
+  /** What the calling key may reach, by name. Present when `scoped` is true. */
+  scopes?: Array<{
+    type: 'workspace' | 'project'
+    id: string
+    name?: string | null
+    /** For a project scope: the workspace it belongs to. */
+    workspaceId?: string | null
+    workspaceName?: string | null
+  }>
   email?: string | null
   plan?: string
   billingStatus?: string
