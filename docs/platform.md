@@ -98,17 +98,18 @@ Resources are `cpu`, `memory`, `storage` (volumes), `egress`, `objectStorage` (`
 Cap what one workspace (for example one customer's) may run at once, whoever starts the work:
 
 ```ts
-await lizard.workspaces.setLimits(workspace.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096 })
+await lizard.workspaces.setLimits(workspace.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096, maxDiskGb: 20 })
 const { limits, usage } = await lizard.workspaces.getLimits(workspace.id)  // usage: runningSandboxes, cpuVcpus, memoryMb
 ```
 
 ```python
-lizard.workspaces.set_limits(workspace.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096)
+lizard.workspaces.set_limits(workspace.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096, max_disk_gb=20)
 info = lizard.workspaces.get_limits(workspace.id)  # info.running_sandboxes, info.cpu_vcpus, info.memory_mb
 ```
 
 - `maxRunningSandboxes`: sandboxes running or resuming at once (paused ones are free). A create, fork or resume past it fails with HTTP 429 `WORKSPACE_SANDBOX_LIMIT`.
 - `maxCpuVcpus`, `maxMemoryMb`: what the workspace's apps and databases **use**, measured every ~10 seconds across regions, not their configured sizes. Memory is the working set: what the processes hold, without the file cache the kernel frees on demand (a database that has read a lot of data is not counted for its cache). While usage is at or over a cap, deploys, redeploys, restarts, scale-ups, new databases and resumes there fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`. Services already running keep running.
+- `maxDiskGb`: the SSD the workspace's databases and volumes **hold** (data written, measured; not the sizes they were created with). While at or over it, new volumes, volume growth, new databases and template deploys fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`; data already written stays. A sandbox's own `/workspace` disk is not counted.
 
 A field you leave out stays as it is; `null` (`None`) removes that limit. Only the owner sets limits, with a key that has no scopes. Anyone in the workspace can read them with the current usage, including a key scoped to it.
 

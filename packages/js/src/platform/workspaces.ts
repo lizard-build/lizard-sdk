@@ -43,6 +43,8 @@ export interface WorkspaceLimits {
   maxCpuVcpus: number | null
   /** Memory (MB) its apps and databases may be using right now (measured). */
   maxMemoryMb: number | null
+  /** SSD (GB) its databases and volumes may hold (measured: data written, not sizes asked for). */
+  maxDiskGb: number | null
 }
 
 export interface WorkspaceUsage {
@@ -50,6 +52,8 @@ export interface WorkspaceUsage {
   /** Measured, all regions, its apps and databases. */
   cpuVcpus: number
   memoryMb: number
+  /** SSD (GB) its databases and volumes hold, last measurement of each. */
+  diskGb: number
   /** Unix ms of the oldest reading in the sum; null when nothing was measured. */
   measuredAt: number | null
 }
@@ -164,9 +168,12 @@ export class WorkspacesAPI {
    *   not their configured limits). While at or over a cap, deploys, redeploys, restarts,
    *   scale-ups, new databases and resumes there fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`;
    *   services already running keep running.
+   * - `maxDiskGb`: the SSD its databases and volumes hold (measured, not their sizes). While at
+   *   or over it, new volumes, volume growth, new databases and template deploys fail with
+   *   HTTP 429 `WORKSPACE_USAGE_LIMIT`; data already written stays.
    *
    * ```ts
-   * await lizard.workspaces.setLimits(ws.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096 })
+   * await lizard.workspaces.setLimits(ws.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096, maxDiskGb: 20 })
    * ```
    */
   setLimits(id: string, limits: Partial<WorkspaceLimits>): Promise<WorkspaceLimitsInfo> {

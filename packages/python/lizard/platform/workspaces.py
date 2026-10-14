@@ -71,11 +71,15 @@ class WorkspaceLimits:
     max_cpu_vcpus: float | None = None
     #: Memory (MB) its apps and databases may be using right now (measured).
     max_memory_mb: int | None = None
+    #: SSD (GB) its databases and volumes may hold (measured: data written, not sizes asked for).
+    max_disk_gb: float | None = None
     #: Sandboxes running now.
     running_sandboxes: int = 0
     #: Measured use of its apps and databases, all regions.
     cpu_vcpus: float = 0.0
     memory_mb: float = 0.0
+    #: SSD (GB) its databases and volumes hold, last measurement of each.
+    disk_gb: float = 0.0
     #: Unix ms of the oldest reading in the sum; None when nothing was measured.
     measured_at: int | None = None
 
@@ -86,9 +90,11 @@ class WorkspaceLimits:
             max_running_sandboxes=lim.get("maxRunningSandboxes"),
             max_cpu_vcpus=lim.get("maxCpuVcpus"),
             max_memory_mb=lim.get("maxMemoryMb"),
+            max_disk_gb=lim.get("maxDiskGb"),
             running_sandboxes=int(use.get("runningSandboxes") or 0),
             cpu_vcpus=float(use.get("cpuVcpus") or 0),
             memory_mb=float(use.get("memoryMb") or 0),
+            disk_gb=float(use.get("diskGb") or 0),
             measured_at=use.get("measuredAt"),
         )
 
@@ -192,6 +198,7 @@ class WorkspacesAPI:
         max_running_sandboxes: "int | None | object" = _UNCHANGED,
         max_cpu_vcpus: "float | None | object" = _UNCHANGED,
         max_memory_mb: "int | None | object" = _UNCHANGED,
+        max_disk_gb: "float | None | object" = _UNCHANGED,
     ) -> WorkspaceLimits:
         """Limit what a workspace may run at once (owner only, key with no scopes). A
         limit you do not pass stays as it is; ``None`` removes it.
@@ -200,12 +207,15 @@ class WorkspacesAPI:
         ``WORKSPACE_SANDBOX_LIMIT``. ``max_cpu_vcpus`` / ``max_memory_mb``: what its apps and
         databases *use* (measured every ~10 s); while at or over a cap, deploys, restarts,
         scale-ups, new databases and resumes there fail with HTTP 429
-        ``WORKSPACE_USAGE_LIMIT``; services already running keep running.
+        ``WORKSPACE_USAGE_LIMIT``; services already running keep running. ``max_disk_gb``: the
+        SSD its databases and volumes hold (measured); while at or over it, new volumes, volume
+        growth, new databases and template deploys fail with HTTP 429 ``WORKSPACE_USAGE_LIMIT``.
 
-        ``lizard.workspaces.set_limits(ws.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096)``
+        ``lizard.workspaces.set_limits(ws.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096, max_disk_gb=20)``
         """
         body = {k: v for k, v in {
             "maxRunningSandboxes": max_running_sandboxes, "maxCpuVcpus": max_cpu_vcpus, "maxMemoryMb": max_memory_mb,
+            "maxDiskGb": max_disk_gb,
         }.items() if v is not _UNCHANGED}
         return WorkspaceLimits._from_dict(self._client.put(f"/api/workspaces/{id}/limits", body))
 

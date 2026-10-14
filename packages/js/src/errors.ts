@@ -112,9 +112,9 @@ export class LimitExceededError extends LizardError {
   /** Seconds until a rate limit lets the next start through. */
   retryAfterS?: number
   /** `WORKSPACE_USAGE_LIMIT`: the workspace's current use. */
-  usage?: { runningSandboxes: number; cpuVcpus: number; memoryMb: number; measuredAt: number | null }
+  usage?: { runningSandboxes: number; cpuVcpus: number; memoryMb: number; diskGb?: number; measuredAt: number | null }
   /** `WORKSPACE_USAGE_LIMIT`: the workspace's limits. */
-  limits?: { maxRunningSandboxes: number | null; maxCpuVcpus: number | null; maxMemoryMb: number | null }
+  limits?: { maxRunningSandboxes: number | null; maxCpuVcpus: number | null; maxMemoryMb: number | null; maxDiskGb?: number | null }
 
   constructor(message = 'Limit reached') {
     super(message)

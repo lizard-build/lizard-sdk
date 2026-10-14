@@ -60,7 +60,7 @@ def calls(monkeypatch):
             return recorded.queue[min(len(recorded) - 1, len(recorded.queue) - 1)]
         return fn
 
-    for m in ("get", "post", "delete", "patch"):
+    for m in ("get", "post", "put", "delete", "patch"):
         monkeypatch.setattr(httpx, m, _record(m.upper()))
         monkeypatch.setattr(
             httpx.Client, m,
@@ -383,3 +383,11 @@ def test_coded_billing_errors_keep_sentence_and_code(calls):
         lz.Lizard(**KW).projects.create(workspace_id="w1", name="x")
     assert str(ei.value) == "This account already has Pro"
     assert ei.value.code == "ALREADY_SUBSCRIBED"
+
+
+def test_set_limits_sends_only_what_is_passed_and_reads_disk(calls):
+    seed(calls, {"limits": {"maxRunningSandboxes": None, "maxCpuVcpus": None, "maxMemoryMb": None, "maxDiskGb": 20},
+                 "usage": {"runningSandboxes": 0, "cpuVcpus": 0, "memoryMb": 0, "diskGb": 3.5, "measuredAt": None}})
+    got = lz.Lizard(**KW).workspaces.set_limits("w1", max_disk_gb=20, max_cpu_vcpus=None)
+    assert calls[0]["body"] == {"maxDiskGb": 20, "maxCpuVcpus": None}
+    assert (got.max_disk_gb, got.disk_gb) == (20, 3.5)
