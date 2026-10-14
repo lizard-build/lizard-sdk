@@ -94,6 +94,34 @@ export class PaymentRequiredError extends LizardError {
   }
 }
 
+/**
+ * A limit was reached (HTTP 429). {@link LizardError.code} says which:
+ * - `SANDBOX_LIMIT_REACHED` / `SANDBOX_RATE_LIMITED`: the account's sandbox limits (running at
+ *   once, starts per minute/hour/day); {@link retryAfterS} says when to try again.
+ * - `WORKSPACE_SANDBOX_LIMIT`: the workspace's own cap on running sandboxes
+ *   (`workspaces.setLimits`).
+ * - `WORKSPACE_USAGE_LIMIT`: the workspace's apps and databases use as much CPU or memory as its
+ *   cap; {@link usage} and {@link limits} carry both.
+ * Still a {@link LizardError}, so existing `catch` blocks keep working.
+ */
+export class LimitExceededError extends LizardError {
+  /** The limit that was reached (sandbox counts). */
+  limit?: number
+  /** How many were running when it was refused. */
+  running?: number
+  /** Seconds until a rate limit lets the next start through. */
+  retryAfterS?: number
+  /** `WORKSPACE_USAGE_LIMIT`: the workspace's current use. */
+  usage?: { runningSandboxes: number; cpuVcpus: number; memoryMb: number; measuredAt: number | null }
+  /** `WORKSPACE_USAGE_LIMIT`: the workspace's limits. */
+  limits?: { maxRunningSandboxes: number | null; maxCpuVcpus: number | null; maxMemoryMb: number | null }
+
+  constructor(message = 'Limit reached') {
+    super(message)
+    this.name = 'LimitExceededError'
+  }
+}
+
 const PREPAID_STATUSES = new Set(['grace', 'frozen', 'card_required', 'credits_required'])
 const ERROR_CODE = /^[A-Z][A-Z0-9_]*$/
 
@@ -127,6 +155,17 @@ export async function handleApiError(res: Response): Promise<never> {
   else if (res.status === 404) err = new NotFoundError(message)
   else if (res.status === 409) err = new ConflictError(message)
   else if (res.status === 408 || res.status === 504) err = new TimeoutError(message)
+  else if (res.status === 429) {
+    const limited = new LimitExceededError(message)
+    const n = (key: string) => typeof body[key] === 'number' ? body[key] as number : undefined
+    limited.limit = n('limit')
+    limited.running = n('running')
+    const retry = n('retryAfterS') ?? (Number(res.headers?.get?.('retry-after')) || undefined)
+    limited.retryAfterS = retry
+    if (body.usage && typeof body.usage === 'object') limited.usage = body.usage as LimitExceededError['usage']
+    if (body.limits && typeof body.limits === 'object') limited.limits = body.limits as LimitExceededError['limits']
+    err = limited
+  }
   else err = new LizardError(`API error ${res.status}: ${message}`)
   err.status = res.status
   err.code = code

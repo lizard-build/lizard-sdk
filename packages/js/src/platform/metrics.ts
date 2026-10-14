@@ -9,6 +9,7 @@ export interface MetricPoint {
 
 export interface ServiceMetrics {
   cpu: MetricPoint[]
+  /** Working set: what the service holds, without the file cache the kernel frees on demand. */
   memory: MetricPoint[]
   networkRx: MetricPoint[]
   networkTx: MetricPoint[]

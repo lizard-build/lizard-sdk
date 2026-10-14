@@ -20,6 +20,7 @@ class MetricPoint:
 @dataclass
 class ServiceMetrics:
     cpu: list[MetricPoint] = field(default_factory=list)
+    #: Working set: what the service holds, without the file cache the kernel frees on demand.
     memory: list[MetricPoint] = field(default_factory=list)
     network_rx: list[MetricPoint] = field(default_factory=list)
     network_tx: list[MetricPoint] = field(default_factory=list)

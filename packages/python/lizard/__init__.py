@@ -1,7 +1,7 @@
 from .client import Lizard
 from .project import resolve_project_id
 from .sandbox import Sandbox, SandboxInfo, SandboxSnapshot, SnapshotScope, ExposedPort, ForkResult, ProcessResult, ProcessInfo, FileInfo, Desktop, DesktopInfo
-from .errors import ConfigApplyError, LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError, PaymentRequiredError
+from .errors import ConfigApplyError, LizardError, AuthenticationError, NotFoundError, ConflictError, TimeoutError, PaymentRequiredError, LimitExceededError
 from .code_interpreter import CodeSandbox, Execution, ExecutionError, CodeContext
 from .volume import Volume, VolumeInfo
 from .platform import (
@@ -63,7 +63,7 @@ __all__ = [
     "NotFoundError",
     "ConflictError",
     "TimeoutError",
-    "PaymentRequiredError",
+    "PaymentRequiredError", "LimitExceededError",
     "CodeSandbox",
     "Execution",
     "ExecutionError",

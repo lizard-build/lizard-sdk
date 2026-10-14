@@ -402,6 +402,7 @@ Most platform and sandbox methods map HTTP failures to these exported errors. Ea
 | `NotFoundError` | HTTP 404: resource missing or no longer available |
 | `ConflictError` | HTTP 409: conflicting state, such as a volume name already in use |
 | `TimeoutError` | HTTP 408 or 504 |
+| `LimitExceededError` | HTTP 429: an account or workspace limit; see below |
 | `LizardError` | Other API failures, including unsupported operations |
 | `ConfigApplyError` | Platform config saved, but a deploy or restart action failed; inspect `result` before retrying |
 
@@ -423,6 +424,17 @@ try:
     Sandbox.create("base", project_id=project_id)
 except PaymentRequiredError as err:
     print(err.message, err.url, sep="\n")
+```
+
+`LimitExceededError` has the platform's sentence as its message. `code` says which limit: `SANDBOX_LIMIT_REACHED` or `SANDBOX_RATE_LIMITED` (the account's sandbox limits; `retryAfterS` / `retry_after_s` says when to try again), `WORKSPACE_SANDBOX_LIMIT` (the workspace's own cap on running sandboxes; `limit` and `running`), or `WORKSPACE_USAGE_LIMIT` (the workspace's apps and databases use as much CPU or memory as its cap; `usage` and `limits`). See [Workspace limits](platform.md#workspace-limits).
+
+```ts
+try {
+  await Sandbox.create('base', { projectId })
+} catch (err) {
+  if (err instanceof LimitExceededError && err.code === 'WORKSPACE_SANDBOX_LIMIT') console.log(`${err.running}/${err.limit} running`)
+  else throw err
+}
 ```
 
 Some direct HTTP calls expose native fetch/httpx errors. Local timeouts can also raise native transport errors. `kill()` returns `false` / `False` for an already missing sandbox. Check command exit codes and code execution errors separately from API failures.

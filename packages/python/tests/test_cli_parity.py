@@ -315,6 +315,21 @@ _PAY = {
 }
 
 
+def test_429_is_limit_exceeded_with_the_usage(calls):
+    usage = {"runningSandboxes": 0, "cpuVcpus": 0.04, "memoryMb": 172, "measuredAt": 1}
+    seed(calls, ({"error": "This workspace is using 172 of 128 MB of memory, its limit.", "code": "WORKSPACE_USAGE_LIMIT",
+                  "usage": usage, "limits": {"maxMemoryMb": 128}}, 429))
+    with pytest.raises(lz.LimitExceededError) as ei:
+        lz.Lizard(**KW).projects.create(workspace_id="w1", name="x")
+    err = ei.value
+    assert isinstance(err, lz.LizardError)
+    assert (err.status_code, err.code, err.usage, err.limits) == (429, "WORKSPACE_USAGE_LIMIT", usage, {"maxMemoryMb": 128})
+    seed(calls, ({"error": "Your account can start 6 sandboxes per minute.", "code": "SANDBOX_RATE_LIMITED", "retryAfterS": 40}, 429))
+    with pytest.raises(lz.LimitExceededError) as ei:
+        lz.Lizard(**KW).regions.list()
+    assert (ei.value.code, ei.value.retry_after_s) == ("SANDBOX_RATE_LIMITED", 40)
+
+
 def test_402_is_payment_required_with_the_links(calls):
     seed(calls, (_PAY, 402))
     with pytest.raises(lz.PaymentRequiredError) as ei:

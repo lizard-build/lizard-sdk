@@ -16,6 +16,7 @@ export {
   ConflictError,
   TimeoutError,
   PaymentRequiredError,
+  LimitExceededError,
 } from './errors'
 
 export { CodeSandbox } from './code-interpreter'

@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Lizard } from './lizard'
 import { Sandbox } from './sandbox'
 import { Volume } from './volume'
-import { AuthenticationError, ConflictError, LizardError, PaymentRequiredError, TimeoutError } from './errors'
+import { AuthenticationError, ConflictError, LimitExceededError, LizardError, PaymentRequiredError, TimeoutError } from './errors'
 
 const API = 'https://api.parity.invalid'
 const opts = { apiKey: 'liz_test', apiUrl: API }
@@ -254,6 +254,22 @@ describe('payment required (HTTP 402)', () => {
     balanceCents: 0,
     availableCents: 100,
   }
+
+  it('raises LimitExceededError on 429 with the limit and the workspace usage', async () => {
+    const usage = { runningSandboxes: 0, cpuVcpus: 0.04, memoryMb: 172, measuredAt: 1 }
+    const limits = { maxRunningSandboxes: null, maxCpuVcpus: null, maxMemoryMb: 128 }
+    stubFetch([{ status: 429, body: { error: 'This workspace is using 172 of 128 MB of memory, its limit.', code: 'WORKSPACE_USAGE_LIMIT', usage, limits } }])
+    const err = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
+    expect(err).toBeInstanceOf(LimitExceededError)
+    expect(err).toBeInstanceOf(LizardError)
+    expect(err.status).toBe(429)
+    expect(err.code).toBe('WORKSPACE_USAGE_LIMIT')
+    expect(err.usage).toEqual(usage)
+    expect(err.limits).toEqual(limits)
+    stubFetch([{ status: 429, body: { error: 'This workspace can run 2 sandboxes at once.', code: 'WORKSPACE_SANDBOX_LIMIT', limit: 2, running: 2 } }])
+    const err2 = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
+    expect([err2.code, err2.limit, err2.running]).toEqual(['WORKSPACE_SANDBOX_LIMIT', 2, 2])
+  })
 
   it('raises PaymentRequiredError with the sentence, the code and the links', async () => {
     stubFetch([{ status: 402, body }])
