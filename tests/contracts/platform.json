@@ -5060,5 +5060,87 @@
       }
     ],
     "expectRequests": 1
+  },
+  {
+    "name": "workspaces.getLimits",
+    "ts": {
+      "path": "workspaces.getLimits",
+      "args": [
+        "w1"
+      ]
+    },
+    "py": {
+      "path": "workspaces.get_limits",
+      "args": [
+        "w1"
+      ]
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/workspaces/w1/limits",
+        "response": {
+          "limits": {
+            "maxRunningSandboxes": 5,
+            "maxCpuVcpus": 2,
+            "maxMemoryMb": 4096
+          },
+          "usage": {
+            "runningSandboxes": 1,
+            "cpuVcpus": 0.4,
+            "memoryMb": 812,
+            "measuredAt": 1
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "workspaces.setLimits",
+    "ts": {
+      "path": "workspaces.setLimits",
+      "args": [
+        "w1",
+        {
+          "maxRunningSandboxes": 5,
+          "maxCpuVcpus": null
+        }
+      ]
+    },
+    "py": {
+      "path": "workspaces.set_limits",
+      "args": [
+        "w1"
+      ],
+      "kwargs": {
+        "max_running_sandboxes": 5,
+        "max_cpu_vcpus": null
+      }
+    },
+    "requests": [
+      {
+        "method": "PUT",
+        "path": "/api/workspaces/w1/limits",
+        "body": {
+          "maxRunningSandboxes": 5,
+          "maxCpuVcpus": null
+        },
+        "response": {
+          "limits": {
+            "maxRunningSandboxes": 5,
+            "maxCpuVcpus": 2,
+            "maxMemoryMb": 4096
+          },
+          "usage": {
+            "runningSandboxes": 1,
+            "cpuVcpus": 0.4,
+            "memoryMb": 812,
+            "measuredAt": 1
+          }
+        }
+      }
+    ],
+    "expectRequests": 1
   }
 ]

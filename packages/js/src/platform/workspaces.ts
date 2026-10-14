@@ -35,6 +35,30 @@ export interface ResalePricing {
   multipliers: ResaleMultipliers
 }
 
+/** What a workspace may run at once (null: no limit). See {@link WorkspacesAPI.setLimits}. */
+export interface WorkspaceLimits {
+  /** Sandboxes running (or resuming) at once; paused ones do not count. */
+  maxRunningSandboxes: number | null
+  /** vCPU its apps and databases may be using right now (measured). */
+  maxCpuVcpus: number | null
+  /** Memory (MB) its apps and databases may be using right now (measured). */
+  maxMemoryMb: number | null
+}
+
+export interface WorkspaceUsage {
+  runningSandboxes: number
+  /** Measured, all regions, its apps and databases. */
+  cpuVcpus: number
+  memoryMb: number
+  /** Unix ms of the oldest reading in the sum; null when nothing was measured. */
+  measuredAt: number | null
+}
+
+export interface WorkspaceLimitsInfo {
+  limits: WorkspaceLimits
+  usage: WorkspaceUsage
+}
+
 export interface CreateWorkspaceOpts {
   name: string
 }
@@ -120,6 +144,33 @@ export class WorkspacesAPI {
   /** Turn resale prices off: scoped keys see Lizard's prices again (owner only). */
   clearResalePricing(id: string): Promise<ResalePricing> {
     return this.client.put(`/api/workspaces/${id}/resale-pricing`, {})
+  }
+
+  /**
+   * The workspace's limits and what it uses now. Anyone in the workspace may read them,
+   * including a key scoped to it (your customer sees how close they are).
+   */
+  getLimits(id: string): Promise<WorkspaceLimitsInfo> {
+    return this.client.get(`/api/workspaces/${id}/limits`)
+  }
+
+  /**
+   * Limit what a workspace may run at once (owner only, key with no scopes). A field left out
+   * stays as it is; `null` removes that limit.
+   *
+   * - `maxRunningSandboxes`: a create, fork or resume past it fails with HTTP 429
+   *   `WORKSPACE_SANDBOX_LIMIT`.
+   * - `maxCpuVcpus` / `maxMemoryMb`: what its apps and databases USE (measured every ~10 s,
+   *   not their configured limits). While at or over a cap, deploys, redeploys, restarts,
+   *   scale-ups, new databases and resumes there fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`;
+   *   services already running keep running.
+   *
+   * ```ts
+   * await lizard.workspaces.setLimits(ws.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096 })
+   * ```
+   */
+  setLimits(id: string, limits: Partial<WorkspaceLimits>): Promise<WorkspaceLimitsInfo> {
+    return this.client.put(`/api/workspaces/${id}/limits`, limits)
   }
 
   /**

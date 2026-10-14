@@ -39,7 +39,7 @@ export {
   ProjectsAPI, ServicesAPI, AddonsAPI, SecretsAPI, DomainsAPI, MetricsAPI,
 } from './platform'
 export type {
-  Workspace, CreateWorkspaceOpts, ResaleMultipliers, ResalePricing,
+  Workspace, CreateWorkspaceOpts, ResaleMultipliers, ResalePricing, WorkspaceLimits, WorkspaceUsage, WorkspaceLimitsInfo,
   ApiKey, CreatedApiKey, ApiKeyScope, CreateApiKeyOpts,
   Region,
   Balance, Transaction, TransactionPage, ListTransactionsOpts,

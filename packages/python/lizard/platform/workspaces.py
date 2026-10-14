@@ -62,6 +62,40 @@ class ResalePricing:
         )
 
 
+@dataclass
+class WorkspaceLimits:
+    """What a workspace may run at once; ``None``: no limit."""
+    #: Sandboxes running (or resuming) at once; paused ones do not count.
+    max_running_sandboxes: int | None = None
+    #: vCPU its apps and databases may be using right now (measured).
+    max_cpu_vcpus: float | None = None
+    #: Memory (MB) its apps and databases may be using right now (measured).
+    max_memory_mb: int | None = None
+    #: Sandboxes running now.
+    running_sandboxes: int = 0
+    #: Measured use of its apps and databases, all regions.
+    cpu_vcpus: float = 0.0
+    memory_mb: float = 0.0
+    #: Unix ms of the oldest reading in the sum; None when nothing was measured.
+    measured_at: int | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "WorkspaceLimits":
+        lim, use = d.get("limits") or {}, d.get("usage") or {}
+        return cls(
+            max_running_sandboxes=lim.get("maxRunningSandboxes"),
+            max_cpu_vcpus=lim.get("maxCpuVcpus"),
+            max_memory_mb=lim.get("maxMemoryMb"),
+            running_sandboxes=int(use.get("runningSandboxes") or 0),
+            cpu_vcpus=float(use.get("cpuVcpus") or 0),
+            memory_mb=float(use.get("memoryMb") or 0),
+            measured_at=use.get("measuredAt"),
+        )
+
+
+_UNCHANGED = object()
+
+
 class WorkspacesAPI:
     """
     Workspaces -- the top of the ownership tree: a workspace holds projects, a
@@ -145,6 +179,35 @@ class WorkspacesAPI:
     def clear_resale_pricing(self, id: str) -> ResalePricing:
         """Turn resale prices off: scoped keys see Lizard's prices again (owner only)."""
         return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{id}/resale-pricing", {}))
+
+    def get_limits(self, id: str) -> WorkspaceLimits:
+        """The workspace's limits and what it uses now. Anyone in the workspace may read
+        them, including a key scoped to it."""
+        return WorkspaceLimits._from_dict(self._client.get(f"/api/workspaces/{id}/limits"))
+
+    def set_limits(
+        self,
+        id: str,
+        *,
+        max_running_sandboxes: "int | None | object" = _UNCHANGED,
+        max_cpu_vcpus: "float | None | object" = _UNCHANGED,
+        max_memory_mb: "int | None | object" = _UNCHANGED,
+    ) -> WorkspaceLimits:
+        """Limit what a workspace may run at once (owner only, key with no scopes). A
+        limit you do not pass stays as it is; ``None`` removes it.
+
+        ``max_running_sandboxes``: a create, fork or resume past it fails with HTTP 429
+        ``WORKSPACE_SANDBOX_LIMIT``. ``max_cpu_vcpus`` / ``max_memory_mb``: what its apps and
+        databases *use* (measured every ~10 s); while at or over a cap, deploys, restarts,
+        scale-ups, new databases and resumes there fail with HTTP 429
+        ``WORKSPACE_USAGE_LIMIT``; services already running keep running.
+
+        ``lizard.workspaces.set_limits(ws.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096)``
+        """
+        body = {k: v for k, v in {
+            "maxRunningSandboxes": max_running_sandboxes, "maxCpuVcpus": max_cpu_vcpus, "maxMemoryMb": max_memory_mb,
+        }.items() if v is not _UNCHANGED}
+        return WorkspaceLimits._from_dict(self._client.put(f"/api/workspaces/{id}/limits", body))
 
     def delete(self, id: str, *, force: bool = False) -> None:
         """Delete a workspace.

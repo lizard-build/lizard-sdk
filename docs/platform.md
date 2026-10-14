@@ -93,6 +93,25 @@ lizard.workspaces.clear_resale_pricing(workspace.id)
 
 Resources are `cpu`, `memory`, `storage` (volumes), `egress`, `objectStorage` (`object_storage` in Python) and `sandbox`. A set call replaces them all; a resource left out is 1. Only the workspace owner can read or change them, with a key that has no scopes: a scoped key gets HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. A key with resale prices also gets that 403 from the workspace's billing account, whose plan and Stripe figures are Lizard's.
 
+### Workspace limits
+
+Cap what one workspace (for example one customer's) may run at once, whoever starts the work:
+
+```ts
+await lizard.workspaces.setLimits(workspace.id, { maxRunningSandboxes: 5, maxCpuVcpus: 2, maxMemoryMb: 4096 })
+const { limits, usage } = await lizard.workspaces.getLimits(workspace.id)  // usage: runningSandboxes, cpuVcpus, memoryMb
+```
+
+```python
+lizard.workspaces.set_limits(workspace.id, max_running_sandboxes=5, max_cpu_vcpus=2, max_memory_mb=4096)
+info = lizard.workspaces.get_limits(workspace.id)  # info.running_sandboxes, info.cpu_vcpus, info.memory_mb
+```
+
+- `maxRunningSandboxes`: sandboxes running or resuming at once (paused ones are free). A create, fork or resume past it fails with HTTP 429 `WORKSPACE_SANDBOX_LIMIT`.
+- `maxCpuVcpus`, `maxMemoryMb`: what the workspace's apps and databases **use**, measured every ~10 seconds across regions, not their configured sizes. While usage is at or over a cap, deploys, redeploys, restarts, scale-ups, new databases and resumes there fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`. Services already running keep running.
+
+A field you leave out stays as it is; `null` (`None`) removes that limit. Only the owner sets limits, with a key that has no scopes. Anyone in the workspace can read them with the current usage, including a key scoped to it.
+
 Billing belongs to the account, across all its workspaces. Scoped keys cannot access account billing or account-wide usage; those routes return HTTP 403 with `ACCOUNT_SCOPE_REQUIRED`. The one exception is `billing.subscription({ workspaceId })` / `billing.subscription(workspace_id=...)`, which any member's key that reaches the workspace can call to see why the owner's account is blocked; it leaves out the card and invoice. A scoped key's `whoami()` response never names the account: it carries only `scoped: true` and the key's `scopes`, each project or workspace with its name -- no id, username, email, balance or plan. Use scoped `metrics` calls for project costs.
 
 `workspaces.delete()` requires an empty workspace by default. The `force` option deletes the workspace with its apps, addons and projects, but not its sandboxes, sandbox volumes or snapshots: a running sandbox keeps running with no workspace left to find it in. Kill the workspace's sandboxes and delete its volumes and snapshots before you pass `force`. Revoking a key or deleting a resource takes effect immediately.
