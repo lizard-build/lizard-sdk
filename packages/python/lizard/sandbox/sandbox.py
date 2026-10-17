@@ -211,8 +211,7 @@ class Sandbox:
             $0.0648/h). CPU/RAM are included; idle running time is billed.
             Sandbox egress includes 2 TB per account over a rolling 30 days:
             https://lizard.build/docs/platform/limits/#sandbox-egress
-            A successful pause stops compute charges; Persistent Volumes storage bills separately;
-            attached volumes bill separately.
+            A successful pause stops compute charges; Persistent Volumes storage bills separately.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param metadata: Your own key/value labels for the sandbox, returned by
             :meth:`get_info` and :meth:`list`.
