@@ -1,6 +1,6 @@
 # Lizard SDK for Python
 
-Run commands, work with files and execute code in Linux sandboxes (Firecracker microVMs). The SDK also manages Lizard apps, databases, storage and projects.
+Run commands, work with files and execute code in Linux sandboxes with Firecracker support. The SDK also manages Lizard apps, databases, storage and projects.
 
 ## Install
 
@@ -37,7 +37,7 @@ The context manager kills the sandbox when the block ends, including when it rai
 
 ## Machine size
 
-Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused.
 
 ```python
 sandbox = lizard.create("base", size="large")
@@ -116,7 +116,7 @@ Pass `timeout_ms` to `create()` to set the sandbox lifetime. The default is five
 
 ## Runtime limits
 
-Each sandbox is a Firecracker microVM with its own kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet. Volumes can grow but not shrink, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
+Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet. Volumes can grow but not shrink, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
 
 `get_host()` returns a hostname without `https://`; the port is private, so send `sandbox.access_token` as the `X-Lizard-Access-Token` header (or use `expose_port()`, which also returns a browser `url` carrying the token). File writes accept text or bytes (binary is sent exactly); `read_bytes()` supports binary downloads.
 

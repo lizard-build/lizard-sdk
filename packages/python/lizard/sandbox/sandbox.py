@@ -114,7 +114,7 @@ class ForkResult:
 
 class Sandbox:
     """
-    A Linux sandbox: a Firecracker microVM with its own kernel.
+    A Linux sandbox using Firecracker or a container runtime.
 
     Run commands, read and write files, and expose HTTP ports in a sandbox. A
     sandbox boots in well under a second; :meth:`pause` and :meth:`resume` keep its
@@ -208,7 +208,10 @@ class Sandbox:
         :param size: Machine size, billed flat per hour (per second of running
             time): ``"small"`` (2 vCPU / 4 GB, $0.0162/h), ``"medium"`` (4 vCPU /
             8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU / 16 GB,
-            $0.0648/h). Measured CPU/RAM are not charged and egress is free;
+            $0.0648/h). CPU/RAM are included; idle running time is billed.
+            Sandbox egress includes 2 TB per account over a rolling 30 days:
+            https://lizard.build/docs/platform/limits/#sandbox-egress
+            A successful pause stops compute charges; Persistent Volumes storage bills separately;
             attached volumes bill separately.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param metadata: Your own key/value labels for the sandbox, returned by

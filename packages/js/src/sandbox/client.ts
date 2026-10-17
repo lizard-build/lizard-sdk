@@ -59,7 +59,10 @@ export interface SandboxOpts extends ConnectionOpts {
    * - `'medium'` — 4 vCPU / 8 GB, $0.0324/h (default)
    * - `'large'`  — 8 vCPU / 16 GB, $0.0648/h
    *
-   * Measured CPU/RAM are not charged and egress is free. Ignored with {@link SandboxOpts.snapshotId}.
+   * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
+   * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
+   * A successful pause stops compute charges; Persistent Volumes storage bills separately.
+   * Ignored with {@link SandboxOpts.snapshotId}.
    */
   size?: 'small' | 'medium' | 'large'
   /** Your own key/value labels for the sandbox, returned by `getInfo()` and `list()`. */

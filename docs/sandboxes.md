@@ -2,7 +2,11 @@
 
 [TypeScript quickstart](../packages/js/README.md) · [Python quickstart](../packages/python/README.md) · [Platform guide](platform.md)
 
-Sandboxes are Linux environments, each a Firecracker microVM with its own kernel; one boots in under a second. `Sandbox` provides shell commands, files, ports, pause/resume, snapshots and fork; `CodeSandbox` adds stateful code execution. Each sandbox needs an API key and a project.
+Sandboxes run Linux code in Firecracker microVMs or containers, depending on the conditions described below. `Sandbox` provides shell commands, files, ports, pause/resume, snapshots and fork; `CodeSandbox` adds stateful code execution. Each sandbox needs an API key and a project.
+
+## Runtime and isolation
+
+Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. A Firecracker snapshot or volume requires Firecracker; if it cannot start, creation fails without switching to a container. See [runtime and templates](https://lizard.build/docs/sandboxes/#runtime-and-templates).
 
 ## Configuration
 
@@ -23,7 +27,7 @@ Sandboxes are Linux environments, each a Firecracker microVM with its own kernel
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
-Pricing is flat by size: the hourly price above, billed per second while the sandbox runs. Measured CPU and RAM are not charged, and sandbox egress is free. Attached volumes bill separately. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. Only a snapshot of an older container sandbox is billed by measured usage. There are no `cpus` / `memoryMb` options.
+Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. Only a snapshot of an older container sandbox is billed by measured usage. There are no `cpus` / `memoryMb` options.
 
 The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, `interpreter` and `desktop` (see [Desktop](#desktop-computer-use)); availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
@@ -240,7 +244,7 @@ Error codes: `volume_shrink_unsupported` (a smaller size for a Firecracker volum
 
 ## Pause, resume, snapshots and fork
 
-A sandbox is a microVM, so all of these keep **memory and running processes**, not just files.
+On Firecracker, these operations keep **memory and running processes**, as well as files.
 
 | Operation | TypeScript | Python | Notes |
 | --- | --- | --- | --- |

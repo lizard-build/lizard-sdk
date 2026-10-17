@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/lizard-sdk)](https://pypi.org/project/lizard-sdk/)
 [![Checks](https://github.com/lizard-build/lizard-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/lizard-build/lizard-sdk/actions)
 
-**Run code, work with files, and build AI agents in Linux sandboxes: Firecracker microVMs that boot in under a second.**
+**Run code, work with files, and build AI agents in Linux sandboxes with Firecracker support.**
 
 Lizard (lizard.build) provides TypeScript and Python SDKs for sandboxes and the cloud services around them: apps, databases, storage, projects and API keys.
 
@@ -64,7 +64,7 @@ The Python context manager kills the sandbox when the block ends, including when
 
 ## Machine size
 
-Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). Billing is flat by size, per second while the sandbox runs; measured CPU/RAM are not charged, egress is free, and volumes bill separately.
+Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused.
 
 ```ts
 const sandbox = await lizard.create('base', { size: 'large' })
@@ -131,7 +131,7 @@ Create a sandbox from the `desktop` template, call `await sandbox.desktop.start(
 
 ## Runtime and persistence
 
-Each sandbox is a **Firecracker microVM** with its own kernel. Files outside an attached persistent volume last only for the sandbox's lifetime; mount a volume at `/workspace` to keep files across sessions.
+Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. Files outside an attached persistent volume last only for the sandbox's lifetime; mount a volume at `/workspace` to keep files across sessions.
 
 - `pause()` / `resume()` keep the sandbox's memory and running processes.
 - `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
