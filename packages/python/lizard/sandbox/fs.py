@@ -263,7 +263,7 @@ class Fs:
         Remember to :meth:`Watcher.close` it; an abandoned watcher keeps queueing
         events in the guest until the sandbox ends (bounded, but wasted).
 
-        Not available on Firecracker sandboxes yet: the call raises
+        Not available yet: the call raises
         :class:`~lizard.LizardError` (501).
         """
         import httpx

@@ -40,7 +40,7 @@ export interface SandboxSnapshot {
  */
 export type SnapshotScope = 'user' | 'workspace' | 'project'
 export interface SnapshotOpts {
-  /** Warm copies to keep ready (container sandboxes only; ignored for Firecracker, whose snapshots restore from disk). */
+  /** Warm copies to keep ready for an older snapshot. Firecracker snapshots ignore it: they restore from disk. */
   poolSize?: number
   /** Where it may be restored. Default `'user'`: any of your projects and workspaces; with a key
    *  limited to a workspace or project, only what the key covers (a wider scope is narrowed). */
@@ -361,7 +361,7 @@ export class Sandbox extends SandboxClient {
    * snapshot. A Firecracker snapshot is `ready` as soon as this returns: about 2 s, up to
    * a few minutes for a sandbox that filled most of its memory (its memory is uploaded
    * first), so the call waits up to 11 minutes. Start copies of it with {@link Sandbox.restore}
-   * (about 0.4 s each). The source keeps running. `poolSize` applies to container sandboxes only.
+   * (about 0.4 s each). The source keeps running. Firecracker snapshots ignore `poolSize`.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
     return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope }, SNAPSHOT_TIMEOUT_MS)
@@ -369,7 +369,7 @@ export class Sandbox extends SandboxClient {
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
   }
-  /** Stream the sandbox's logs. Not available on Firecracker sandboxes yet (`LizardError`, 501). */
+  /** Stream the sandbox's logs. Not available yet (`LizardError`, 501). */
   logs(opts: { tail?: number; signal?: AbortSignal } = {}) {
     return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${this.sandboxId}/logs`, { tail: opts.tail }), { signal: opts.signal })
   }
@@ -406,7 +406,7 @@ export class Sandbox extends SandboxClient {
   static setSnapshotWarmPool(snapshotId: string, poolSize: number, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { poolSize })
   }
-  /** Release idle warm copies (container snapshots); retain saved state and existing claimed sandboxes. */
+  /** Release idle warm copies of an older snapshot; retain saved state and existing claimed sandboxes. Firecracker snapshots have no warm copies. */
   static pauseSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).post(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}/pause`, {})
   }

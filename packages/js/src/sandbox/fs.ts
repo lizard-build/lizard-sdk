@@ -206,7 +206,7 @@ export class Fs {
    * }, 1000)
    * ```
    *
-   * Not available on Firecracker sandboxes yet: the call throws `LizardError` (501).
+   * Not available yet: the call throws `LizardError` (501).
    */
   async watch(path: string, opts?: { recursive?: boolean }): Promise<Watcher> {
     const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/watch`, {

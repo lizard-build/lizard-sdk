@@ -10,12 +10,12 @@ export interface SandboxInfo {
   /** Region the sandbox runs in — the volume's region when one is attached. */
   region?: string
   status?: string
-  /** The sandbox runtime: `'firecracker'` (a microVM), `'container'`, or `null` when unknown. */
+  /** The sandbox runtime: `'firecracker'` (a microVM), or `null` when unknown. */
   runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
-  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage, such as one restored from a container snapshot. */
+  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage. */
   size?: 'small' | 'medium' | 'large' | null
-  /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage (a container snapshot). */
+  /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage. */
   pricePerHour?: number | null
   cpus?: number
   memoryMb?: number

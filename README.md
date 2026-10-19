@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/lizard-sdk)](https://pypi.org/project/lizard-sdk/)
 [![Checks](https://github.com/lizard-build/lizard-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/lizard-build/lizard-sdk/actions)
 
-**Run code, work with files, and build AI agents in Linux sandboxes with Firecracker support.**
+**Run code, work with files, and build AI agents in Linux sandboxes that run as Firecracker microVMs.**
 
 Lizard (lizard.build) provides TypeScript and Python SDKs for sandboxes and the cloud services around them: apps, databases, storage, projects and API keys.
 
@@ -131,13 +131,13 @@ Create a sandbox from the `desktop` template, call `await sandbox.desktop.start(
 
 ## Runtime and persistence
 
-Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. Files outside an attached persistent volume last only for the sandbox's lifetime; mount a volume at `/workspace` to keep files across sessions.
+Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. Files outside an attached persistent volume last only for the sandbox's lifetime; mount a volume at `/workspace` to keep files across sessions.
 
 - `pause()` / `resume()` keep the sandbox's memory and running processes.
 - `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
 - `fork()` clones a running sandbox, processes and all.
 
-See the [snapshot guide](docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available on Firecracker sandboxes yet. A volume can grow but not shrink, and a sandbox with a volume attached cannot be forked.
+See the [snapshot guide](docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available yet. A volume can grow but not shrink, and a sandbox with a volume attached cannot be forked.
 
 ## Documentation
 

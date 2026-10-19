@@ -13,7 +13,7 @@ class VolumeInfo:
     name: str
     size_gb: int
     status: str
-    #: Creation time: an ISO-8601 string for Firecracker volumes, unix ms for container volumes.
+    #: Creation time: an ISO-8601 string, or unix ms for an older volume.
     created_at: int | str
     #: Id of the sandbox the volume is attached to, or None when it is free.
     attached_to: str | None = None
@@ -203,16 +203,13 @@ class Volume:
     ) -> VolumeInfo:
         """Resize a volume, by name or by id, to ``size_gb``.
 
-        A Firecracker volume (the default) can only grow. The change is in place
-        and online: a sandbox with the volume attached keeps running and sees the
-        new size. A smaller size raises :class:`~lizard.LizardError` (400) with
-        ``code == "volume_shrink_unsupported"``.
+        A volume grows in place and online: a sandbox with the volume attached
+        keeps running and sees the new size. A smaller size raises
+        :class:`~lizard.LizardError` (400) with ``code == "volume_shrink_unsupported"``.
 
-        On a container volume the change is in place and online: the size is a
-        quota, so no data is copied and a mounted sandbox sees the new size
-        immediately. Both growing and shrinking are allowed, but a shrink must
-        leave at least 10% of the new size free -- otherwise it raises
-        :class:`~lizard.ConflictError` with ``code == "volume_too_full_to_shrink"``.
+        An older volume can also shrink, but the shrink must leave at least 10% of
+        the new size free -- otherwise it raises :class:`~lizard.ConflictError` with
+        ``code == "volume_too_full_to_shrink"``.
 
         Other failures carry a ``code`` too: ``invalid_volume_size``,
         ``volume_too_large``, ``volume_not_resizable`` (an app's volume, not a

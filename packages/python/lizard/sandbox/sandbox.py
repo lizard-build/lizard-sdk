@@ -64,7 +64,7 @@ class SandboxInfo:
     region: str | None = None
     status: str | None = None
     pause_error: str | None = None
-    #: The sandbox runtime: ``"firecracker"`` (a microVM), ``"container"``, or None when unknown.
+    #: The sandbox runtime: ``"firecracker"`` (a microVM), or None when unknown.
     runtime: str | None = None
     size: str | None = None
     price_per_hour: float | None = None
@@ -114,7 +114,7 @@ class ForkResult:
 
 class Sandbox:
     """
-    A Linux sandbox using Firecracker or a container runtime.
+    A Linux sandbox in a Firecracker microVM.
 
     Run commands, read and write files, and expose HTTP ports in a sandbox. A
     sandbox boots in well under a second; :meth:`pause` and :meth:`resume` keep its
@@ -543,7 +543,7 @@ class Sandbox:
         A Firecracker snapshot is ``ready`` as soon as this returns: about 2 s, up to a few
         minutes for a sandbox that filled most of its memory (its memory is uploaded first),
         so the call waits up to 11 minutes. Start copies of it with :meth:`restore` (about 0.4 s each). The source keeps
-        running. ``pool_size`` applies to container sandboxes only. ``scope`` says where it
+        running. Firecracker snapshots ignore ``pool_size``. ``scope`` says where it
         may be restored (:data:`SnapshotScope`); by default any of your projects and workspaces,
         or with a key limited to a workspace or project only what the key covers (a wider scope
         is narrowed).
@@ -572,7 +572,7 @@ class Sandbox:
         self._platform().delete(f"/api/sandboxes/{self.sandbox_id}/expose/{port}")
 
     def logs(self, *, tail: int | None = None):
-        """Stream the sandbox's logs. Not available on Firecracker sandboxes yet
+        """Stream the sandbox's logs. Not available yet
         (:class:`~lizard.LizardError`, 501)."""
         from ..platform.client import query
         return self._platform().events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
@@ -638,7 +638,8 @@ class Sandbox:
 
     @classmethod
     def pause_snapshot(cls, snapshot_id: str, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
-        """Release idle warm copies (container snapshots), preserving saved state and claimed sandboxes."""
+        """Release idle warm copies of an older snapshot, preserving saved state and claimed sandboxes.
+        Firecracker snapshots have no warm copies."""
         from ..platform.client import PlatformClient, segment
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
             return pc.post(f"/api/sandbox-snapshots/{segment(snapshot_id)}/pause", {})

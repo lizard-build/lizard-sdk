@@ -2,11 +2,11 @@
 
 [TypeScript quickstart](../packages/js/README.md) · [Python quickstart](../packages/python/README.md) · [Platform guide](platform.md)
 
-Sandboxes run Linux code in Firecracker microVMs or containers, depending on the conditions described below. `Sandbox` provides shell commands, files, ports, pause/resume, snapshots and fork; `CodeSandbox` adds stateful code execution. Each sandbox needs an API key and a project.
+Sandboxes run Linux code in Firecracker microVMs. `Sandbox` provides shell commands, files, ports, pause/resume, snapshots and fork; `CodeSandbox` adds stateful code execution. Each sandbox needs an API key and a project.
 
 ## Runtime and isolation
 
-Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. A Firecracker snapshot or volume requires Firecracker; if it cannot start, creation fails without switching to a container. See [runtime and templates](https://lizard.build/docs/sandboxes/#runtime-and-templates).
+Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. If a sandbox cannot start, creation fails with an error. See [runtime and templates](https://lizard.build/docs/sandboxes/#runtime-and-templates).
 
 ## Configuration
 
@@ -27,7 +27,7 @@ Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod v
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
-Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. Only a snapshot of an older container sandbox is billed by measured usage. There are no `cpus` / `memoryMb` options.
+Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. There are no `cpus` / `memoryMb` options.
 
 The default template is `base`. Choose a template from the current catalog. Enabled templates include `base`, `codex`, `interpreter` and `desktop` (see [Desktop](#desktop-computer-use)); availability depends on the region and pool capacity. `interpreter` includes Python and common data libraries. Check tool versions inside your sandbox. The public CLI does not provide a custom-template upload flow.
 
@@ -81,7 +81,7 @@ Command results contain stdout, stderr, and the exit code. Command timeouts are 
 | Move a path | `fs.move(from, to)` | `fs.move(src, dst)` |
 | Remove a path | `fs.remove(path)` | `fs.remove(path)` |
 
-Use absolute paths. Writes accept text (stored as UTF-8) or bytes, which are sent base64-encoded and stored exactly; read binary files back with `readBytes()` / `read_bytes()`. Pass `user` to write or read as that Linux user (the file is then owned by it). A missing path raises `NotFoundError`. `list()` and `stat()` entries carry `type` (`'file'` / `'dir'`), `size`, `mode` (a number, e.g. `0o644`), `permissions` (`-rw-r--r--`), `owner`, `group` and `modTime` (unix ms). `move()` creates the destination's parent directories. File watching is not available on Firecracker sandboxes yet (HTTP 501).
+Use absolute paths. Writes accept text (stored as UTF-8) or bytes, which are sent base64-encoded and stored exactly; read binary files back with `readBytes()` / `read_bytes()`. Pass `user` to write or read as that Linux user (the file is then owned by it). A missing path raises `NotFoundError`. `list()` and `stat()` entries carry `type` (`'file'` / `'dir'`), `size`, `mode` (a number, e.g. `0o644`), `permissions` (`-rw-r--r--`), `owner`, `group` and `modTime` (unix ms). `move()` creates the destination's parent directories. File watching is not available yet (HTTP 501).
 
 ## Python execution
 
@@ -214,9 +214,9 @@ This example keeps the volume for future sessions. A volume's name is unique wit
 
 ### Resizing a volume
 
-`volumes.resize(nameOrId, sizeGb)` grows a Firecracker volume (the default) in place. It works while a sandbox has the volume attached: the sandbox keeps running and sees the new size. A Firecracker volume cannot shrink; a smaller size fails with `LizardError` (HTTP 400, `code: 'volume_shrink_unsupported'`). `getOrCreate` never changes an existing volume's size.
+`volumes.resize(nameOrId, sizeGb)` grows a volume in place. It works while a sandbox has the volume attached: the sandbox keeps running and sees the new size. A volume cannot shrink; a smaller size fails with `LizardError` (HTTP 400, `code: 'volume_shrink_unsupported'`). `getOrCreate` never changes an existing volume's size.
 
-On a container volume (the older runtime), `resize` grows or shrinks it in place, even while a sandbox has it mounted; a shrink must leave at least 10% of the new size free, otherwise it fails with `code: 'volume_too_full_to_shrink'`.
+Older volumes are the exception: they can shrink, as long as at least 10% of the new size stays free; otherwise the call fails with `code: 'volume_too_full_to_shrink'`.
 
 ```ts
 const info = await lizard.volumes.resize('agent-files', 20)   // VolumeInfo, sizeGb: 20
@@ -228,7 +228,7 @@ info = lizard.volumes.resize("agent-files", 20)               # VolumeInfo, size
 
 In Python the classmethod is `Volume.resize(project_id, name_or_id, size_gb)` and the instance method is `volume.resize_to(project_id, size_gb)`, because a class cannot have both under one name (the same reason delete is `Volume.remove` / `volume.delete`).
 
-Error codes: `volume_shrink_unsupported` (a smaller size for a Firecracker volume), `volume_too_large` (above the size limit) and `volume_not_resizable` (an app's volume, not a sandbox volume) raise `LizardError`; `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volume_not_provisioned` (a just-created volume; retry in a few seconds) raise `ConflictError`; `volume_capacity_unavailable` (no room on the volume's node) raises `LizardError`; `volume_resize_timeout` raises `TimeoutError` and leaves the size unchanged; `invalid_volume_size` means outside the project's limits.
+Error codes: `volume_shrink_unsupported` (a smaller size), `volume_too_large` (above the size limit) and `volume_not_resizable` (an app's volume, not a sandbox volume) raise `LizardError`; `volume_too_full_to_shrink`, `volume_resize_in_progress` and `volume_not_provisioned` (a just-created volume; retry in a few seconds) raise `ConflictError`; `volume_capacity_unavailable` (no room on the volume's node) raises `LizardError`; `volume_resize_timeout` raises `TimeoutError` and leaves the size unchanged; `invalid_volume_size` means outside the project's limits.
 
 ## Lifecycle
 
@@ -244,7 +244,7 @@ Error codes: `volume_shrink_unsupported` (a smaller size for a Firecracker volum
 
 ## Pause, resume, snapshots and fork
 
-On Firecracker, these operations keep **memory and running processes**, as well as files.
+These operations keep **memory and running processes**, as well as files.
 
 | Operation | TypeScript | Python | Notes |
 | --- | --- | --- | --- |
@@ -336,7 +336,7 @@ Only the user who took a snapshot can change its scope. Snapshots taken before s
 
 Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect a snapshot, `Sandbox.snapshots(projectId)` to list a project's, and `Sandbox.deleteSnapshot(id)` / `Sandbox.delete_snapshot(id)` to remove one; deleting a snapshot keeps sandboxes already restored from it running. `Sandbox.create({ snapshotId, projectId })` / `Sandbox.create(snapshot_id=..., project_id=...)` is the same as `restore`. `waitForSnapshot` / `wait_for_snapshot` returns immediately for a Firecracker snapshot.
 
-Container sandboxes (the older runtime, `runtime: 'container'` in `getInfo()`) build snapshots asynchronously into a pool of warm copies instead: there `poolSize` (default five), `setSnapshotWarmPool`, `pauseSnapshot` / `resumeSnapshot` and `waitForSnapshot` matter, and `fork()` is not supported. These options are ignored for Firecracker snapshots.
+`poolSize`, `setSnapshotWarmPool` and `pauseSnapshot` / `resumeSnapshot` manage warm copies of older snapshots. Firecracker snapshots ignore them.
 
 ## Desktop (computer use)
 

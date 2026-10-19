@@ -12,7 +12,7 @@ export interface VolumeInfo {
   status: string
   /** Id of the sandbox the volume is attached to, or `null` when it is free. */
   attachedTo?: string | null
-  /** Creation time: an ISO-8601 string for Firecracker volumes, unix milliseconds for container volumes. */
+  /** Creation time: an ISO-8601 string, or unix milliseconds for an older volume. */
   createdAt: string | number
   /**
    * Whether `sizeGb` is actually enforced as a hard limit on the volume's node.
@@ -133,13 +133,11 @@ export class Volume {
   /**
    * Resize a volume, by name or by id, to `sizeGb`.
    *
-   * A Firecracker volume (the default) can only grow. The change is in place and
-   * online: a sandbox with the volume attached keeps running and sees the new size.
-   * A smaller size throws `LizardError` (400) with `code: 'volume_shrink_unsupported'`.
+   * A volume grows in place and online: a sandbox with the volume attached keeps
+   * running and sees the new size. A smaller size throws `LizardError` (400) with
+   * `code: 'volume_shrink_unsupported'`.
    *
-   * On a container volume the change is in place and online: the size is a quota,
-   * so no data is copied and a mounted sandbox sees the new size immediately. Both
-   * growing and shrinking are allowed, but a shrink must leave at least 10% of the
+   * An older volume can also shrink, but the shrink must leave at least 10% of the
    * new size free — otherwise it throws `ConflictError` with
    * `code: 'volume_too_full_to_shrink'`.
    *
@@ -149,7 +147,7 @@ export class Volume {
    * `volume_capacity_unavailable`, and `volume_resize_timeout` (a `TimeoutError`;
    * the size is left unchanged).
    *
-   * @returns The volume's updated info, including `sizeEnforced` for a container volume.
+   * @returns The volume's updated info, including `sizeEnforced` for an older volume.
    */
   static async resize(projectId: string, nameOrId: string, sizeGb: number, opts?: ConnectionOpts): Promise<VolumeInfo> {
     const config = new ConnectionConfig(opts)

@@ -1,6 +1,6 @@
 # Lizard SDK for TypeScript
 
-Run commands, work with files and execute code in Linux sandboxes with Firecracker support. The SDK also manages Lizard apps, databases, storage and projects.
+Run commands, work with files and execute code in Linux sandboxes that run as Firecracker microVMs. The SDK also manages Lizard apps, databases, storage and projects.
 
 ## Install
 
@@ -125,7 +125,7 @@ Pass `timeoutMs` to `create()` to set the sandbox lifetime. The default is five 
 
 ## Runtime limits
 
-Lizard Sandboxes support Firecracker microVMs with their own kernel. Older pod volumes or snapshots, account or region settings, and some Firecracker startup failures can select a container that shares the host kernel. Check `getInfo().runtime` in TypeScript or `get_info().runtime` in Python before running code that requires a separate kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available on Firecracker sandboxes yet. Volumes can grow but not shrink, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
+Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. Use volumes mounted at `/workspace` to keep files after a sandbox ends. `pause()`/`resume()` keep memory and running processes; `snapshot()` is ready in about 2 s and `Sandbox.restore()` starts a copy in about 0.4 s; `fork()` clones a running sandbox. File watching and sandbox log streaming are not available yet. Volumes can grow but not shrink, and a sandbox with a volume attached cannot be forked. See the [snapshot guide](../../docs/sandboxes.md#pause-resume-snapshots-and-fork).
 
 `getHost()` returns a hostname without `https://`; the port is private, so send `sandbox.accessToken` as the `X-Lizard-Access-Token` header (or use `exposePort()`, which also returns a browser `url` carrying the token). File writes accept text or bytes (binary is sent exactly); `readBytes()` supports binary downloads.
 
