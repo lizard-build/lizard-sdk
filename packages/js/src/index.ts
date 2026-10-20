@@ -55,6 +55,18 @@ export type {
 
 export { StorageAPI } from './platform/storage'
 export { GitHubAPI } from './platform/github'
+export {
+  GitAPI, GitClient, GitReposAPI, GitIssuesOnlyAPI, GitPullsAPI, GitActionsAPI, GitSecretsAPI, GitCollaboratorsAPI,
+  GitWebhooksAPI, GitBranchRulesAPI, GitLabelsAPI, GitReleasesAPI, GitStatusesAPI, GitNotificationsAPI, GitTokensAPI, DEFAULT_GIT_URL,
+} from './platform/git'
+export type {
+  RepoRef, Role as GitRole, Repo as GitRepo, RepoMeta as GitRepoMeta, Ref as GitRef, Commit as GitCommit, TreeEntry as GitTreeEntry,
+  Blob as GitBlob, FileChange as GitFileChange, CommitFilesOpts, Label as GitLabel, Issue as GitIssue, IssueDetail as GitIssueDetail,
+  IssueList as GitIssueList, ListIssuesOpts, CreatePullOpts, UpdateIssueOpts, MergeOpts, LineComment, ReviewOpts, Run as GitRun,
+  Job as GitJob, ListRunsOpts, LogChunk, Workflow as GitWorkflow, Artifact as GitArtifact, Collaborator as GitCollaborator,
+  Invitation as GitInvitation, Webhook as GitWebhook, WebhookOpts, Delivery as GitDelivery, BranchRule, BranchRuleOpts,
+  Release as GitRelease, ReleaseOpts, CommitStatus, CombinedStatus, Notification as GitNotification, Token as GitToken, TokenOpts, GitUser,
+} from './platform/git'
 export type { ServiceUpdate } from './platform/services'
 export type { ProjectConfig, ConfigResult } from './platform/projects'
 export type { DomainStatus } from './platform/domains'

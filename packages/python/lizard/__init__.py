@@ -86,4 +86,5 @@ from .cli import LizardCLI, CLIResult
 
 from .platform.storage import StorageAPI
 from .platform.github import GitHubAPI
-__all__ += ["LizardCLI", "CLIResult", "StorageAPI", "GitHubAPI"]
+from .platform.git import GitAPI, GitClient, DEFAULT_GIT_URL
+__all__ += ["LizardCLI", "CLIResult", "StorageAPI", "GitHubAPI", "GitAPI", "GitClient", "DEFAULT_GIT_URL"]

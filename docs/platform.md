@@ -39,6 +39,7 @@ Both clients read `LIZARD_API_KEY`. To create sandboxes or use project-bound vol
 | `regions` | `regions` | Available regions |
 | `billing` | `billing` | The account's plan, Pro Checkout, promo codes, balance and transactions |
 | `volumes` | `volumes` | Persistent files for sandboxes in the client's project |
+| `git` | `git` | Lizard Git: repositories, issues, pull requests, reviews, CI runs, releases, webhooks, branch rules ([below](#lizard-git)) |
 
 `whoami()` returns the account identity visible to the credential. `platform` exposes the underlying HTTP client for endpoints without a dedicated method. See [CLI coverage](cli-parity.md#native-apis) for the method map.
 
@@ -154,6 +155,45 @@ elif sub.period:
 Checkout and invoices are web pages: the user finishes them in a browser. `startProNow`, `cancel` and `resume` change what the account pays, so call them only on the account owner's request. Nothing in the SDK retries a payment.
 
 When the account has to pay before it can create something, the call raises `PaymentRequiredError` (HTTP 402) with the platform's sentence and the page to open next; see [Errors](sandboxes.md#errors).
+
+## Lizard Git
+
+`git` reaches [Lizard Git](https://git.lizard.build) with the same key. The key must have no scopes: Lizard Git refuses scoped keys, because they don't say which repositories they may reach. For a key limited to some repositories, refs, paths or read-only access, mint a Lizard Git token with `git.tokens.create` and pass it as `apiKey`. The SDK reads `LIZARD_GIT_URL` (default `https://git.lizard.build`), or pass `gitUrl` / `git_url`.
+
+Repositories are named `"owner/name"`.
+
+| Group | What it does |
+| --- | --- |
+| `git.repos` | Create, list, update, delete, star, fork; refs, branches, tree, files, file contents, raw bytes, search, commits, compare, archive; `commitFiles` / `commit_files` (commit on the server, with `expect` for compare-and-swap and an idempotency key), `land` (rebase a branch onto another on the server), `reflog`, `cloneUrl` / `clone_url` |
+| `git.issues` | Create, list (state, text, label, assignee), get with comments, update labels and assignees, comment, close, reopen |
+| `git.pulls` | The same, plus create (draft, from a fork, reviewers), `ready`, `merge` (merge, squash, rebase; delete the branch), diff, commits, reviews, `review` / `approve` / `requestChanges` with line comments, `checks` (the combined status of the head commit) |
+| `git.actions` | Runs (filter by branch, commit, workflow, status, pull request), one run, `wait`, `cancel`, `rerun`, `approve` (a fork's run), job logs (`log` from an offset, `fullLog`, `followLog`), artifacts, workflows, `dispatch` with inputs; `git.actions.secrets` set, list, delete |
+| `git.collaborators` | List, invite (read, write, admin), change role, remove, cancel an invitation; your invitations, accept, decline |
+| `git.webhooks` | GitHub-style webhooks: create, update, delete, ping, deliveries, redeliver |
+| `git.branchRules` / `git.branch_rules` | Protect branches: pull request required, approvals, required checks, block force pushes and deletion, include admins, code owners |
+| `git.labels`, `git.releases`, `git.statuses` | Labels; releases with assets; commit statuses (what required checks wait for) |
+| `git.notifications`, `git.tokens` | Your notifications (list, mark read); Lizard Git tokens |
+
+```ts
+const lizard = new Lizard()
+await lizard.git.repos.create({ name: 'app', private: true, readme: true })
+await lizard.git.repos.commitFiles('me/app', {
+  branch: 'main', message: 'Add CI',
+  files: [{ path: '.lizard/workflows/ci.yml', content: 'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n' }],
+})
+const { runs } = await lizard.git.actions.runs('me/app')
+const run = await lizard.git.actions.wait('me/app', runs[0].number)
+console.log(run.status, await lizard.git.actions.fullLog('me/app', run.jobs[0].id))
+```
+
+```python
+lizard = Lizard()
+pr = lizard.git.pulls.create("me/app", title="Fix", head="fix", base="main", draft=True)
+lizard.git.pulls.ready("me/app", pr["number"])
+lizard.git.pulls.merge("me/app", pr["number"], method="squash", delete_branch=True)
+```
+
+To use plain `git`, clone with `git.repos.cloneUrl(repo, { withKey: true })` (the URL carries the key; keep it out of logs), or set up the CLI's credential helper with `lizard git setup`.
 
 ## Optional CLI adapter
 

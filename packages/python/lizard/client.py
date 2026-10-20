@@ -5,6 +5,7 @@ from typing import Literal
 from .config import ConnectionConfig
 from .platform.storage import StorageAPI
 from .platform.github import GitHubAPI
+from .platform.git import GitAPI
 from .errors import LizardError
 from .platform import (
     AddonsAPI,
@@ -59,6 +60,7 @@ class Lizard:
         api_key: str | None = None,
         api_url: str | None = None,
         timeout_ms: int | None = None,
+        git_url: str | None = None,
     ):
         self._config = ConnectionConfig(api_key=api_key, api_url=api_url, timeout_ms=timeout_ms)
         self._project_ref = project
@@ -83,6 +85,10 @@ class Lizard:
         self.metrics = MetricsAPI(_pc)
         self.storage = StorageAPI(_pc)
         self.github = GitHubAPI(_pc)
+        #: Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, CI runs,
+        #: releases, webhooks, branch rules. Needs a key with no scopes. ``git_url`` (or
+        #: LIZARD_GIT_URL) points it elsewhere.
+        self.git = GitAPI(self._config, git_url)
 
     def project_id(self) -> str:
         """Resolve the client's project reference to a stable project ID (cached)."""

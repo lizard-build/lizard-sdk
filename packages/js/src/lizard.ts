@@ -1,5 +1,6 @@
 import { StorageAPI } from './platform/storage'
 import { GitHubAPI } from './platform/github'
+import { GitAPI } from './platform/git'
 import { ConnectionConfig, type ConnectionOpts } from './config'
 import { LizardError } from './errors'
 import { resolveProjectId } from './project'
@@ -26,6 +27,8 @@ export interface LizardOpts extends ConnectionOpts {
    * management (projects, services, addons, etc.).
    */
   project?: string
+  /** Lizard Git's address. Defaults to `LIZARD_GIT_URL`, then https://git.lizard.build. */
+  gitUrl?: string
 }
 
 /**
@@ -85,6 +88,11 @@ export class Lizard {
   readonly metrics: MetricsAPI
   readonly storage: StorageAPI
   readonly github: GitHubAPI
+  /**
+   * Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, CI runs,
+   * releases, webhooks, branch rules. Needs a key with no scopes.
+   */
+  readonly git: GitAPI
 
   constructor(opts: LizardOpts) {
     this.config = new ConnectionConfig(opts)
@@ -103,6 +111,7 @@ export class Lizard {
     this.metrics = new MetricsAPI(platform)
     this.storage = new StorageAPI(platform)
     this.github = new GitHubAPI(platform)
+    this.git = new GitAPI(this.config, opts.gitUrl)
   }
 
   // ── Sandbox convenience methods (backward-compatible) ──────────────────
