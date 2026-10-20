@@ -72,3 +72,12 @@ describe('lizard.git', () => {
     expect(git.repos.cloneUrl('me/app', { withKey: true })).toBe('https://lizard:liz_test@git.invalid/me/app.git')
   })
 })
+
+describe('lizard.git path safety', () => {
+  it('refuses . and .. in repositories, branches and paths', async () => {
+    const git = new Lizard(opts).git
+    expect(() => git.repos.get('../user')).toThrow()
+    await expect(async () => git.repos.deleteBranch('me/r', '../../../../user/tokens/5')).rejects.toThrow(/bad path/)
+    await expect(async () => git.repos.raw('me/r', '../../x/.env', 'main')).rejects.toThrow(/bad path/)
+  })
+})

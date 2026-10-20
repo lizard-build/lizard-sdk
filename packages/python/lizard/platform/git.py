@@ -35,7 +35,11 @@ def _seg(value: str) -> str:
 
 
 def _path(value: str) -> str:
-    return "/".join(_seg(p) for p in value.split("/"))
+    """A branch or file path, each part escaped; . and .. parts refused (they'd reach other API paths)."""
+    parts = value.split("/")
+    if any(p in ("", ".", "..") for p in parts):
+        raise ValueError(f'bad path: "{value}"')
+    return "/".join(_seg(p) for p in parts)
 
 
 def _qs(url: str, /, **values: Any) -> str:
@@ -45,7 +49,7 @@ def _qs(url: str, /, **values: Any) -> str:
 
 def _repo(repo: str) -> str:
     m = _REPO.match(repo)
-    if not m:
+    if not m or m.group(1) in (".", "..") or m.group(2) in (".", ".."):
         raise ValueError(f'repository must be "owner/name", got "{repo}"')
     return f"/api/repos/{_seg(m.group(1))}/{_seg(m.group(2))}"
 
@@ -156,6 +160,7 @@ class GitReposAPI:
 
     def raw(self, repo: str, path: str, ref: str) -> bytes:
         """A file's bytes, whatever its size or type."""
+        _repo(repo)
         owner, name = repo.split("/", 1)
         return self._c.bytes(f"/raw/{_seg(owner)}/{_seg(name)}/{_path(ref)}/{_path(path)}")
 

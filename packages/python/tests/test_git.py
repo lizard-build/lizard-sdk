@@ -67,3 +67,13 @@ def test_clone_url():
     git = client(lambda req: httpx.Response(200))
     assert git.repos.clone_url("me/app") == "https://git.invalid/me/app.git"
     assert git.repos.clone_url("me/app", with_key=True) == "https://lizard:liz_test@git.invalid/me/app.git"
+
+
+def test_dot_segments_refused():
+    git = client(lambda req: httpx.Response(200, json={}))
+    with pytest.raises(ValueError):
+        git.repos.get("../user")
+    with pytest.raises(ValueError):
+        git.repos.delete_branch("me/r", "../../../../repos/me/important")
+    with pytest.raises(ValueError):
+        git.repos.raw("me/public", "../../../me/private/main/.env", "main")

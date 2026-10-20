@@ -137,9 +137,15 @@ function qs(path: string, values: Record<string, string | number | boolean | und
   for (const [k, v] of Object.entries(values)) if (v !== undefined && v !== '') q.set(k, String(v))
   return q.size ? `${path}?${q}` : path
 }
+/** A branch or file path, each part escaped; . and .. parts refused (they'd reach other API paths). */
+function segs(p: string): string {
+  const parts = p.split('/')
+  if (parts.some(x => x === '' || x === '.' || x === '..')) throw new Error(`bad path: "${p}"`)
+  return parts.map(seg).join('/')
+}
 function repoPath(repo: RepoRef): string {
   const m = /^([^/\s]+)\/([^/\s]+?)(\.git)?$/.exec(repo)
-  if (!m) throw new Error(`repository must be "owner/name", got "${repo}"`)
+  if (!m || [m[1], m[2]].some(x => x === '.' || x === '..')) throw new Error(`repository must be "owner/name", got "${repo}"`)
   return `/api/repos/${seg(m[1])}/${seg(m[2])}`
 }
 
@@ -152,6 +158,7 @@ export class GitClient {
   async raw(method: string, path: string, body?: BodyInit, headers: Record<string, string> = {}): Promise<Response> {
     const res = await fetch(this.url + path, {
       method, body, headers: { 'X-API-Key': this.config.apiKey, ...headers },
+      redirect: 'error', // a redirect would carry the key to wherever it points
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),
     })
     if (!res.ok) await handleApiError(res)
@@ -194,7 +201,7 @@ export class GitReposAPI {
   /** Branches and tags. */
   refs(repo: RepoRef): Promise<Ref[]> { return this.c.get(`${repoPath(repo)}/refs`) }
   createBranch(repo: RepoRef, name: string, from?: string): Promise<{ name: string; sha: string }> { return this.c.post(`${repoPath(repo)}/branches`, { name, from }) }
-  deleteBranch(repo: RepoRef, name: string): Promise<void> { return this.c.delete(`${repoPath(repo)}/branches/${name.split('/').map(seg).join('/')}`) }
+  deleteBranch(repo: RepoRef, name: string): Promise<void> { return this.c.delete(`${repoPath(repo)}/branches/${segs(name)}`) }
   tree(repo: RepoRef, opts: { ref?: string; path?: string } = {}): Promise<{ commit: string; path: string; entries: TreeEntry[] }> {
     return this.c.get(qs(`${repoPath(repo)}/tree`, opts))
   }
@@ -202,8 +209,9 @@ export class GitReposAPI {
   file(repo: RepoRef, path: string, ref?: string): Promise<Blob> { return this.c.get(qs(`${repoPath(repo)}/blob`, { path, ref })) }
   /** A file's bytes, whatever its size or type. */
   raw(repo: RepoRef, path: string, ref: string): Promise<Uint8Array> {
+    repoPath(repo)
     const [owner, name] = repo.split('/')
-    return this.c.bytes(`/raw/${seg(owner)}/${seg(name)}/${ref.split('/').map(seg).join('/')}/${path.split('/').map(seg).join('/')}`)
+    return this.c.bytes(`/raw/${seg(owner)}/${seg(name)}/${segs(ref)}/${segs(path)}`)
   }
   /** Every file path at a ref. */
   files(repo: RepoRef, ref?: string): Promise<string[]> { return this.c.get(qs(`${repoPath(repo)}/files`, { ref })) }
@@ -227,7 +235,11 @@ export class GitReposAPI {
   archive(repo: RepoRef, ref: string, format: 'zip' | 'tar.gz' = 'tar.gz'): Promise<Uint8Array> {
     return this.c.bytes(`${repoPath(repo)}/archive/${seg(ref)}.${format}`)
   }
-  /** The HTTPS clone URL. With `withKey`, it carries the API key, so plain `git clone` works without a helper. */
+  /**
+   * The HTTPS clone URL. With `withKey`, it carries the API key, so plain `git clone` works
+   * without a helper; git then keeps it in .git/config. For anything shared or logged, use a
+   * limited Lizard Git token (`tokens.create`) as `apiKey` instead of the account's key.
+   */
   cloneUrl(repo: RepoRef, opts: { withKey?: boolean } = {}): string {
     repoPath(repo)
     const u = new URL(`${this.c.url}/${repo.replace(/\.git$/, '')}.git`)
