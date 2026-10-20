@@ -121,9 +121,11 @@ class GitReposAPI:
         return self._c.get(_repo(repo))
 
     def update(self, repo: str, *, name: str | None = None, description: str | None = None,
-               private: bool | None = None, default_branch: str | None = None) -> dict:
+               private: bool | None = None, default_branch: str | None = None, api_commits: bool | None = None) -> dict:
+        """api_commits: also accept commits written through the API (commit_files, land); new
+        repositories take pushes only."""
         return self._c.patch(_repo(repo), _clean({"name": name, "description": description, "private": private,
-                                                  "defaultBranch": default_branch}))
+                                                  "defaultBranch": default_branch, "apiCommits": api_commits}))
 
     def delete(self, repo: str) -> None:
         self._c.delete(_repo(repo))
@@ -182,7 +184,8 @@ class GitReposAPI:
 
     def commit_files(self, repo: str, *, branch: str, message: str, files: list[dict], expect: str | None = None,
                      create_from: str | None = None, idempotency_key: str | None = None) -> dict:
-        """Commit files on the server: no clone, no push.
+        """Commit files on the server: no clone, no push. Only on a repository whose admin allowed it
+        (``update(repo, api_commits=True)``); new repositories take changes by git push only.
 
         Each file is ``{"path", "content"}`` (``"base64": True`` for bytes), ``{"path", "delete": True}``
         or ``{"path", "moveFrom"}``. ``expect`` is the commit the branch must still point at (a moved

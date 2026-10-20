@@ -160,7 +160,7 @@ When the account has to pay before it can create something, the call raises `Pay
 
 `git` reaches [Lizard Git](https://git.lizard.build) with the same key. The key must have no scopes: Lizard Git refuses scoped keys, because they don't say which repositories they may reach. For a key limited to some repositories, refs, paths or read-only access, mint a Lizard Git token with `git.tokens.create` and pass it as `apiKey`. The SDK reads `LIZARD_GIT_URL` (default `https://git.lizard.build`), or pass `gitUrl` / `git_url`.
 
-Repositories are named `"owner/name"`.
+Repositories are named `"owner/name"`. Commits are made locally and reach Lizard Git by `git push`; a new repository refuses commits written through the API (`commitFiles`, `land`) until an admin allows them (`repos.update(repo, { apiCommits: true })`).
 
 | Group | What it does |
 | --- | --- |

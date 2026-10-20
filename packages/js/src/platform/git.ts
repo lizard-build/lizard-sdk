@@ -189,7 +189,8 @@ export class GitReposAPI {
     return this.c.post('/api/repos', opts)
   }
   get(repo: RepoRef): Promise<RepoMeta> { return this.c.get(repoPath(repo)) }
-  update(repo: RepoRef, opts: { name?: string; description?: string; private?: boolean; defaultBranch?: string }): Promise<{ ok: boolean }> {
+  /** `apiCommits`: also accept commits written through the API (`commitFiles`, `land`); new repositories take pushes only. */
+  update(repo: RepoRef, opts: { name?: string; description?: string; private?: boolean; defaultBranch?: string; apiCommits?: boolean }): Promise<{ ok: boolean }> {
     return this.c.patch(repoPath(repo), opts)
   }
   delete(repo: RepoRef): Promise<void> { return this.c.delete(repoPath(repo)) }
@@ -221,7 +222,11 @@ export class GitReposAPI {
   }
   commit(repo: RepoRef, sha: string): Promise<{ commit: Commit; diff: unknown }> { return this.c.get(`${repoPath(repo)}/commits/${seg(sha)}`) }
   compare(repo: RepoRef, base: string, head: string): Promise<unknown> { return this.c.get(qs(`${repoPath(repo)}/compare`, { base, head })) }
-  /** Commit files on the server: no clone, no push. Answers 409 when `expect` no longer matches. */
+  /**
+   * Commit files on the server: no clone, no push. Only on a repository whose admin allowed
+   * it (`update(repo, { apiCommits: true })`); new repositories take changes by git push only
+   * (403 otherwise). Answers 409 when `expect` no longer matches.
+   */
   commitFiles(repo: RepoRef, opts: CommitFilesOpts): Promise<{ sha: string; branch: string; [k: string]: unknown }> {
     const { idempotencyKey, ...body } = opts
     return this.c.request('POST', `${repoPath(repo)}/commits`, body, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
