@@ -299,9 +299,64 @@ export class GitSecretsAPI {
   delete(repo: RepoRef, name: string): Promise<void> { return this.c.delete(`${repoPath(repo)}/actions/secrets/${seg(name)}`) }
 }
 
+export interface Environment {
+  id: number; name: string; reviewers: string[]; preventSelfReview: boolean; waitMinutes: number
+  branchPolicy: 'all' | 'protected' | 'custom'; branches: string[]; secrets: string[]; variables: string[]; createdAt: number
+}
+export interface EnvironmentOpts {
+  /** Up to 6 people with write access; any one approves a deployment. */
+  reviewers?: string[]
+  /** Whoever started a run can't approve its deployment. */
+  preventSelfReview?: boolean
+  /** Minutes after approval before the job starts. */
+  waitMinutes?: number
+  /** Which branches and tags may deploy: all, protected (with a branch rule), or `branches` patterns. */
+  branchPolicy?: 'all' | 'protected' | 'custom'
+  branches?: string[]
+}
+export interface Deployment {
+  jobId: number; environment: string; url?: string; state: 'waiting' | 'timer' | 'approved' | 'rejected'
+  readyAt?: number; reviewer?: string; comment?: string; updatedAt: number; canReview: boolean; reviewers?: string[]
+}
+export interface Variable { name: string; value: string; updatedAt: number }
+
+export class GitVariablesAPI {
+  constructor(private readonly c: GitClient, private readonly base: (repo: RepoRef) => string) {}
+  list(repo: RepoRef): Promise<{ variables: Variable[] }> { return this.c.get(`${this.base(repo)}/variables`) }
+  set(repo: RepoRef, name: string, value: string): Promise<{ name: string }> { return this.c.put(`${this.base(repo)}/variables/${seg(name)}`, { value }) }
+  delete(repo: RepoRef, name: string): Promise<void> { return this.c.delete(`${this.base(repo)}/variables/${seg(name)}`) }
+}
+
+/** Environments: deployment protection rules, their secrets and variables (admins). */
+export class GitEnvironmentsAPI {
+  constructor(private readonly c: GitClient) {}
+  private path(repo: RepoRef, env: string) { return `${repoPath(repo)}/actions/environments/${seg(env)}` }
+  list(repo: RepoRef): Promise<{ environments: Environment[] }> { return this.c.get(`${repoPath(repo)}/actions/environments`) }
+  get(repo: RepoRef, env: string): Promise<Environment> { return this.c.get(this.path(repo, env)) }
+  /** Create it, or change its rules (fields left out stay). */
+  set(repo: RepoRef, env: string, opts: EnvironmentOpts = {}): Promise<Environment> { return this.c.put(this.path(repo, env), opts) }
+  delete(repo: RepoRef, env: string): Promise<void> { return this.c.delete(this.path(repo, env)) }
+  listSecrets(repo: RepoRef, env: string): Promise<{ secrets: Array<{ name: string; updatedAt: number }> }> { return this.c.get(`${this.path(repo, env)}/secrets`) }
+  /** Only this environment's jobs get it, after its rules pass; it wins over a repository secret of the same name. */
+  setSecret(repo: RepoRef, env: string, name: string, value: string): Promise<{ name: string }> { return this.c.put(`${this.path(repo, env)}/secrets/${seg(name)}`, { value }) }
+  deleteSecret(repo: RepoRef, env: string, name: string): Promise<void> { return this.c.delete(`${this.path(repo, env)}/secrets/${seg(name)}`) }
+  variables(env: string): GitVariablesAPI { return new GitVariablesAPI(this.c, repo => this.path(repo, env)) }
+}
+
 export class GitActionsAPI {
   readonly secrets: GitSecretsAPI
-  constructor(private readonly c: GitClient) { this.secrets = new GitSecretsAPI(c) }
+  /** Repository variables: vars.NAME in every job. */
+  readonly variables: GitVariablesAPI
+  constructor(private readonly c: GitClient) {
+    this.secrets = new GitSecretsAPI(c)
+    this.variables = new GitVariablesAPI(c, repo => `${repoPath(repo)}/actions`)
+  }
+  /** A run's jobs that deploy to an environment, and what each waits for. */
+  deployments(repo: RepoRef, number: number): Promise<{ deployments: Deployment[] }> { return this.c.get(`${repoPath(repo)}/actions/runs/${number}/deployments`) }
+  /** Approve or reject the run's waiting deployments (all you may review, or those named). */
+  reviewDeployments(repo: RepoRef, number: number, opts: { state: 'approved' | 'rejected'; environments?: string[]; comment?: string }): Promise<{ state: string; environments: string[] }> {
+    return this.c.post(`${repoPath(repo)}/actions/runs/${number}/deployments`, opts)
+  }
   runs(repo: RepoRef, opts: ListRunsOpts = {}): Promise<{ runs: Run[]; more: boolean }> { return this.c.get(qs(`${repoPath(repo)}/actions/runs`, { ...opts })) }
   run(repo: RepoRef, number: number): Promise<Run> { return this.c.get(`${repoPath(repo)}/actions/runs/${number}`) }
   cancel(repo: RepoRef, number: number): Promise<void> { return this.c.post(`${repoPath(repo)}/actions/runs/${number}/cancel`) }
@@ -330,7 +385,7 @@ export class GitActionsAPI {
     const until = Date.now() + (opts.timeoutMs ?? 30 * 60_000)
     for (;;) {
       const run = await this.run(repo, number)
-      if (!['queued', 'running', 'waiting', 'pending'].includes(run.status)) return run
+      if (!['queued', 'running', 'waiting', 'pending', 'dispatched'].includes(run.status)) return run
       if (Date.now() > until) throw new Error(`run ${number} is still ${run.status}`)
       await new Promise(r => setTimeout(r, opts.intervalMs ?? 3000))
     }
@@ -441,6 +496,7 @@ export class GitAPI {
   readonly issues: GitIssuesOnlyAPI
   readonly pulls: GitPullsAPI
   readonly actions: GitActionsAPI
+  readonly environments: GitEnvironmentsAPI
   readonly collaborators: GitCollaboratorsAPI
   readonly webhooks: GitWebhooksAPI
   readonly branchRules: GitBranchRulesAPI
@@ -455,6 +511,7 @@ export class GitAPI {
     this.issues = new GitIssuesOnlyAPI(c)
     this.pulls = new GitPullsAPI(c)
     this.actions = new GitActionsAPI(c)
+    this.environments = new GitEnvironmentsAPI(c)
     this.collaborators = new GitCollaboratorsAPI(c)
     this.webhooks = new GitWebhooksAPI(c)
     this.branchRules = new GitBranchRulesAPI(c)

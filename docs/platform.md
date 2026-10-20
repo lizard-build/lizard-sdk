@@ -173,6 +173,7 @@ Repositories are named `"owner/name"`.
 | `git.branchRules` / `git.branch_rules` | Protect branches: pull request required, approvals, required checks, block force pushes and deletion, include admins, code owners |
 | `git.labels`, `git.releases`, `git.statuses` | Labels; releases with assets; commit statuses (what required checks wait for) |
 | `git.notifications`, `git.tokens` | Your notifications (list, mark read); Lizard Git tokens |
+| `git.environments`, `git.actions.variables` | Environments (`set` reviewers, preventSelfReview, waitMinutes, branchPolicy/branches; `setSecret`, `variables(env)`); repository variables (`vars.NAME`); a run's `actions.deployments` and `actions.reviewDeployments` (approve/reject) |
 
 ```ts
 const lizard = new Lizard()

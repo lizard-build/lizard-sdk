@@ -27,7 +27,7 @@ from ..errors import handle_api_error
 DEFAULT_GIT_URL = "https://git.lizard.build"
 
 _REPO = re.compile(r"^([^/\s]+)/([^/\s]+?)(\.git)?$")
-_ACTIVE = {"queued", "running", "waiting", "pending"}
+_ACTIVE = {"queued", "running", "waiting", "pending", "dispatched"}
 
 
 def _seg(value: str) -> str:
@@ -320,10 +320,74 @@ class GitSecretsAPI:
         self._c.delete(f"{_repo(repo)}/actions/secrets/{_seg(name)}")
 
 
+class GitVariablesAPI:
+    def __init__(self, c: GitClient, base):
+        self._c = c
+        self._base = base
+
+    def list(self, repo: str) -> dict:
+        return self._c.get(f"{self._base(repo)}/variables")
+
+    def set(self, repo: str, name: str, value: str) -> dict:
+        return self._c.put(f"{self._base(repo)}/variables/{_seg(name)}", {"value": value})
+
+    def delete(self, repo: str, name: str) -> None:
+        self._c.delete(f"{self._base(repo)}/variables/{_seg(name)}")
+
+
+class GitEnvironmentsAPI:
+    """Environments: deployment protection rules, their secrets and variables (admins)."""
+
+    def __init__(self, c: GitClient):
+        self._c = c
+
+    def _path(self, repo: str, env: str) -> str:
+        return f"{_repo(repo)}/actions/environments/{_seg(env)}"
+
+    def list(self, repo: str) -> dict:
+        return self._c.get(f"{_repo(repo)}/actions/environments")
+
+    def get(self, repo: str, env: str) -> dict:
+        return self._c.get(self._path(repo, env))
+
+    def set(self, repo: str, env: str, *, reviewers: list[str] | None = None, prevent_self_review: bool | None = None,
+            wait_minutes: int | None = None, branch_policy: str | None = None, branches: list[str] | None = None) -> dict:
+        """Create it, or change its rules (arguments left out stay). branch_policy: all, protected or custom."""
+        return self._c.put(self._path(repo, env), _clean({"reviewers": reviewers, "preventSelfReview": prevent_self_review,
+                                                          "waitMinutes": wait_minutes, "branchPolicy": branch_policy, "branches": branches}))
+
+    def delete(self, repo: str, env: str) -> None:
+        self._c.delete(self._path(repo, env))
+
+    def list_secrets(self, repo: str, env: str) -> dict:
+        return self._c.get(f"{self._path(repo, env)}/secrets")
+
+    def set_secret(self, repo: str, env: str, name: str, value: str) -> dict:
+        return self._c.put(f"{self._path(repo, env)}/secrets/{_seg(name)}", {"value": value})
+
+    def delete_secret(self, repo: str, env: str, name: str) -> None:
+        self._c.delete(f"{self._path(repo, env)}/secrets/{_seg(name)}")
+
+    def variables(self, env: str) -> GitVariablesAPI:
+        return GitVariablesAPI(self._c, lambda repo: self._path(repo, env))
+
+
 class GitActionsAPI:
     def __init__(self, c: GitClient):
         self._c = c
         self.secrets = GitSecretsAPI(c)
+        #: Repository variables: vars.NAME in every job.
+        self.variables = GitVariablesAPI(c, lambda repo: f"{_repo(repo)}/actions")
+
+    def deployments(self, repo: str, number: int) -> dict:
+        """A run's jobs that deploy to an environment, and what each waits for."""
+        return self._c.get(f"{_repo(repo)}/actions/runs/{number}/deployments")
+
+    def review_deployments(self, repo: str, number: int, *, state: str, environments: list[str] | None = None,
+                           comment: str | None = None) -> dict:
+        """state: approved or rejected; environments: those named (default: all you may review)."""
+        return self._c.post(f"{_repo(repo)}/actions/runs/{number}/deployments",
+                            _clean({"state": state, "environments": environments, "comment": comment}))
 
     def runs(self, repo: str, *, branch: str | None = None, sha: str | None = None, workflow: str | None = None,
              status: str | None = None, pr: int | None = None, page: int | None = None) -> dict:
@@ -606,6 +670,7 @@ class GitAPI:
         self.issues = GitIssuesAPI(c)
         self.pulls = GitPullsAPI(c)
         self.actions = GitActionsAPI(c)
+        self.environments = GitEnvironmentsAPI(c)
         self.collaborators = GitCollaboratorsAPI(c)
         self.webhooks = GitWebhooksAPI(c)
         self.branch_rules = GitBranchRulesAPI(c)
