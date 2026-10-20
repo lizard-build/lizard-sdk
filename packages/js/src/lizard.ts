@@ -27,7 +27,7 @@ export interface LizardOpts extends ConnectionOpts {
    * management (projects, services, addons, etc.).
    */
   project?: string
-  /** Lizard Git's address. Defaults to `LIZARD_GIT_URL`, then https://git.lizard.build. */
+  /** Lizard Git's address. Defaults to `LIZARD_GIT_URL`, then https://lizard.build/git. */
   gitUrl?: string
 }
 
@@ -89,7 +89,7 @@ export class Lizard {
   readonly storage: StorageAPI
   readonly github: GitHubAPI
   /**
-   * Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, CI runs,
+   * Lizard Git (lizard.build/git): repositories, issues, pull requests, reviews, CI runs,
    * releases, webhooks, branch rules. Needs a key with no scopes.
    */
   readonly git: GitAPI

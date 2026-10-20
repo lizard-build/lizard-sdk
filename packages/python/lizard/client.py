@@ -85,7 +85,7 @@ class Lizard:
         self.metrics = MetricsAPI(_pc)
         self.storage = StorageAPI(_pc)
         self.github = GitHubAPI(_pc)
-        #: Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, CI runs,
+        #: Lizard Git (lizard.build/git): repositories, issues, pull requests, reviews, CI runs,
         #: releases, webhooks, branch rules. Needs a key with no scopes. ``git_url`` (or
         #: LIZARD_GIT_URL) points it elsewhere.
         self.git = GitAPI(self._config, git_url)

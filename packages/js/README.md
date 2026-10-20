@@ -121,7 +121,7 @@ try {
 
 The SDK reads `LIZARD_API_KEY` and, optionally, `LIZARD_API_URL` (default: `https://lizard.build`). You can also pass `apiKey` and `apiUrl` to the constructor or static sandbox methods.
 
-Lizard Git (`lizard.git`: repositories, pull requests, CI and the rest) reads `LIZARD_GIT_URL` (default `https://git.lizard.build`) and needs a key with no scopes. See the [Lizard Git guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md#lizard-git).
+Lizard Git (`lizard.git`: repositories, pull requests, CI and the rest) reads `LIZARD_GIT_URL` (default `https://lizard.build/git`) and needs a key with no scopes. See the [Lizard Git guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md#lizard-git).
 
 Pass `timeoutMs` to `create()` to set the sandbox lifetime. The default is five minutes. `timeoutMs` on `process.exec()` or `runCode()` controls that call, not the sandbox lifetime.
 

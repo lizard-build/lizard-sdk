@@ -2,7 +2,7 @@ import { handleApiError } from '../errors'
 import type { ConnectionConfig } from '../config'
 
 /**
- * Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, Actions-style
+ * Lizard Git (lizard.build/git): repositories, issues, pull requests, reviews, Actions-style
  * CI, releases, webhooks, branch protection and the rest, with the same API key as the rest
  * of the SDK. The key must be a whole account's (no scopes): Lizard Git refuses scoped keys.
  *
@@ -17,7 +17,7 @@ import type { ConnectionConfig } from '../config'
  * ```
  */
 
-export const DEFAULT_GIT_URL = 'https://git.lizard.build'
+export const DEFAULT_GIT_URL = 'https://lizard.build/git'
 
 export type RepoRef = string
 export type Role = 'read' | 'write' | 'admin'

@@ -1,4 +1,4 @@
-"""Lizard Git (git.lizard.build): repositories, issues, pull requests, reviews, Actions-style
+"""Lizard Git (lizard.build/git): repositories, issues, pull requests, reviews, Actions-style
 CI, releases, webhooks, branch protection and the rest, with the same API key as the rest of
 the SDK. The key must be a whole account's (no scopes): Lizard Git refuses scoped keys.
 
@@ -24,7 +24,7 @@ import httpx
 from ..config import HTTP_TIMEOUT_S, ConnectionConfig
 from ..errors import handle_api_error
 
-DEFAULT_GIT_URL = "https://git.lizard.build"
+DEFAULT_GIT_URL = "https://lizard.build/git"
 
 _REPO = re.compile(r"^([^/\s]+)/([^/\s]+?)(\.git)?$")
 _ACTIVE = {"queued", "running", "waiting", "pending", "dispatched"}
