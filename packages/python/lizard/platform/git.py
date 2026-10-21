@@ -122,8 +122,7 @@ class GitReposAPI:
 
     def update(self, repo: str, *, name: str | None = None, description: str | None = None,
                private: bool | None = None, default_branch: str | None = None, api_commits: bool | None = None) -> dict:
-        """api_commits: also accept commits written through the API (commit_files, land); new
-        repositories take pushes only."""
+        """api_commits is accepted and ignored: every commit is made through the API now."""
         return self._c.patch(_repo(repo), _clean({"name": name, "description": description, "private": private,
                                                   "defaultBranch": default_branch, "apiCommits": api_commits}))
 
@@ -184,8 +183,9 @@ class GitReposAPI:
 
     def commit_files(self, repo: str, *, branch: str, message: str, files: list[dict], expect: str | None = None,
                      create_from: str | None = None, idempotency_key: str | None = None) -> dict:
-        """Commit files on the server: no clone, no push. Only on a repository whose admin allowed it
-        (``update(repo, api_commits=True)``); new repositories take changes by git push only.
+        """Commit files on the server: no clone, no push (every commit to Lizard Git is made this way).
+        With ``expect``, a branch that moved since is the server's to resolve (other files on the
+        new tip, the same files merged line by line); only a real conflict raises (409).
 
         Each file is ``{"path", "content"}`` (``"base64": True`` for bytes), ``{"path", "delete": True}``
         or ``{"path", "moveFrom"}``. ``expect`` is the commit the branch must still point at (a moved
@@ -207,7 +207,8 @@ class GitReposAPI:
         return self._c.bytes(f"{_repo(repo)}/archive/{_seg(ref)}.{format}")
 
     def clone_url(self, repo: str, *, with_key: bool = False) -> str:
-        """The HTTPS clone URL. With ``with_key`` it carries the API key, so plain ``git clone`` works."""
+        """Deprecated: Lizard Git no longer serves the git protocol (this address answers 410). Read
+        with tree/file/raw/archive, write with commit_files, check out with ``lizard git clone``."""
         _repo(repo)
         u = urlsplit(f"{self._c.url}/{re.sub(r'[.]git$', '', repo)}.git")
         if with_key:

@@ -189,8 +189,7 @@ export class GitReposAPI {
     return this.c.post('/api/repos', opts)
   }
   get(repo: RepoRef): Promise<RepoMeta> { return this.c.get(repoPath(repo)) }
-  /** `apiCommits`: also accept commits written through the API (`commitFiles`, `land`); new repositories take pushes only. */
-  update(repo: RepoRef, opts: { name?: string; description?: string; private?: boolean; defaultBranch?: string; apiCommits?: boolean }): Promise<{ ok: boolean }> {
+  update(repo: RepoRef, opts: { name?: string; description?: string; private?: boolean; defaultBranch?: string }): Promise<{ ok: boolean }> {
     return this.c.patch(repoPath(repo), opts)
   }
   delete(repo: RepoRef): Promise<void> { return this.c.delete(repoPath(repo)) }
@@ -223,9 +222,10 @@ export class GitReposAPI {
   commit(repo: RepoRef, sha: string): Promise<{ commit: Commit; diff: unknown }> { return this.c.get(`${repoPath(repo)}/commits/${seg(sha)}`) }
   compare(repo: RepoRef, base: string, head: string): Promise<unknown> { return this.c.get(qs(`${repoPath(repo)}/compare`, { base, head })) }
   /**
-   * Commit files on the server: no clone, no push. Only on a repository whose admin allowed
-   * it (`update(repo, { apiCommits: true })`); new repositories take changes by git push only
-   * (403 otherwise). Answers 409 when `expect` no longer matches.
+   * Commit files on the server: no clone, no push (every commit to Lizard Git is made this
+   * way). With `expect` (the commit your change was made against), a branch that moved since
+   * is the server's to resolve: other files go on the new tip, the same files are merged line
+   * by line, and only a real conflict answers 409 with the paths.
    */
   commitFiles(repo: RepoRef, opts: CommitFilesOpts): Promise<{ sha: string; branch: string; [k: string]: unknown }> {
     const { idempotencyKey, ...body } = opts
@@ -241,9 +241,9 @@ export class GitReposAPI {
     return this.c.bytes(`${repoPath(repo)}/archive/${seg(ref)}.${format}`)
   }
   /**
-   * The HTTPS clone URL. With `withKey`, it carries the API key, so plain `git clone` works
-   * without a helper; git then keeps it in .git/config. For anything shared or logged, use a
-   * limited Lizard Git token (`tokens.create`) as `apiKey` instead of the account's key.
+   * @deprecated Lizard Git no longer serves the git protocol (contents are kept as changesets,
+   * files by hash): this address answers 410. Read with `tree`/`file`/`raw`/`archive`, write
+   * with `commitFiles`, and check out with the Lizard CLI (`lizard git clone`).
    */
   cloneUrl(repo: RepoRef, opts: { withKey?: boolean } = {}): string {
     repoPath(repo)
