@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { ConnectionConfig } from './config'
 import { LizardError, handleApiError } from './errors'
 import type { SandboxOpts } from './sandbox/client'
+import { apiFetch } from './transport'
 
 interface ProjectRecord {
   id: string
@@ -24,7 +25,7 @@ export async function resolveProjectId(ref: string, config: ConnectionConfig): P
   const cached = projectIdCache.get(cacheKey)
   if (cached) return cached
 
-  const res = await fetch(`${config.apiUrl}/api/projects`, { headers: config.headers })
+  const res = await apiFetch(`${config.apiUrl}/api/projects`, { headers: config.headers })
   if (!res.ok) await handleApiError(res)
   const projects = (await res.json()) as ProjectRecord[]
 

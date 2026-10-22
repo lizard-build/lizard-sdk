@@ -1,5 +1,6 @@
 import { handleApiError } from '../errors'
 import type { ConnectionConfig } from '../config'
+import { apiFetch } from '../transport'
 
 /**
  * Lizard Git (lizard.build/git): repositories, issues, pull requests, reviews, Actions-style
@@ -156,7 +157,7 @@ export class GitClient {
     this.url = (url ?? process.env.LIZARD_GIT_URL ?? DEFAULT_GIT_URL).replace(/\/+$/, '')
   }
   async raw(method: string, path: string, body?: BodyInit, headers: Record<string, string> = {}): Promise<Response> {
-    const res = await fetch(this.url + path, {
+    const res = await apiFetch(this.url + path, {
       method, body, headers: { 'X-API-Key': this.config.apiKey, ...headers },
       redirect: 'error', // a redirect would carry the key to wherever it points
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),

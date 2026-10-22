@@ -1,6 +1,7 @@
 import { ConnectionConfig, ConnectionOpts } from '../config'
 import { handleApiError } from '../errors'
 import { requireProjectRef, resolveProjectId } from '../project'
+import { apiFetch } from '../transport'
 
 export interface SandboxInfo {
   sandboxId: string
@@ -128,7 +129,7 @@ export class SandboxClient {
     const ref = requireProjectRef(opts)
     const config = new ConnectionConfig(opts)
     const projectId = ref.projectId ?? (await resolveProjectId(ref.project!, config))
-    const res = await fetch(`${config.apiUrl}/api/sandboxes`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({
@@ -151,7 +152,7 @@ export class SandboxClient {
 
   protected static async killSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
       method: 'DELETE',
       headers: config.headers,
     })
@@ -162,7 +163,7 @@ export class SandboxClient {
 
   protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
       method: 'POST',
       headers: config.headers,
     })
@@ -173,7 +174,7 @@ export class SandboxClient {
 
   protected static async resumeSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/resume`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/resume`, {
       method: 'POST',
       headers: config.headers,
     })
@@ -185,7 +186,7 @@ export class SandboxClient {
   protected static async listSandboxes(opts?: ConnectionOpts & { projectId?: string }): Promise<SandboxInfo[]> {
     const config = new ConnectionConfig(opts)
     const path = opts?.projectId ? `/api/projects/${encodeURIComponent(opts.projectId)}/sandboxes` : '/api/sandboxes'
-    const res = await fetch(`${config.apiUrl}${path}`, {
+    const res = await apiFetch(`${config.apiUrl}${path}`, {
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -194,7 +195,7 @@ export class SandboxClient {
 
   protected static async getSandboxInfo(sandboxId: string, opts?: ConnectionOpts): Promise<SandboxInfo> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -203,7 +204,7 @@ export class SandboxClient {
 
   protected static async setTimeoutSandbox(sandboxId: string, timeoutMs: number, opts?: ConnectionOpts): Promise<void> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/timeout`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/timeout`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({ timeoutMs }),
@@ -217,7 +218,7 @@ export class SandboxClient {
     opts?: ConnectionOpts
   ): Promise<ExposedPort> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/expose/${port}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/expose/${port}`, {
       method: 'POST',
       headers: config.headers,
     })

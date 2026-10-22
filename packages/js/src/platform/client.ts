@@ -1,5 +1,6 @@
 import { ConnectionConfig, type ConnectionOpts } from '../config'
 import { ConfigApplyError, handleApiError } from '../errors'
+import { apiFetch } from '../transport'
 
 export interface StreamEvent { event: string; data: string; id?: string }
 export const segment = (value: string): string => encodeURIComponent(value)
@@ -22,7 +23,7 @@ export class PlatformClient {
   }
   /** `timeoutMs` overrides the connection's requestTimeoutMs for a call known to be slow, never shortening it. */
   request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
-    return fetch(`${this.config.apiUrl}${path}`, {
+    return apiFetch(`${this.config.apiUrl}${path}`, {
       method, headers: this.config.headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(Math.max(this.config.requestTimeoutMs, timeoutMs ?? 0)),
@@ -40,20 +41,20 @@ export class PlatformClient {
   }
   sendBytes<T>(method: string, path: string, body: Blob | Uint8Array | string, contentType = 'application/octet-stream'): Promise<T> {
     const payload = typeof body === 'string' || body instanceof Blob ? body : new Blob([new Uint8Array(body)])
-    return fetch(`${this.config.apiUrl}${path}`, {
+    return apiFetch(`${this.config.apiUrl}${path}`, {
       method, headers: { ...this.config.headers, 'Content-Type': contentType }, body: payload,
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),
     }).then(res => this.json<T>(res))
   }
   postForm<T>(path: string, form: FormData): Promise<T> {
-    return fetch(`${this.config.apiUrl}${path}`, {
+    return apiFetch(`${this.config.apiUrl}${path}`, {
       method: 'POST', headers: { 'X-API-Key': this.config.apiKey }, body: form,
       signal: AbortSignal.timeout(this.config.requestTimeoutMs),
     }).then(res => this.json<T>(res))
   }
   /** Preserves named events, multiline data and UTF-8 split across chunks. */
   async *events(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): AsyncGenerator<StreamEvent> {
-    const res = await fetch(`${this.config.apiUrl}${path}`, {
+    const res = await apiFetch(`${this.config.apiUrl}${path}`, {
       method: opts.method ?? 'GET', headers: this.config.headers,
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body), signal: opts.signal,
     })

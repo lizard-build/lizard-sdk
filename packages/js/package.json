@@ -49,5 +49,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "undici": "^6.21.0"
   }
 }

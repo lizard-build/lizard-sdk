@@ -1,5 +1,6 @@
 import { ConnectionConfig } from '../config'
 import { handleApiError } from '../errors'
+import { apiFetch } from '../transport'
 
 /** A process this sandbox is currently running (one started through `exec`). */
 export interface ProcessInfo {
@@ -96,7 +97,7 @@ export class Process {
     // to be asked for it with an SSE Accept header.
     const streaming = Boolean(opts?.onStdout || opts?.onStderr || opts?.onPid)
 
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/exec`, {
+    const res = await apiFetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/exec`, {
       method: 'POST',
       headers: streaming
         ? { ...this.config.headers, Accept: 'text/event-stream' }
@@ -132,7 +133,7 @@ export class Process {
    * ```
    */
   async list(): Promise<ProcessInfo[]> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes`, {
+    const res = await apiFetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes`, {
       headers: this.config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -155,7 +156,7 @@ export class Process {
    * ```
    */
   async kill(pid: number, signal: ProcessSignal = 'SIGTERM'): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes/signal`, {
+    const res = await apiFetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes/signal`, {
       method: 'POST',
       headers: this.config.headers,
       body: JSON.stringify({ pid, signal }),

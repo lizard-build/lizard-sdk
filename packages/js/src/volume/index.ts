@@ -1,5 +1,6 @@
 import { ConnectionConfig, ConnectionOpts } from '../config'
 import { handleApiError } from '../errors'
+import { apiFetch } from '../transport'
 
 export interface VolumeInfo {
   id: string
@@ -70,7 +71,7 @@ export class Volume {
    */
   static async create(projectId: string, name: string, opts?: CreateVolumeOpts): Promise<Volume> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5, region: opts?.region }),
@@ -90,7 +91,7 @@ export class Volume {
    */
   static async getOrCreate(projectId: string, name: string, opts?: CreateVolumeOpts): Promise<Volume> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({ name, sizeGb: opts?.sizeGb ?? 5, region: opts?.region, getOrCreate: true }),
@@ -103,7 +104,7 @@ export class Volume {
   /** Look a volume up by name or by id. */
   static async get(projectId: string, nameOrId: string, opts?: ConnectionOpts): Promise<Volume> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -113,7 +114,7 @@ export class Volume {
 
   static async list(projectId: string, opts?: ConnectionOpts): Promise<VolumeInfo[]> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes`, {
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -123,7 +124,7 @@ export class Volume {
   /** Delete a volume by name or by id, without constructing one first. */
   static async delete(projectId: string, nameOrId: string, opts?: ConnectionOpts): Promise<void> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
       method: 'DELETE',
       headers: config.headers,
     })
@@ -151,7 +152,7 @@ export class Volume {
    */
   static async resize(projectId: string, nameOrId: string, sizeGb: number, opts?: ConnectionOpts): Promise<VolumeInfo> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
+    const res = await apiFetch(`${config.apiUrl}/api/projects/${projectId}/volumes/${encodeURIComponent(nameOrId)}`, {
       method: 'PATCH',
       headers: config.headers,
       body: JSON.stringify({ sizeGb }),
@@ -161,7 +162,7 @@ export class Volume {
   }
 
   async getInfo(projectId: string): Promise<VolumeInfo> {
-    const res = await fetch(`${this.config.apiUrl}/api/projects/${projectId}/volumes/${this.volumeId}`, {
+    const res = await apiFetch(`${this.config.apiUrl}/api/projects/${projectId}/volumes/${this.volumeId}`, {
       headers: this.config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -177,7 +178,7 @@ export class Volume {
   }
 
   async delete(projectId: string): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/projects/${projectId}/volumes/${this.volumeId}`, {
+    const res = await apiFetch(`${this.config.apiUrl}/api/projects/${projectId}/volumes/${this.volumeId}`, {
       method: 'DELETE',
       headers: this.config.headers,
     })
