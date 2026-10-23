@@ -59,6 +59,10 @@ export interface SandboxOpts extends ConnectionOpts {
    * - `'medium'` — 4 vCPU / 8 GB, $0.0324/h (default)
    * - `'large'`  — 8 vCPU / 16 GB, $0.0648/h
    *
+   * On the Pro trial only `'small'` (also the default there) in a US region starts; another
+   * size or region throws `AuthenticationError` (HTTP 403, `TRIAL_SANDBOX_SIZE` /
+   * `TRIAL_SANDBOX_REGION`) until the first Pro payment.
+   *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
    * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
    * A successful pause stops compute charges; Persistent Volumes storage bills separately.

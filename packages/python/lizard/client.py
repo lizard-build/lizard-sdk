@@ -116,7 +116,10 @@ class Lizard:
             (4 vCPU / 8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU /
             16 GB, $0.0648/h). Billed flat per second of running time; ignored
             with ``snapshot_id``, which runs at the source sandbox's size and is
-            billed flat at that size.
+            billed flat at that size. On the Pro trial only ``"small"`` (also the
+            default there) in a US region starts; another size or region raises
+            ``AuthenticationError`` (HTTP 403, ``TRIAL_SANDBOX_SIZE`` /
+            ``TRIAL_SANDBOX_REGION``) until the first Pro payment.
         """
         return Sandbox.create(
             template,

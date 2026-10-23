@@ -209,6 +209,9 @@ class Sandbox:
             time): ``"small"`` (2 vCPU / 4 GB, $0.0162/h), ``"medium"`` (4 vCPU /
             8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU / 16 GB,
             $0.0648/h). CPU/RAM are included; idle running time is billed.
+            On the Pro trial only ``"small"`` (also the default there) in a US
+            region starts; another size or region raises ``AuthenticationError``
+            (HTTP 403, ``TRIAL_SANDBOX_SIZE`` / ``TRIAL_SANDBOX_REGION``).
             Sandbox egress includes 2 TB per account over a rolling 30 days:
             https://lizard.build/docs/platform/limits/#sandbox-egress
             A successful pause stops compute charges; Persistent Volumes storage bills separately.
