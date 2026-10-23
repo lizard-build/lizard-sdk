@@ -23,7 +23,7 @@ npm run build
 
 Most tests use mock HTTP responses, including shared contracts in `tests/contracts/platform.json`. The node-agent tests skip by default. They need `LIZARD_LIVE_TESTS=1` and `ADMIN_SECRET` on an approved test host, and create and kill sandboxes. Passing mock tests does not prove live platform behavior.
 
-The optional CLI discovery audit needs Lizard CLI 4.0.8+:
+The optional CLI discovery audit needs Lizard CLI 4.0.77, the version pinned in `tests/contracts/cli-coverage.json`:
 
 ```sh
 python3 scripts/audit_cli.py --output cli-audit.json
