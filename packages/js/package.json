@@ -1,7 +1,7 @@
 {
   "name": "@lizard-build/sdk",
   "version": "0.1.8",
-  "description": "TypeScript SDK for Lizard: Firecracker microVM sandboxes, code execution and cloud apps.",
+  "description": "TypeScript and JavaScript SDK for Lizard (lizard.build): cloud sandboxes for AI agents and code execution.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -41,6 +41,9 @@
     "directory": "packages/js"
   },
   "homepage": "https://lizard.build",
+  "bugs": {
+    "url": "https://github.com/lizard-build/lizard-sdk/issues"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
