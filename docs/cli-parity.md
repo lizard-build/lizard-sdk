@@ -1,12 +1,12 @@
 # CLI coverage
 
-Checked against CLI 4.0.8 (`92de61f`) and the backend source at the audit date. The command map in `tests/contracts/cli-coverage.json` lists every discovered command. `scripts/audit_cli.py` fails when the installed CLI adds a command without a mapping.
+Checked against CLI 4.0.77 (`53c2076`). The command map in `tests/contracts/cli-coverage.json` lists every discovered command: the SDK methods that cover it, or `LizardCLI.run` with the reason only the CLI can do it. `scripts/audit_cli.py` fails when the installed CLI is another version, adds a command without a mapping or drops a mapped one.
 
-CLI PR #13 removes `sandbox pause`, `resume`, `fork`, `snapshot`, `restore` and the `snapshot-fork` alias. The updated CLI has 99 command entries. The coverage map keeps these five commands separately as legacy entries so discovery can also check published CLI 4.0.8 until the removal ships. This historical discovery audit predates the Firecracker sandbox runtime; the current SDK supports those operations as described below.
+CLI 4.0.77 has 265 command entries. New since the 4.0.24 map: Lizard Git (`git` repositories, issues, pull requests, CI and working copies), `domain list`, `domain owned` and `domain dns` for domains bought on Lizard (lizard.build), `pause`, `resume`, `sleep`, project and workspace pause and resume, workspace limits and resale prices, `s3 url` and `sandbox snapshot-scope`. `sandbox pause`, `resume`, `fork`, `snapshot` and `restore` are regular commands again, so the map no longer keeps them as legacy entries; the legacy `credits` rows are gone too. `sandbox logs` is gone. `sandbox snapshot-pause`, `snapshot-resume` and `snapshot-warm` still run but are hidden from help, since they act only on older snapshots, so the map leaves them out; the SDK keeps `Sandbox.pauseSnapshot`, `resumeSnapshot` and `setSnapshotWarmPool` for them.
 
 ## Native APIs
 
-Both SDKs expose projects, project config, services, deploys, addons, secrets, domains, metrics, workspaces, API keys, regions, billing reads and Checkout, S3 objects, GitHub status and checkout, sandboxes, snapshots and volumes. Python uses snake_case where TypeScript uses camelCase.
+Both SDKs expose projects, project config, services, deploys, addons, secrets, domains, metrics, workspaces, API keys, regions, billing reads and Checkout, S3 objects, GitHub status and checkout, Lizard Git, sandboxes, snapshots and volumes. Python uses snake_case where TypeScript uses camelCase.
 
 | CLI group | SDK entry points |
 | --- | --- |
@@ -14,12 +14,13 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 | `add`, `up`, `redeploy`, `restart`, `pause`, `resume`, `sleep`, `scale`, `port`, `service` | `services.deploy/upload/redeploy/restart/pause/resume/getSleep/setSleep/scale/update/get/delete`; `addons.*` (incl. `addons.pause/resume/getSleep/setSleep`) |
 | `logs`, `events`, `ssh` | `services.logs/history/streamLogs/buildLogs/events/pods/exec`; Python `exec_` |
 | `secrets` | `secrets.list/set/delete/refs`; pass parsed dotenv values to `set` |
-| `domain` | `domains.info/list/add/generate/verify/delete` |
+| `domain` | `domains.info/list/add/generate/verify/delete`; `domain owned` and `domain dns` (domains bought on Lizard) have no SDK method |
 | `metrics` | `metrics.service/addon/project/cpu/memory/network/disk/all/cost` |
-| `git` | `github.status/installUrl/checkout` |
-| `s3` | `storage.list/upload` |
+| `git connect`, `git checkout`, `git status` (outside a working copy) | `github.status/installUrl/checkout` |
+| `git` (Lizard Git) | `git.repos/issues/pulls/actions/environments/collaborators/webhooks/branchRules/labels/releases/statuses/notifications/tokens`, `git.me`; working copies (`git clone`, `init`, `status`, `diff`, `commit`, `push`, `uncommit`, `sync`, `switch`, `sparse`, `pr checkout`) are CLI-only |
+| `s3` | `storage.list/upload`; `s3 url` signs the link in the CLI and has no SDK method |
 | `billing` (formerly `credits`) | `billing.subscription/startCheckout/startProNow/cancel/resume/redeemPromo/balance/transactions/summary/live/paymentMethods/removePaymentMethod` |
-| `sandbox` | `Sandbox.create/connect/list/restore/snapshots/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/exposePort/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
+| `sandbox` | `Sandbox.create/connect/list/restore/snapshots/mySnapshots/setSnapshotScope/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/exposePort/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
 | `volume` | `Volume.*`, project-bound `client.volumes.*`, `projects.volumeLimits` |
 | `workspace`, `keys`, `regions`, `whoami` | `workspaces.*`, `apiKeys.*`, `regions.list`, `whoami` |
 
@@ -27,7 +28,7 @@ API methods take explicit IDs. Interactive pickers and directory links belong to
 
 ## Optional CLI adapter
 
-`LizardCLI` runs the installed CLI with an argument array, without a shell. It returns the exit code, stdout, stderr and parsed JSON events. It supports local workflows such as `init`, `link`, `unlink`, `run`, login/logout, opening docs/dashboard, skill discovery and upgrades. It does not turn a failed exit code into success or add confirmation flags to general commands.
+`LizardCLI` runs the installed CLI with an argument array, without a shell. It returns the exit code, stdout, stderr and parsed JSON events. It supports local workflows such as `init`, `link`, `unlink`, `run`, login/logout, opening docs/dashboard, skill discovery, upgrades and Lizard Git working copies (`git clone`, `commit`, `push`, `sync`). It does not turn a failed exit code into success or add confirmation flags to general commands.
 
 ```ts
 import { LizardCLI } from '@lizard-build/sdk'

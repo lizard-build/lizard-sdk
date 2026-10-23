@@ -188,8 +188,8 @@ class GitReposAPI:
         new tip, the same files merged line by line); only a real conflict raises (409).
 
         Each file is ``{"path", "content"}`` (``"base64": True`` for bytes), ``{"path", "delete": True}``
-        or ``{"path", "moveFrom"}``. ``expect`` is the commit the branch must still point at (a moved
-        branch raises ConflictError). The same ``idempotency_key`` gives the same result on a retry.
+        or ``{"path", "moveFrom"}``. ``expect`` is the commit your change was made against (only a real
+        conflict raises ConflictError). The same ``idempotency_key`` gives the same result on a retry.
         """
         body = _clean({"branch": branch, "message": message, "files": files, "expect": expect, "createFrom": create_from})
         return self._c.request("POST", f"{_repo(repo)}/commits", body,

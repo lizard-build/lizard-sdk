@@ -158,13 +158,13 @@ When the account has to pay before it can create something, the call raises `Pay
 
 ## Lizard Git
 
-`git` reaches [Lizard Git](https://git.lizard.build) with the same key. The key must have no scopes: Lizard Git refuses scoped keys, because they don't say which repositories they may reach. For a key limited to some repositories, refs, paths or read-only access, mint a Lizard Git token with `git.tokens.create` and pass it as `apiKey`. The SDK reads `LIZARD_GIT_URL` (default `https://git.lizard.build`), or pass `gitUrl` / `git_url`.
+`git` reaches [Lizard Git](https://lizard.build/git) with the same key. The key must have no scopes: Lizard Git refuses scoped keys, because they don't say which repositories they may reach. For a key limited to some repositories, refs, paths or read-only access, mint a Lizard Git token with `git.tokens.create` and pass it as `apiKey`. The SDK reads `LIZARD_GIT_URL` (default `https://lizard.build/git`; `https://git.lizard.build` still answers), or pass `gitUrl` / `git_url`.
 
-Repositories are named `"owner/name"`. Commits are made locally and reach Lizard Git by `git push`; a new repository refuses commits written through the API (`commitFiles`, `land`) until an admin allows them (`repos.update(repo, { apiCommits: true })`).
+Repositories are named `"owner/name"`. Lizard Git keeps contents as changesets and does not serve the git protocol, so plain `git clone` and `git push` do not work. Every commit is made on the server with `commitFiles` / `commit_files`. Pass `expect`, the commit your change was made against: if the branch has moved since, the server puts your change on the new tip and merges edits to the same files line by line. Only a real conflict fails, with HTTP 409 (`ConflictError`) and the paths.
 
 | Group | What it does |
 | --- | --- |
-| `git.repos` | Create, list, update, delete, star, fork; refs, branches, tree, files, file contents, raw bytes, search, commits, compare, archive; `commitFiles` / `commit_files` (commit on the server, with `expect` for compare-and-swap and an idempotency key), `land` (rebase a branch onto another on the server), `reflog`, `cloneUrl` / `clone_url` |
+| `git.repos` | Create, list, update, delete, star, fork; refs, branches, tree, files, file contents, raw bytes, search, commits, compare, archive; `commitFiles` / `commit_files` (commit on the server, with `expect` and an idempotency key), `land` (rebase a branch onto another on the server), `reflog`; `cloneUrl` / `clone_url` is deprecated (its address answers HTTP 410) |
 | `git.issues` | Create, list (state, text, label, assignee), get with comments, update labels and assignees, comment, close, reopen |
 | `git.pulls` | The same, plus create (draft, from a fork, reviewers), `ready`, `merge` (merge, squash, rebase; delete the branch), diff, commits, reviews, `review` / `approve` / `requestChanges` with line comments, `checks` (the combined status of the head commit) |
 | `git.actions` | Runs (filter by branch, commit, workflow, status, pull request), one run, `wait`, `cancel`, `rerun`, `approve` (a fork's run), job logs (`log` from an offset, `fullLog`, `followLog`), artifacts, workflows, `dispatch` with inputs; `git.actions.secrets` set, list, delete |
@@ -194,7 +194,7 @@ lizard.git.pulls.ready("me/app", pr["number"])
 lizard.git.pulls.merge("me/app", pr["number"], method="squash", delete_branch=True)
 ```
 
-To use plain `git`, clone with `git.repos.cloneUrl(repo, { withKey: true })` (the URL carries the key; keep it out of logs), or set up the CLI's credential helper with `lizard git setup`.
+To read files without a checkout, use `tree`, `files`, `file`, `raw` and `archive`. To work on files on disk, use the Lizard CLI: `lizard git clone owner/name` checks out the files, `lizard git status` and `lizard git diff` show your changes, `lizard git commit -m "..."` commits them locally and `lizard git push` sends them (`lizard git commit --push` does both). `lizard git sync` brings the checkout to the branch's latest commit, `lizard git switch` changes branch and `lizard git sparse` limits the checkout to some folders.
 
 ## Optional CLI adapter
 
