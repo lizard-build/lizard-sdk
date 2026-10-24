@@ -51,7 +51,7 @@ export interface CommitFilesOpts {
   branch: string
   message: string
   files: FileChange[]
-  /** The commit the branch must still point at (compare-and-swap); a moved branch answers 409. */
+  /** The commit your change was made against. A branch that moved since is merged on the server; only a real conflict answers 409. */
   expect?: string
   /** Create `branch` from this ref when it doesn't exist yet. */
   createFrom?: string

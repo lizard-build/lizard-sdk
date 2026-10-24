@@ -1,6 +1,6 @@
 {
-  "cliVersion": "4.0.24",
-  "cliCommit": "d717ff5f818a33298ed1fbad8d2ad7a0599cdfe2",
+  "cliVersion": "4.0.77",
+  "cliCommit": "53c2076a97abaf28edbcb6b277d07a58bcef6599",
   "commands": [
     {
       "command": "add",
@@ -93,6 +93,21 @@
       "sdk": "domains.info; domains.add"
     },
     {
+      "command": "domain list",
+      "mode": "native",
+      "sdk": "domains.list; domains.info"
+    },
+    {
+      "command": "domain owned",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (domains bought on Lizard; no SDK method)"
+    },
+    {
+      "command": "domain dns",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (domains bought on Lizard; no SDK method)"
+    },
+    {
       "command": "domain generate",
       "mode": "native",
       "sdk": "domains.generate"
@@ -130,7 +145,682 @@
     {
       "command": "git status",
       "mode": "native",
-      "sdk": "github.status; projects.services"
+      "sdk": "github.status; projects.services (outside a Lizard Git working copy); LizardCLI.run (inside one: local changes)"
+    },
+    {
+      "command": "git clone",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; read files with git.repos.tree/files/file/raw/archive)"
+    },
+    {
+      "command": "git init",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; makes a folder an empty repository's checkout)"
+    },
+    {
+      "command": "git diff",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; compares local files with the checkout's commit)"
+    },
+    {
+      "command": "git commit",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; local commit; git.repos.commitFiles commits on the server in one call)"
+    },
+    {
+      "command": "git push",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; sends local commits; git.repos.commitFiles commits on the server in one call)"
+    },
+    {
+      "command": "git uncommit",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; local commits not pushed yet)"
+    },
+    {
+      "command": "git sync",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; updates local files to the branch tip)"
+    },
+    {
+      "command": "git switch",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; updates local files; git.repos.createBranch for -c)"
+    },
+    {
+      "command": "git sparse",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; changes which folders it holds)"
+    },
+    {
+      "command": "git repo",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git repo list",
+      "mode": "native",
+      "sdk": "git.repos.list"
+    },
+    {
+      "command": "git repo create",
+      "mode": "native",
+      "sdk": "git.repos.create (no workspace option); LizardCLI.run (--workspace)"
+    },
+    {
+      "command": "git repo view",
+      "mode": "native",
+      "sdk": "git.repos.get"
+    },
+    {
+      "command": "git repo edit",
+      "mode": "native",
+      "sdk": "git.repos.update (no workspace option); LizardCLI.run (--workspace)"
+    },
+    {
+      "command": "git repo delete",
+      "mode": "native",
+      "sdk": "git.repos.delete"
+    },
+    {
+      "command": "git repo fork",
+      "mode": "native",
+      "sdk": "git.repos.fork"
+    },
+    {
+      "command": "git repo forks",
+      "mode": "native",
+      "sdk": "git.repos.forks"
+    },
+    {
+      "command": "git repo star",
+      "mode": "native",
+      "sdk": "git.repos.star"
+    },
+    {
+      "command": "git repo unstar",
+      "mode": "native",
+      "sdk": "git.repos.unstar"
+    },
+    {
+      "command": "git branch",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git branch list",
+      "mode": "native",
+      "sdk": "git.repos.refs"
+    },
+    {
+      "command": "git branch create",
+      "mode": "native",
+      "sdk": "git.repos.createBranch"
+    },
+    {
+      "command": "git branch delete",
+      "mode": "native",
+      "sdk": "git.repos.deleteBranch"
+    },
+    {
+      "command": "git ls",
+      "mode": "native",
+      "sdk": "git.repos.tree; git.repos.files"
+    },
+    {
+      "command": "git cat",
+      "mode": "native",
+      "sdk": "git.repos.file; git.repos.raw"
+    },
+    {
+      "command": "git log",
+      "mode": "native",
+      "sdk": "git.repos.commits"
+    },
+    {
+      "command": "git show",
+      "mode": "native",
+      "sdk": "git.repos.commit"
+    },
+    {
+      "command": "git search",
+      "mode": "native",
+      "sdk": "git.repos.search"
+    },
+    {
+      "command": "git issue",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git issue list",
+      "mode": "native",
+      "sdk": "git.issues.list"
+    },
+    {
+      "command": "git issue create",
+      "mode": "native",
+      "sdk": "git.issues.create; git.issues.update"
+    },
+    {
+      "command": "git issue view",
+      "mode": "native",
+      "sdk": "git.issues.get"
+    },
+    {
+      "command": "git issue comment",
+      "mode": "native",
+      "sdk": "git.issues.comment"
+    },
+    {
+      "command": "git issue edit",
+      "mode": "native",
+      "sdk": "git.issues.update"
+    },
+    {
+      "command": "git issue close",
+      "mode": "native",
+      "sdk": "git.issues.close; git.issues.comment"
+    },
+    {
+      "command": "git issue reopen",
+      "mode": "native",
+      "sdk": "git.issues.reopen; git.issues.comment"
+    },
+    {
+      "command": "git pr",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git pr list",
+      "mode": "native",
+      "sdk": "git.pulls.list"
+    },
+    {
+      "command": "git pr create",
+      "mode": "native",
+      "sdk": "git.pulls.create; git.pulls.update"
+    },
+    {
+      "command": "git pr view",
+      "mode": "native",
+      "sdk": "git.pulls.get; git.pulls.reviews"
+    },
+    {
+      "command": "git pr comment",
+      "mode": "native",
+      "sdk": "git.pulls.comment"
+    },
+    {
+      "command": "git pr edit",
+      "mode": "native",
+      "sdk": "git.pulls.update"
+    },
+    {
+      "command": "git pr close",
+      "mode": "native",
+      "sdk": "git.pulls.close; git.pulls.comment"
+    },
+    {
+      "command": "git pr reopen",
+      "mode": "native",
+      "sdk": "git.pulls.reopen; git.pulls.comment"
+    },
+    {
+      "command": "git pr ready",
+      "mode": "native",
+      "sdk": "git.pulls.ready; git.pulls.update (--undo)"
+    },
+    {
+      "command": "git pr diff",
+      "mode": "native",
+      "sdk": "git.pulls.diff"
+    },
+    {
+      "command": "git pr commits",
+      "mode": "native",
+      "sdk": "git.pulls.commits"
+    },
+    {
+      "command": "git pr review",
+      "mode": "native",
+      "sdk": "git.pulls.review"
+    },
+    {
+      "command": "git pr reviews",
+      "mode": "native",
+      "sdk": "git.pulls.reviews"
+    },
+    {
+      "command": "git pr checks",
+      "mode": "native",
+      "sdk": "git.pulls.checks; git.actions.runs"
+    },
+    {
+      "command": "git pr merge",
+      "mode": "native",
+      "sdk": "git.pulls.merge"
+    },
+    {
+      "command": "git pr checkout",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (local working copy; git.pulls.get gives the branch)"
+    },
+    {
+      "command": "git run",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git run list",
+      "mode": "native",
+      "sdk": "git.actions.runs"
+    },
+    {
+      "command": "git run view",
+      "mode": "native",
+      "sdk": "git.actions.run"
+    },
+    {
+      "command": "git run logs",
+      "mode": "native",
+      "sdk": "git.actions.log; git.actions.fullLog; git.actions.followLog"
+    },
+    {
+      "command": "git run watch",
+      "mode": "native",
+      "sdk": "git.actions.wait"
+    },
+    {
+      "command": "git run cancel",
+      "mode": "native",
+      "sdk": "git.actions.cancel"
+    },
+    {
+      "command": "git run rerun",
+      "mode": "native",
+      "sdk": "git.actions.rerun"
+    },
+    {
+      "command": "git run approve",
+      "mode": "native",
+      "sdk": "git.actions.approve"
+    },
+    {
+      "command": "git run artifacts",
+      "mode": "native",
+      "sdk": "git.actions.artifacts"
+    },
+    {
+      "command": "git run download",
+      "mode": "native",
+      "sdk": "git.actions.downloadArtifact"
+    },
+    {
+      "command": "git run deployments",
+      "mode": "native",
+      "sdk": "git.actions.deployments"
+    },
+    {
+      "command": "git run review",
+      "mode": "native",
+      "sdk": "git.actions.reviewDeployments"
+    },
+    {
+      "command": "git workflow",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git workflow list",
+      "mode": "native",
+      "sdk": "git.actions.workflows"
+    },
+    {
+      "command": "git workflow run",
+      "mode": "native",
+      "sdk": "git.actions.dispatch"
+    },
+    {
+      "command": "git env",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git env list",
+      "mode": "native",
+      "sdk": "git.environments.list"
+    },
+    {
+      "command": "git env view",
+      "mode": "native",
+      "sdk": "git.environments.get"
+    },
+    {
+      "command": "git env set",
+      "mode": "native",
+      "sdk": "git.environments.set"
+    },
+    {
+      "command": "git env delete",
+      "mode": "native",
+      "sdk": "git.environments.delete"
+    },
+    {
+      "command": "git env secret",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git env secret list",
+      "mode": "native",
+      "sdk": "git.environments.listSecrets"
+    },
+    {
+      "command": "git env secret set",
+      "mode": "native",
+      "sdk": "git.environments.setSecret"
+    },
+    {
+      "command": "git env secret delete",
+      "mode": "native",
+      "sdk": "git.environments.deleteSecret"
+    },
+    {
+      "command": "git env var",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git env var list",
+      "mode": "native",
+      "sdk": "git.environments.variables(env).list"
+    },
+    {
+      "command": "git env var set",
+      "mode": "native",
+      "sdk": "git.environments.variables(env).set"
+    },
+    {
+      "command": "git env var delete",
+      "mode": "native",
+      "sdk": "git.environments.variables(env).delete"
+    },
+    {
+      "command": "git variable",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git variable list",
+      "mode": "native",
+      "sdk": "git.actions.variables.list"
+    },
+    {
+      "command": "git variable set",
+      "mode": "native",
+      "sdk": "git.actions.variables.set"
+    },
+    {
+      "command": "git variable delete",
+      "mode": "native",
+      "sdk": "git.actions.variables.delete"
+    },
+    {
+      "command": "git secret",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git secret list",
+      "mode": "native",
+      "sdk": "git.actions.secrets.list"
+    },
+    {
+      "command": "git secret set",
+      "mode": "native",
+      "sdk": "git.actions.secrets.set"
+    },
+    {
+      "command": "git secret delete",
+      "mode": "native",
+      "sdk": "git.actions.secrets.delete"
+    },
+    {
+      "command": "git collaborator",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git collaborator list",
+      "mode": "native",
+      "sdk": "git.collaborators.list"
+    },
+    {
+      "command": "git collaborator add",
+      "mode": "native",
+      "sdk": "git.collaborators.invite"
+    },
+    {
+      "command": "git collaborator role",
+      "mode": "native",
+      "sdk": "git.collaborators.setRole"
+    },
+    {
+      "command": "git collaborator remove",
+      "mode": "native",
+      "sdk": "git.collaborators.remove"
+    },
+    {
+      "command": "git invitation",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git invitation list",
+      "mode": "native",
+      "sdk": "git.collaborators.invitations"
+    },
+    {
+      "command": "git invitation accept",
+      "mode": "native",
+      "sdk": "git.collaborators.accept"
+    },
+    {
+      "command": "git invitation decline",
+      "mode": "native",
+      "sdk": "git.collaborators.decline"
+    },
+    {
+      "command": "git invitation cancel",
+      "mode": "native",
+      "sdk": "git.collaborators.cancelInvitation"
+    },
+    {
+      "command": "git webhook",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git webhook list",
+      "mode": "native",
+      "sdk": "git.webhooks.list"
+    },
+    {
+      "command": "git webhook create",
+      "mode": "native",
+      "sdk": "git.webhooks.create"
+    },
+    {
+      "command": "git webhook edit",
+      "mode": "native",
+      "sdk": "git.webhooks.update"
+    },
+    {
+      "command": "git webhook delete",
+      "mode": "native",
+      "sdk": "git.webhooks.delete"
+    },
+    {
+      "command": "git webhook ping",
+      "mode": "native",
+      "sdk": "git.webhooks.ping"
+    },
+    {
+      "command": "git webhook deliveries",
+      "mode": "native",
+      "sdk": "git.webhooks.deliveries; git.webhooks.delivery"
+    },
+    {
+      "command": "git webhook redeliver",
+      "mode": "native",
+      "sdk": "git.webhooks.redeliver"
+    },
+    {
+      "command": "git protect",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git protect list",
+      "mode": "native",
+      "sdk": "git.branchRules.list"
+    },
+    {
+      "command": "git protect set",
+      "mode": "native",
+      "sdk": "git.branchRules.list; git.branchRules.create; git.branchRules.update"
+    },
+    {
+      "command": "git protect delete",
+      "mode": "native",
+      "sdk": "git.branchRules.list; git.branchRules.delete"
+    },
+    {
+      "command": "git label",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git label list",
+      "mode": "native",
+      "sdk": "git.labels.list"
+    },
+    {
+      "command": "git label create",
+      "mode": "native",
+      "sdk": "git.labels.create"
+    },
+    {
+      "command": "git label edit",
+      "mode": "native",
+      "sdk": "git.labels.update"
+    },
+    {
+      "command": "git label delete",
+      "mode": "native",
+      "sdk": "git.labels.delete"
+    },
+    {
+      "command": "git release",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git release list",
+      "mode": "native",
+      "sdk": "git.releases.list"
+    },
+    {
+      "command": "git release create",
+      "mode": "native",
+      "sdk": "git.releases.create; git.releases.uploadAsset"
+    },
+    {
+      "command": "git release view",
+      "mode": "native",
+      "sdk": "git.releases.getByTag"
+    },
+    {
+      "command": "git release edit",
+      "mode": "native",
+      "sdk": "git.releases.getByTag; git.releases.update"
+    },
+    {
+      "command": "git release delete",
+      "mode": "native",
+      "sdk": "git.releases.getByTag; git.releases.delete"
+    },
+    {
+      "command": "git release upload",
+      "mode": "native",
+      "sdk": "git.releases.getByTag; git.releases.uploadAsset"
+    },
+    {
+      "command": "git release download",
+      "mode": "native",
+      "sdk": "git.releases.getByTag; git.releases.downloadAsset"
+    },
+    {
+      "command": "git release delete-asset",
+      "mode": "native",
+      "sdk": "git.releases.getByTag; git.releases.deleteAsset"
+    },
+    {
+      "command": "git commit-status",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git commit-status list",
+      "mode": "native",
+      "sdk": "git.statuses.combined"
+    },
+    {
+      "command": "git commit-status set",
+      "mode": "native",
+      "sdk": "git.statuses.create"
+    },
+    {
+      "command": "git notification",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git notification list",
+      "mode": "native",
+      "sdk": "git.notifications.list"
+    },
+    {
+      "command": "git notification read",
+      "mode": "native",
+      "sdk": "git.notifications.markRead"
+    },
+    {
+      "command": "git token",
+      "mode": "namespace",
+      "sdk": "help/discovery"
+    },
+    {
+      "command": "git token list",
+      "mode": "native",
+      "sdk": "git.tokens.list"
+    },
+    {
+      "command": "git token create",
+      "mode": "native",
+      "sdk": "git.tokens.create"
+    },
+    {
+      "command": "git token delete",
+      "mode": "native",
+      "sdk": "git.tokens.delete"
+    },
+    {
+      "command": "git whoami",
+      "mode": "native",
+      "sdk": "git.me"
     },
     {
       "command": "init",
@@ -208,6 +898,16 @@
       "sdk": "projects.create"
     },
     {
+      "command": "project pause",
+      "mode": "native",
+      "sdk": "projects.pause"
+    },
+    {
+      "command": "project resume",
+      "mode": "native",
+      "sdk": "projects.resume"
+    },
+    {
       "command": "project delete",
       "mode": "native",
       "sdk": "projects.delete"
@@ -228,6 +928,16 @@
       "sdk": "regions.list"
     },
     {
+      "command": "pause",
+      "mode": "native",
+      "sdk": "services.pause; addons.pause"
+    },
+    {
+      "command": "resume",
+      "mode": "native",
+      "sdk": "services.resume; addons.resume"
+    },
+    {
       "command": "restart",
       "mode": "native",
       "sdk": "services.restart; addons.redeploy"
@@ -246,6 +956,11 @@
       "command": "s3 upload",
       "mode": "native",
       "sdk": "storage.upload"
+    },
+    {
+      "command": "s3 url",
+      "mode": "cli-adapter",
+      "sdk": "LizardCLI.run (the CLI signs the link itself with the addon's credentials from projects.services; no SDK method)"
     },
     {
       "command": "s3 list",
@@ -283,11 +998,6 @@
       "sdk": "sandbox.process.exec"
     },
     {
-      "command": "sandbox logs",
-      "mode": "native",
-      "sdk": "sandbox.logs"
-    },
-    {
       "command": "sandbox expose",
       "mode": "native",
       "sdk": "sandbox.getHost"
@@ -298,9 +1008,39 @@
       "sdk": "sandbox.unexpose"
     },
     {
+      "command": "sandbox snapshot",
+      "mode": "native",
+      "sdk": "sandbox.snapshot"
+    },
+    {
+      "command": "sandbox pause",
+      "mode": "native",
+      "sdk": "sandbox.pause"
+    },
+    {
+      "command": "sandbox resume",
+      "mode": "native",
+      "sdk": "sandbox.resume"
+    },
+    {
+      "command": "sandbox restore",
+      "mode": "native",
+      "sdk": "Sandbox.restore"
+    },
+    {
+      "command": "sandbox fork",
+      "mode": "native",
+      "sdk": "sandbox.fork"
+    },
+    {
+      "command": "sandbox snapshot-scope",
+      "mode": "native",
+      "sdk": "Sandbox.setSnapshotScope"
+    },
+    {
       "command": "sandbox snapshots",
       "mode": "native",
-      "sdk": "Sandbox.snapshots"
+      "sdk": "Sandbox.snapshots; Sandbox.mySnapshots (--mine)"
     },
     {
       "command": "sandbox snapshot-rm",
@@ -341,6 +1081,11 @@
       "command": "scale",
       "mode": "native",
       "sdk": "services.scale; addons.resize"
+    },
+    {
+      "command": "sleep",
+      "mode": "native",
+      "sdk": "services.getSleep; services.setSleep; addons.getSleep; addons.setSleep"
     },
     {
       "command": "secrets",
@@ -493,6 +1238,26 @@
       "sdk": "workspaces.list"
     },
     {
+      "command": "workspace pause",
+      "mode": "native",
+      "sdk": "workspaces.pause"
+    },
+    {
+      "command": "workspace resume",
+      "mode": "native",
+      "sdk": "workspaces.resume"
+    },
+    {
+      "command": "workspace resale-pricing",
+      "mode": "native",
+      "sdk": "workspaces.getResalePricing; workspaces.setResalePricing; workspaces.clearResalePricing"
+    },
+    {
+      "command": "workspace limits",
+      "mode": "native",
+      "sdk": "workspaces.getLimits; workspaces.setLimits"
+    },
+    {
       "command": "workspace rm",
       "mode": "native",
       "sdk": "workspaces.delete"
@@ -553,21 +1318,6 @@
       "sdk": "LizardCLI.run"
     },
     {
-      "command": "sandbox snapshot-pause",
-      "mode": "cli-adapter",
-      "sdk": "LizardCLI.run"
-    },
-    {
-      "command": "sandbox snapshot-resume",
-      "mode": "cli-adapter",
-      "sdk": "LizardCLI.run"
-    },
-    {
-      "command": "sandbox snapshot-warm",
-      "mode": "cli-adapter",
-      "sdk": "LizardCLI.run"
-    },
-    {
       "command": "sandbox ssh",
       "mode": "cli-adapter",
       "sdk": "LizardCLI.run"
@@ -577,63 +1327,5 @@
       "mode": "cli-adapter",
       "sdk": "LizardCLI.run"
     }
-  ],
-  "legacyCommands": [
-    {
-      "command": "sandbox pause",
-      "mode": "backend-501",
-      "sdk": "sandbox.pause"
-    },
-    {
-      "command": "sandbox resume",
-      "mode": "backend-501",
-      "sdk": "sandbox.resume"
-    },
-    {
-      "command": "sandbox fork",
-      "mode": "backend-501",
-      "sdk": "sandbox.fork"
-    },
-    {
-      "command": "sandbox snapshot",
-      "mode": "backend-501",
-      "sdk": "sandbox.snapshot"
-    },
-    {
-      "command": "sandbox restore",
-      "mode": "backend-501",
-      "sdk": "Sandbox.restore"
-    },
-    {
-      "command": "credits payment-methods add",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    },
-    {
-      "command": "credits topup",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    },
-    {
-      "command": "credits payment-status",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    },
-    {
-      "command": "credits auto-topup",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    },
-    {
-      "command": "credits auto-topup set",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    },
-    {
-      "command": "credits auto-topup run",
-      "mode": "removed",
-      "sdk": "removed with Pro billing"
-    }
-  ],
-  "legacyNote": "Removed by lizard-cli PR #13. Retained only to audit published CLI 4.0.8 before that change is released. The credits rows are published CLI commands that Pro billing removes (top-ups, auto top-up, x402, adding a card); `credits` itself is now `billing`."
+  ]
 }

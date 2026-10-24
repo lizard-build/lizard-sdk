@@ -27,8 +27,8 @@ def main():
     root = subprocess.run([args.cli, "--help", "--json"], capture_output=True, text=True, timeout=30, check=True)
     schema = json.loads(root.stdout)
     found = set(command_names(schema["command"]))
-    # Published 4.0.8 still exposes the five commands removed in CLI PR #13.
-    # Only audit legacy commands when the inspected binary actually exposes them.
+    # Rows in the optional legacyCommands list are audited only when the inspected binary
+    # still exposes them (for example, commands a pending CLI change removes).
     commands = mapping["commands"] + [row for row in mapping.get("legacyCommands", []) if row["command"] in found]
     known = {row["command"] for row in commands}
 
