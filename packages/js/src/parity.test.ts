@@ -28,6 +28,7 @@ function stubFetch(responses: Array<{ status?: number; body: unknown }>) {
       headers: new Map([['content-length', '1']]) as any,
       json: async () => r.body,
       text: async () => JSON.stringify(r.body),
+      clone() { return this },
     } as any
   })
   vi.stubGlobal('fetch', fn)
@@ -61,6 +62,35 @@ describe('region', () => {
     await Sandbox.create('codex', { projectId: 'p1', volumeName: 'data', ...opts })
     expect(calls[0].body.region).toBeUndefined()
     expect(calls[0].body.volumeName).toBe('data')
+  })
+
+  it('defaults sandbox create to us-east-1', async () => {
+    const calls = stubFetch([{ body: { sandboxId: 's1' } }])
+    await Sandbox.create('codex', { projectId: 'p1', ...opts })
+    expect(calls[0].body.region).toBe('us-east-1')
+  })
+
+  it('omits the default region with a snapshot, which has its own', async () => {
+    const calls = stubFetch([{ body: { sandboxId: 's1' } }])
+    await Sandbox.create('base', { projectId: 'p1', snapshotId: 'snap1', ...opts })
+    expect(calls[0].body.region).toBeUndefined()
+  })
+
+  const paused = { status: 503, body: { error: 'New sandboxes are not available in US East (Virginia).', code: 'region_unavailable' } }
+
+  it('asks again without a region when the default one is paused', async () => {
+    const calls = stubFetch([paused, { body: { sandboxId: 's1' } }])
+    const sandbox = await Sandbox.create('codex', { projectId: 'p1', ...opts })
+    expect(sandbox.sandboxId).toBe('s1')
+    expect(calls).toHaveLength(2)
+    expect(calls[0].body.region).toBe('us-east-1')
+    expect(calls[1].body.region).toBeUndefined()
+  })
+
+  it('does not move a region the caller named', async () => {
+    const calls = stubFetch([paused])
+    await expect(Sandbox.create('codex', { projectId: 'p1', region: 'us-east-1', ...opts })).rejects.toThrow(/not available/)
+    expect(calls).toHaveLength(1)
   })
 })
 

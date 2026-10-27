@@ -4,6 +4,10 @@ This repository ships Lizard SDK as `@lizard-build/sdk` on npm and `lizard-sdk` 
 
 From 1.0.0 the SDK follows [semantic versioning](https://semver.org): a change that breaks a documented method, option or return type ships only in a new major version.
 
+## Unreleased
+
+- `Sandbox.create()` with no `region`, volume or snapshot now asks for `us-east-1`. It used to leave the choice to the platform, which also picked `us-east-1`. With a volume or snapshot, the sandbox still starts in their region. If new sandboxes in `us-east-1` are paused (503 `region_unavailable`), the SDK asks once more without a region and the platform picks an open one. A `region` you pass is never swapped for another.
+
 ## 1.0.0 (2026-10-27)
 
 First stable release. The API is the same as in 0.1.83: code that runs on 0.1.83 runs on 1.0.0.

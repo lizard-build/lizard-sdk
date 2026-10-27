@@ -1,4 +1,4 @@
-import { ConnectionConfig, ConnectionOpts } from '../config'
+import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_REGION } from '../config'
 import { handleApiError } from '../errors'
 import { requireProjectRef, resolveProjectId } from '../project'
 
@@ -82,7 +82,7 @@ export interface SandboxOpts extends ConnectionOpts {
    * is not in is rejected with a 400 rather than silently moved — that combination
    * cannot be satisfied.
    *
-   * Defaults to the platform's default sandbox region.
+   * Defaults to `'us-east-1'`, or to the volume's or snapshot's region when one is given.
    */
   region?: string
   /** Attach a persistent volume by id, mounted at `/workspace`. */
@@ -116,6 +116,16 @@ export interface SandboxOpts extends ConnectionOpts {
   lizardToken?: string
 }
 
+/** The platform's answer for a region that takes no new sandboxes for now. Reads a clone. */
+async function regionUnavailable(res: Response): Promise<boolean> {
+  try {
+    const body = await res.clone().json() as { code?: unknown }
+    return body?.code === 'region_unavailable'
+  } catch {
+    return false
+  }
+}
+
 /**
  * Low-level HTTP client for the Lizard sandbox API.
  * Extended by the `Sandbox` class — you typically don't use this directly.
@@ -132,7 +142,10 @@ export class SandboxClient {
     const ref = requireProjectRef(opts)
     const config = new ConnectionConfig(opts)
     const projectId = ref.projectId ?? (await resolveProjectId(ref.project!, config))
-    const res = await fetch(`${config.apiUrl}/api/sandboxes`, {
+    // No region: us-east-1. A volume or a snapshot exists in one region only, so with either
+    // the server places the sandbox there instead.
+    const defaultRegion = !opts?.region && !opts?.volumeId && !opts?.volumeName && !opts?.snapshotId
+    const post = (region: string | undefined) => fetch(`${config.apiUrl}/api/sandboxes`, {
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({
@@ -143,12 +156,16 @@ export class SandboxClient {
         projectId,
         metadata: opts?.metadata,
         envs: opts?.envs,
-        region: opts?.region,
+        region,
         volumeId: opts?.volumeId,
         volumeName: opts?.volumeName,
         lizardToken: opts?.lizardToken,
       }),
     })
+    let res = await post(opts?.region || (defaultRegion ? DEFAULT_SANDBOX_REGION : undefined))
+    // New sandboxes paused in the default region: ask again without one, and the platform
+    // picks an open region. A region the caller named is never swapped for another.
+    if (defaultRegion && res.status === 503 && (await regionUnavailable(res))) res = await post(undefined)
     if (!res.ok) await handleApiError(res)
     return res.json() as Promise<{ sandboxId: string }>
   }

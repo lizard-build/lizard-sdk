@@ -2,6 +2,7 @@ import os
 
 DEFAULT_API_URL = "https://lizard.build"
 DEFAULT_SANDBOX_TIMEOUT_MS = 5 * 60 * 1000  # 5 minutes
+DEFAULT_SANDBOX_REGION = "us-east-1"
 
 
 # How long any single HTTP call to the API may take, in seconds.
