@@ -164,11 +164,13 @@ export class SandboxClient {
     return true
   }
 
-  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
+  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { memory?: boolean }): Promise<boolean> {
     const config = new ConnectionConfig(opts)
     const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
       method: 'POST',
-      headers: config.headers,
+      ...(opts?.memory === false
+        ? { headers: { ...config.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ memory: false }) }
+        : { headers: config.headers }),
     })
     if (res.status === 404) return false
     if (!res.ok) await handleApiError(res)

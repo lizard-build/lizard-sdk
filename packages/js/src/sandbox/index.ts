@@ -240,8 +240,10 @@ export class Sandbox extends SandboxClient {
   /**
    * Pause the sandbox: its memory, running processes and files are kept and
    * compute stops. Wait with `waitForStatus('paused')` before resuming.
+   * `{ memory: false }` keeps files only: about a second whatever the RAM, but
+   * processes end and the resume boots the sandbox fresh.
    */
-  async pause(opts?: ConnectionOpts): Promise<boolean> {
+  async pause(opts?: ConnectionOpts & { memory?: boolean }): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
