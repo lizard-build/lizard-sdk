@@ -164,11 +164,12 @@ export class SandboxClient {
     return true
   }
 
-  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { memory?: boolean }): Promise<boolean> {
+  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { fast?: boolean; memory?: boolean }): Promise<boolean> {
     const config = new ConnectionConfig(opts)
     const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
       method: 'POST',
-      ...(opts?.memory === false
+      // Sent as memory:false, which every server that has fast pause accepts.
+      ...(opts?.fast === true || opts?.memory === false
         ? { headers: { ...config.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ memory: false }) }
         : { headers: config.headers }),
     })

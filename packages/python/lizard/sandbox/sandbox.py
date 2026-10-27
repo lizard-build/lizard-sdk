@@ -370,17 +370,18 @@ class Sandbox:
             handle_api_error(res.status_code, res.text)
         return True
 
-    def pause(self, memory: bool = True) -> bool:
+    def pause(self, fast: bool = False, memory: bool = True) -> bool:
         """Pause the sandbox: its memory, running processes and files are kept and
         compute stops. Wait with ``wait_for_status("paused")`` before resuming.
-        ``memory=False`` keeps files only: about a second whatever the RAM, but
-        processes end and the resume boots the sandbox fresh."""
+        ``fast=True`` keeps files only: about a second whatever the RAM, but
+        processes end and the resume boots the sandbox fresh (``memory=False`` is
+        the same)."""
         import httpx
 
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/pause",
             headers=self._config.headers,
-            json=None if memory else {"memory": False},
+            json={"memory": False} if fast or not memory else None,
             timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
