@@ -103,6 +103,37 @@ def test_sandbox_create_omits_region_so_the_volume_decides(calls):
     assert calls[0]["body"]["volumeName"] == "data"
 
 
+def test_sandbox_create_defaults_to_us_east_1(calls):
+    seed(calls, {"sandboxId": "s1"})
+    lz.Sandbox.create("codex", project_id="p1", **KW)
+    assert calls[0]["body"]["region"] == "us-east-1"
+
+
+def test_sandbox_create_omits_the_default_region_with_a_snapshot(calls):
+    seed(calls, {"sandboxId": "s1"})
+    lz.Sandbox.create("base", project_id="p1", snapshot_id="snap1", **KW)
+    assert "region" not in calls[0]["body"]
+
+
+_PAUSED = ({"error": "New sandboxes are not available in US East (Virginia).", "code": "region_unavailable"}, 503)
+
+
+def test_sandbox_create_asks_again_when_the_default_region_is_paused(calls):
+    seed(calls, _PAUSED, {"sandboxId": "s1"})
+    sandbox = lz.Sandbox.create("codex", project_id="p1", **KW)
+    assert sandbox.sandbox_id == "s1"
+    assert len(calls) == 2
+    assert calls[0]["body"]["region"] == "us-east-1"
+    assert "region" not in calls[1]["body"]
+
+
+def test_sandbox_create_does_not_move_a_named_region(calls):
+    seed(calls, _PAUSED)
+    with pytest.raises(lz.LizardError, match="not available"):
+        lz.Sandbox.create("codex", project_id="p1", region="us-east-1", **KW)
+    assert len(calls) == 1
+
+
 # ── connect ───────────────────────────────────────────────────────────────────
 
 def test_connect_reads_instead_of_resuming(calls):

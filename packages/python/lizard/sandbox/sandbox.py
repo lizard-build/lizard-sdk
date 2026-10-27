@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypedDict
 import time
 
-from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_TIMEOUT_MS
+from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_REGION, DEFAULT_SANDBOX_TIMEOUT_MS
 from .process import Process
 from .fs import Fs
 from .desktop import Desktop
@@ -96,6 +96,15 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
         memory_mb=s.get("memoryMb"),
         metadata=s.get("metadata"),
     )
+
+
+def _region_unavailable(res: Any) -> bool:
+    """The platform's answer for a region that takes no new sandboxes for now."""
+    try:
+        body = res.json()
+    except ValueError:
+        return False
+    return isinstance(body, dict) and body.get("code") == "region_unavailable"
 
 
 @dataclass
@@ -225,8 +234,8 @@ class Sandbox:
             unset when attaching a volume: a volume is node-local, so the server
             places the sandbox in the volume's own region. Naming a region the
             volume is not in is rejected with a 400 rather than silently moved —
-            that combination cannot be satisfied. Defaults to the platform's
-            default sandbox region.
+            that combination cannot be satisfied. Defaults to ``"us-east-1"``, or
+            to the volume's or snapshot's region when one is given.
         :param volume_name: Attach a persistent volume by name, mounted at
             ``/workspace``. A volume's name is its key inside a project, so this is
             usually what you want. Requires an exact ``project_id``.
@@ -272,8 +281,11 @@ class Sandbox:
             body["metadata"] = metadata
         if envs:
             body["envs"] = envs
-        if region:
-            body["region"] = region
+        # No region: us-east-1. A volume or a snapshot exists in one region only, so with
+        # either the server places the sandbox there instead.
+        default_region = not region and not volume_id and not volume_name and snapshot_id is None
+        if region or default_region:
+            body["region"] = region or DEFAULT_SANDBOX_REGION
         if volume_id:
             body["volumeId"] = volume_id
         if volume_name:
@@ -287,6 +299,15 @@ class Sandbox:
             json=body,
             timeout=HTTP_TIMEOUT_S,
         )
+        # New sandboxes paused in the default region: ask again without one, and the
+        # platform picks an open region. A region the caller named is never swapped.
+        if default_region and res.status_code == 503 and _region_unavailable(res):
+            res = httpx.post(
+                f"{config.api_url}/api/sandboxes",
+                headers=config.headers,
+                json={k: v for k, v in body.items() if k != "region"},
+                timeout=HTTP_TIMEOUT_S,
+            )
 
         if not res.is_success:
             from ..errors import handle_api_error

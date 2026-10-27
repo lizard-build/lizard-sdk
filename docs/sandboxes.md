@@ -21,7 +21,7 @@ Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. If a san
 | `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
 | `envs` | `envs` | Environment variables set in the sandbox, visible to every command |
 | `metadata` | `metadata` | Your own string labels, returned by `getInfo()` / `get_info()` |
-| `region` | `region` | Region ID; omit to use the platform default |
+| `region` | `region` | Region ID; default `us-east-1`, or the volume's or snapshot's region when you pass one |
 | `volumeName` / `volumeId` | `volume_name` / `volume_id` | Attach a persistent volume at `/workspace` |
 | `lizardToken` | `lizard_token` | Inject a Lizard key for tools inside the sandbox |
 
