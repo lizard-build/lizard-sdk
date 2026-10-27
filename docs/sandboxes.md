@@ -25,7 +25,7 @@ Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. If a san
 | `volumeName` / `volumeId` | `volume_name` / `volume_id` | Attach a persistent volume at `/workspace` |
 | `lizardToken` | `lizard_token` | Inject a Lizard key for tools inside the sandbox |
 
-`Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
+`Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. Its `create()` passes that project to `Sandbox.create()`, so `lizard.create(template)` and `Sandbox.create(template, { project })` / `Sandbox.create(template, project=...)` send the same request; both are stable. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
 Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused. A sandbox restored from a snapshot runs at the source sandbox's size and is billed flat at that size; `size` is ignored there. There are no `cpus` / `memoryMb` options.
 

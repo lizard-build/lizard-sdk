@@ -16,7 +16,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Bump patch version
+      # Bumps the patch of the latest tag. To start a new major or minor version,
+      # set `version` in packages/python/pyproject.toml (and packages/js/package.json)
+      # above the latest tag, e.g. 1.1.0: the next push is tagged with it as is.
+      - name: Bump version
         id: bump
         run: |
           latest=$(git tag -l 'v*' --sort=-version:refname | head -1)
@@ -28,6 +31,11 @@ jobs:
           minor=$(echo "$version" | cut -d. -f2)
           patch=$(echo "$version" | cut -d. -f3)
           new_tag="v${major}.${minor}.$((patch + 1))"
+          declared=$(sed -n 's/^version = "\(.*\)"$/\1/p' packages/python/pyproject.toml)
+          highest=$(printf '%s\n%s\n' "$version" "$declared" | sort -V | tail -1)
+          if [ -n "$declared" ] && [ "$declared" != "$version" ] && [ "$highest" = "$declared" ]; then
+            new_tag="v$declared"
+          fi
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "Bumping $latest → $new_tag"
 

@@ -41,4 +41,6 @@ Use examples that check results and clean up sandboxes with `try/finally` or a P
 
 ## Releases
 
-A push to `main` starts auto-tagging, followed by npm and PyPI publishing. Use a branch and pull request for changes that still need review. Changes to a package README or package metadata reach registries only after a release.
+A push to `main` starts auto-tagging, followed by npm and PyPI publishing. Each push bumps the patch version. To start a new minor or major version, set `version` in `packages/python/pyproject.toml` and `packages/js/package.json` to it (for example `1.1.0`); the next push to `main` is tagged with that version. Use a branch and pull request for changes that still need review. Changes to a package README or package metadata reach registries only after a release.
+
+The SDK follows semantic versioning from 1.0.0. A change that breaks a documented method, option or return type needs a new major version. Add an entry to `CHANGELOG.md` for every change that affects code that uses the SDK.

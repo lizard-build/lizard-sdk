@@ -150,6 +150,21 @@ See the [snapshot guide](https://github.com/lizard-build/lizard-sdk/blob/main/do
 
 The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set `timeoutMs: 0` in TypeScript or `timeout_ms=0` in Python at creation to disable expiration. Commands do not reset the deadline. See [current runtime limits](https://lizard.build/docs/sandboxes/).
 
+## Versions and API stability
+
+Lizard SDK follows [semantic versioning](https://semver.org) from 1.0.0. A change that breaks a documented method, option or return type ships only in a new major version. New features come in minor versions, fixes in patch versions. The npm and PyPI packages share one version number. The [changelog](https://github.com/lizard-build/lizard-sdk/blob/main/CHANGELOG.md) lists what changed, including the API changes made before 1.0.
+
+There are two ways to create a sandbox, and both are stable:
+
+| | TypeScript | Python |
+| --- | --- | --- |
+| Client pinned to a project | `new Lizard({ project }).create(template)` | `Lizard(project=...).create(template)` |
+| Class method | `Sandbox.create(template, { project })` | `Sandbox.create(template, project=...)` |
+
+The client passes its project to `Sandbox.create()`, so both send the same request. The examples use the client because it also reaches volumes and the platform API. `CodeSandbox.create()` takes the project the same way as `Sandbox.create()`.
+
+Platform facts such as prices, limits and templates can change without a new SDK version. See [current limits](https://lizard.build/docs/sandboxes/).
+
 ## Other SDK capabilities
 
 The SDK also manages apps, Managed Postgres, Managed Redis, Managed Object Storage and projects. See the [platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md).
@@ -163,6 +178,7 @@ The SDK also manages apps, Managed Postgres, Managed Redis, Managed Object Stora
 - [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md): commands, files, code, ports, lifecycle, snapshots, fork and persistence.
 - [Platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md): projects, workspaces, scoped keys and cloud services.
 - [CLI coverage and migration](https://github.com/lizard-build/lizard-sdk/blob/main/docs/cli-parity.md): native APIs, optional CLI adapter and backend limits.
+- [Changelog](https://github.com/lizard-build/lizard-sdk/blob/main/CHANGELOG.md): what changed in each release, including the API changes made before 1.0.
 - [Contributing](https://github.com/lizard-build/lizard-sdk/blob/main/CONTRIBUTING.md): local checks and test scope.
 
 ## License

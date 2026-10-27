@@ -106,9 +106,10 @@ if (result.exitCode !== 0) throw new Error(result.stderr)
 The `desktop` template runs an Openbox desktop with Chromium, streamed to a browser over WebRTC (with noVNC as the fallback). You can watch it, and an agent can drive it:
 
 ```ts
-import { Sandbox } from '@lizard-build/sdk'
+import { Lizard } from '@lizard-build/sdk'
 
-const sandbox = await Sandbox.create('desktop', { project: 'my-project' })
+const lizard = new Lizard({ project: 'my-project' })
+const sandbox = await lizard.create('desktop')
 try {
   const { url, viewOnlyUrl } = await sandbox.desktop.start() // open `url` in a browser
   await sandbox.desktop.openUrl('https://example.com')
@@ -128,11 +129,10 @@ Treat `url` like a credential: anyone with it can see and control the desktop. S
 Run Python with the `interpreter` template. Each process command starts a separate Python process, so Python variables do not survive between calls; use `CodeSandbox` when they should.
 
 ```ts
-import { Sandbox } from '@lizard-build/sdk'
+import { Lizard } from '@lizard-build/sdk'
 
-const sandbox = await Sandbox.create('interpreter', {
-  project: 'my-project', timeoutMs: 300_000,
-})
+const lizard = new Lizard({ project: 'my-project' })
+const sandbox = await lizard.create('interpreter', { timeoutMs: 300_000 })
 try {
   const result = await sandbox.process.exec("python -c 'print(2 ** 10)'")
   if (result.exitCode !== 0) throw new Error(result.stderr)
@@ -164,6 +164,14 @@ Command results contain stdout, stderr, and the exit code. Command timeouts are 
 
 The SDK and CLI default to a five-minute lifetime. The raw API and dashboard default to no expiration. Set an explicit lifetime: `timeoutMs: 0` at creation disables expiration; a positive value sets a deadline. `setTimeout()` accepts 1000–2147483647 ms, not zero. Commands do not reset the deadline. This is not an idle timer.
 
+## Versions and API stability
+
+Lizard SDK follows [semantic versioning](https://semver.org) from 1.0.0. A change that breaks a documented method, option or return type ships only in a new major version. New features come in minor versions, fixes in patch versions. The npm and PyPI packages share one version number. The [changelog](https://github.com/lizard-build/lizard-sdk/blob/main/CHANGELOG.md) lists what changed, including the API changes made before 1.0.
+
+There are two ways to create a sandbox, and both are stable: `new Lizard({ project }).create(template)` and `Sandbox.create(template, { project })`. The client passes its project to `Sandbox.create()`, so both send the same request. The examples use the client because it also reaches volumes and the platform API. `CodeSandbox.create({ project })` takes the project the same way as `Sandbox.create()`.
+
+Platform facts such as prices, limits and templates can change without a new SDK version. See [current limits](https://lizard.build/docs/sandboxes/).
+
 ## Other SDK capabilities
 
 The SDK also manages apps, Managed Postgres, Managed Redis, Managed Object Storage and projects. See the [platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md).
@@ -176,6 +184,7 @@ The SDK also manages apps, Managed Postgres, Managed Redis, Managed Object Stora
 - [Sandbox reference](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md)
 - [Platform guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/platform.md)
 - [CLI coverage and migration](https://github.com/lizard-build/lizard-sdk/blob/main/docs/cli-parity.md)
+- [Changelog](https://github.com/lizard-build/lizard-sdk/blob/main/CHANGELOG.md)
 - [Source and issues](https://github.com/lizard-build/lizard-sdk)
 
 [Apache-2.0](https://github.com/lizard-build/lizard-sdk/blob/main/LICENSE)
