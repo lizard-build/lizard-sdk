@@ -77,7 +77,8 @@ export interface SandboxOpts extends ConnectionOpts {
   envs?: Record<string, string>
   /**
    * `false`: no internet for the sandbox's whole life, its resumes and forks included (no
-   * outbound TCP, UDP, DNS or ping); commands, files and exposed ports still work. Set at
+   * outbound TCP, UDP, DNS or ping) and no public ports (`exposePort` is refused); commands
+   * and files still work. Set at
    * create only. Default `true`. Not available with a container volume or snapshot.
    */
   internetAccess?: boolean

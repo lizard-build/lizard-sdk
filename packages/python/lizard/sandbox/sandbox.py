@@ -256,7 +256,8 @@ class Sandbox:
             key that escapes is bounded to that one workspace.
         :param internet_access: ``False``: no internet for the sandbox's whole
             life, its resumes and forks included (no outbound TCP, UDP, DNS or
-            ping); commands, files and exposed ports still work. Set at create
+            ping) and no public ports (``expose_port`` is refused); commands
+            and files still work. Set at create
             only. Not available with a container volume or snapshot.
 
         Example::
