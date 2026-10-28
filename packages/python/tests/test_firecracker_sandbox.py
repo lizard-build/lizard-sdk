@@ -159,3 +159,22 @@ def test_run_code_fails_loudly_without_python(monkeypatch):
 def test_runner_matches_the_js_copy():
     ts = (Path(__file__).parents[2] / "js/src/code-interpreter/runner.ts").read_text()
     assert ts[ts.index("String.raw`") + len("String.raw`"):ts.rindex("`")] == SOURCE
+
+
+def test_internet_access_false_is_sent_only_when_asked(monkeypatch):
+    sent = []
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: sent.append(kw["json"]) or httpx.Response(
+        201, json={"sandboxId": "s", "internetAccess": "internetAccess" not in kw["json"]}))
+    Sandbox.create("base", project_id="p1", **CONFIG)
+    Sandbox.create("base", project_id="p1", internet_access=False, **CONFIG)
+    assert "internetAccess" not in sent[0]
+    assert sent[1]["internetAccess"] is False
+
+
+def test_internet_access_false_ignored_by_the_server_deletes_the_sandbox(monkeypatch):
+    deleted = []
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: httpx.Response(201, json={"sandboxId": "s9"}))
+    monkeypatch.setattr(httpx, "delete", lambda url, **kw: deleted.append(url) or httpx.Response(200, json={}))
+    with pytest.raises(LizardError):
+        Sandbox.create("base", project_id="p1", internet_access=False, **CONFIG)
+    assert deleted == ["https://test.invalid/api/sandboxes/s9"]

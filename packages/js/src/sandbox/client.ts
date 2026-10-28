@@ -1,5 +1,5 @@
 import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_REGION } from '../config'
-import { handleApiError } from '../errors'
+import { LizardError, handleApiError } from '../errors'
 import { requireProjectRef, resolveProjectId } from '../project'
 
 export interface SandboxInfo {
@@ -17,6 +17,8 @@ export interface SandboxInfo {
   size?: 'small' | 'medium' | 'large' | null
   /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage. */
   pricePerHour?: number | null
+  /** `false` when the sandbox was created with `internetAccess: false`; absent from older servers. */
+  internetAccess?: boolean
   cpus?: number
   memoryMb?: number
   metadata?: Record<string, string>
@@ -73,6 +75,12 @@ export interface SandboxOpts extends ConnectionOpts {
   metadata?: Record<string, string>
   /** Environment variables set in the sandbox, visible to every command it runs. */
   envs?: Record<string, string>
+  /**
+   * `false`: no internet for the sandbox's whole life, its resumes and forks included (no
+   * outbound TCP, UDP, DNS or ping); commands, files and exposed ports still work. Set at
+   * create only. Default `true`. Not available with a container volume or snapshot.
+   */
+  internetAccess?: boolean
   timeoutMs?: number
   /**
    * Region to run the sandbox in, e.g. `'us-east-1'`.
@@ -160,6 +168,8 @@ export class SandboxClient {
         volumeId: opts?.volumeId,
         volumeName: opts?.volumeName,
         lizardToken: opts?.lizardToken,
+        // Sent only when asked: every other create stays what it was.
+        ...(opts?.internetAccess === false ? { internetAccess: false } : {}),
       }),
     })
     let res = await post(opts?.region || (defaultRegion ? DEFAULT_SANDBOX_REGION : undefined))
@@ -167,7 +177,14 @@ export class SandboxClient {
     // picks an open region. A region the caller named is never swapped for another.
     if (defaultRegion && res.status === 503 && (await regionUnavailable(res))) res = await post(undefined)
     if (!res.ok) await handleApiError(res)
-    return res.json() as Promise<{ sandboxId: string }>
+    const created = (await res.json()) as { sandboxId: string; internetAccess?: boolean }
+    // A server that predates the option ignores it and starts a sandbox WITH internet: asked
+    // for none, anything but an explicit false is deleted, never handed over.
+    if (opts?.internetAccess === false && created.internetAccess !== false) {
+      await this.killSandbox(created.sandboxId, opts).catch(() => {})
+      throw new LizardError("This server does not support internetAccess: false yet; the sandbox it started had internet and was deleted")
+    }
+    return created
   }
 
   protected static async killSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {

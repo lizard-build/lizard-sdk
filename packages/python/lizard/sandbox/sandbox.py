@@ -68,6 +68,8 @@ class SandboxInfo:
     runtime: str | None = None
     size: str | None = None
     price_per_hour: float | None = None
+    #: False when the sandbox was created with ``internet_access=False``; None from older servers.
+    internet_access: bool | None = None
     cpus: int | None = None
     memory_mb: int | None = None
     metadata: dict[str, str] | None = None
@@ -92,6 +94,7 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
         runtime=s.get("runtime"),
         size=s.get("size"),
         price_per_hour=s.get("pricePerHour"),
+        internet_access=s.get("internetAccess"),
         cpus=s.get("cpus"),
         memory_mb=s.get("memoryMb"),
         metadata=s.get("metadata"),
@@ -196,6 +199,7 @@ class Sandbox:
         volume_id: str | None = None,
         volume_name: str | None = None,
         lizard_token: str | None = None,
+        internet_access: bool = True,
     ) -> "Sandbox":
         """
         Boot a new Lizard sandbox from the specified template.
@@ -250,6 +254,10 @@ class Sandbox:
             sandboxes run untrusted code. Pass a **workspace-scoped** key rather
             than a full-access one. Scopes are enforced end to end, so a scoped
             key that escapes is bounded to that one workspace.
+        :param internet_access: ``False``: no internet for the sandbox's whole
+            life, its resumes and forks included (no outbound TCP, UDP, DNS or
+            ping); commands, files and exposed ports still work. Set at create
+            only. Not available with a container volume or snapshot.
 
         Example::
 
@@ -292,6 +300,9 @@ class Sandbox:
             body["volumeName"] = volume_name
         if lizard_token:
             body["lizardToken"] = lizard_token
+        # Sent only when asked: every other create stays what it was.
+        if internet_access is False:
+            body["internetAccess"] = False
 
         res = httpx.post(
             f"{config.api_url}/api/sandboxes",
@@ -314,6 +325,17 @@ class Sandbox:
             handle_api_error(res.status_code, res.text)
 
         data = res.json()
+        # A server that predates the option ignores it and starts a sandbox WITH internet:
+        # asked for none, anything but an explicit false is deleted, never handed over.
+        if internet_access is False and data.get("internetAccess") is not False:
+            try:
+                httpx.delete(f"{config.api_url}/api/sandboxes/{data['sandboxId']}",
+                             headers=config.headers, timeout=HTTP_TIMEOUT_S)
+            except Exception:
+                pass
+            from ..errors import LizardError
+            raise LizardError("This server does not support internet_access=False yet; "
+                              "the sandbox it started had internet and was deleted")
         return cls(
             data["sandboxId"],
             api_key=api_key,

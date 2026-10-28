@@ -125,3 +125,29 @@ describe('CodeSandbox', () => {
     expect(src).toBe(RUNNER_SOURCE)
   })
 })
+
+describe('internetAccess: false', () => {
+  const create = (answer: Record<string, unknown>) => {
+    const fetch = vi.fn(async (_url: unknown, init?: RequestInit) =>
+      init?.method === 'DELETE' ? new Response('{}') : new Response(JSON.stringify(answer), { status: 201 }))
+    vi.stubGlobal('fetch', fetch)
+    return fetch
+  }
+
+  it('is sent only when asked', async () => {
+    const fetch = create({ sandboxId: 's1', internetAccess: true })
+    await Sandbox.create({ projectId: 'p1', ...opts })
+    expect(body(fetch)).not.toHaveProperty('internetAccess')
+    const off = create({ sandboxId: 's2', internetAccess: false })
+    const sb = await Sandbox.create({ projectId: 'p1', internetAccess: false, ...opts })
+    expect(body(off).internetAccess).toBe(false)
+    expect(sb.sandboxId).toBe('s2')
+  })
+
+  it('a server that ignored it gets its sandbox deleted, never handed over', async () => {
+    const fetch = create({ sandboxId: 's3' })
+    await expect(Sandbox.create({ projectId: 'p1', internetAccess: false, ...opts })).rejects.toThrow(LizardError)
+    const del = fetch.mock.calls.find(([, init]) => init?.method === 'DELETE')
+    expect(String(del?.[0])).toBe(`${opts.apiUrl}/api/sandboxes/s3`)
+  })
+})
