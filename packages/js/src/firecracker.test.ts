@@ -151,3 +151,19 @@ describe('internetAccess: false', () => {
     expect(String(del?.[0])).toBe(`${opts.apiUrl}/api/sandboxes/s3`)
   })
 })
+
+describe('allowedHosts', () => {
+  it('is sent with no internet, and a server that ignored it gets its sandbox deleted', async () => {
+    const ok = vi.fn(async (_url: unknown, _init?: RequestInit) =>
+      new Response(JSON.stringify({ sandboxId: 'a1', internetAccess: false, allowedHosts: ['pypi.org'] }), { status: 201 }))
+    vi.stubGlobal('fetch', ok)
+    await Sandbox.create({ projectId: 'p1', allowedHosts: ['pypi.org'], ...opts })
+    expect(body(ok)).toMatchObject({ internetAccess: false, allowedHosts: ['pypi.org'] })
+
+    const old = vi.fn(async (_url: unknown, init?: RequestInit) =>
+      init?.method === 'DELETE' ? new Response('{}') : new Response(JSON.stringify({ sandboxId: 'a2', internetAccess: false }), { status: 201 }))
+    vi.stubGlobal('fetch', old)
+    await expect(Sandbox.create({ projectId: 'p1', allowedHosts: ['pypi.org'], ...opts })).rejects.toThrow(/allowedHosts/)
+    expect(old.mock.calls.some(([u, i]) => i?.method === 'DELETE' && String(u).endsWith('/api/sandboxes/a2'))).toBe(true)
+  })
+})

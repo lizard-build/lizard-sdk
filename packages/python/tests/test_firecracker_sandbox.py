@@ -178,3 +178,21 @@ def test_internet_access_false_ignored_by_the_server_deletes_the_sandbox(monkeyp
     with pytest.raises(LizardError):
         Sandbox.create("base", project_id="p1", internet_access=False, **CONFIG)
     assert deleted == ["https://test.invalid/api/sandboxes/s9"]
+
+
+def test_allowed_hosts_sent_with_no_internet(monkeypatch):
+    sent = []
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: sent.append(kw["json"]) or httpx.Response(
+        201, json={"sandboxId": "s", "internetAccess": False, "allowedHosts": ["pypi.org"]}))
+    Sandbox.create("base", project_id="p1", allowed_hosts=["pypi.org"], **CONFIG)
+    assert sent[0]["internetAccess"] is False
+    assert sent[0]["allowedHosts"] == ["pypi.org"]
+
+
+def test_allowed_hosts_ignored_by_the_server_deletes_the_sandbox(monkeypatch):
+    deleted = []
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: httpx.Response(201, json={"sandboxId": "s8", "internetAccess": False}))
+    monkeypatch.setattr(httpx, "delete", lambda url, **kw: deleted.append(url) or httpx.Response(200, json={}))
+    with pytest.raises(LizardError, match="allowed_hosts"):
+        Sandbox.create("base", project_id="p1", allowed_hosts=["pypi.org"], **CONFIG)
+    assert deleted == ["https://test.invalid/api/sandboxes/s8"]

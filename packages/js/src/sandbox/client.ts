@@ -19,6 +19,8 @@ export interface SandboxInfo {
   pricePerHour?: number | null
   /** `false` when the sandbox was created with `internetAccess: false`; absent from older servers. */
   internetAccess?: boolean
+  /** With no internet: what is still reachable (`allowedHosts` at create); `[]` for none. */
+  allowedHosts?: string[]
   cpus?: number
   memoryMb?: number
   metadata?: Record<string, string>
@@ -82,6 +84,13 @@ export interface SandboxOpts extends ConnectionOpts {
    * create only. Default `true`. Not available with a container volume or snapshot.
    */
   internetAccess?: boolean
+  /**
+   * With no internet, these stay reachable: a host name (`'pypi.org'`, or `'*.pythonhosted.org'`
+   * for its subdomains) on ports 80 and 443, or an IPv4 address or range (`'140.82.112.0/20'`)
+   * on every port. Implies `internetAccess: false`. Up to 50. With a host name in the list DNS
+   * (8.8.8.8) is open too so names resolve; a list of addresses only keeps DNS closed.
+   */
+  allowedHosts?: string[]
   timeoutMs?: number
   /**
    * Region to run the sandbox in, e.g. `'us-east-1'`.
@@ -170,7 +179,8 @@ export class SandboxClient {
         volumeName: opts?.volumeName,
         lizardToken: opts?.lizardToken,
         // Sent only when asked: every other create stays what it was.
-        ...(opts?.internetAccess === false ? { internetAccess: false } : {}),
+        ...(opts?.internetAccess === false || opts?.allowedHosts?.length ? { internetAccess: false } : {}),
+        ...(opts?.allowedHosts?.length ? { allowedHosts: opts.allowedHosts } : {}),
       }),
     })
     let res = await post(opts?.region || (defaultRegion ? DEFAULT_SANDBOX_REGION : undefined))
@@ -178,10 +188,15 @@ export class SandboxClient {
     // picks an open region. A region the caller named is never swapped for another.
     if (defaultRegion && res.status === 503 && (await regionUnavailable(res))) res = await post(undefined)
     if (!res.ok) await handleApiError(res)
-    const created = (await res.json()) as { sandboxId: string; internetAccess?: boolean }
+    const created = (await res.json()) as { sandboxId: string; internetAccess?: boolean; allowedHosts?: string[] }
     // A server that predates the option ignores it and starts a sandbox WITH internet: asked
     // for none, anything but an explicit false is deleted, never handed over.
-    if (opts?.internetAccess === false && created.internetAccess !== false) {
+    // An older server ignores allowedHosts: that sandbox would have no internet at all, not what was asked.
+    if (opts?.allowedHosts?.length && !Array.isArray(created.allowedHosts)) {
+      await this.killSandbox(created.sandboxId, opts).catch(() => {})
+      throw new LizardError('This server does not support allowedHosts yet; the sandbox it started was deleted')
+    }
+    if ((opts?.internetAccess === false || opts?.allowedHosts?.length) && created.internetAccess !== false) {
       await this.killSandbox(created.sandboxId, opts).catch(() => {})
       throw new LizardError("This server does not support internetAccess: false yet; the sandbox it started had internet and was deleted")
     }

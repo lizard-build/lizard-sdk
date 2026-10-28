@@ -70,6 +70,8 @@ class SandboxInfo:
     price_per_hour: float | None = None
     #: False when the sandbox was created with ``internet_access=False``; None from older servers.
     internet_access: bool | None = None
+    #: With no internet: what is still reachable (``allowed_hosts`` at create).
+    allowed_hosts: list[str] | None = None
     cpus: int | None = None
     memory_mb: int | None = None
     metadata: dict[str, str] | None = None
@@ -95,6 +97,7 @@ def _to_sandbox_info(s: dict) -> SandboxInfo:
         size=s.get("size"),
         price_per_hour=s.get("pricePerHour"),
         internet_access=s.get("internetAccess"),
+        allowed_hosts=s.get("allowedHosts"),
         cpus=s.get("cpus"),
         memory_mb=s.get("memoryMb"),
         metadata=s.get("metadata"),
@@ -200,6 +203,7 @@ class Sandbox:
         volume_name: str | None = None,
         lizard_token: str | None = None,
         internet_access: bool = True,
+        allowed_hosts: list[str] | None = None,
     ) -> "Sandbox":
         """
         Boot a new Lizard sandbox from the specified template.
@@ -259,6 +263,12 @@ class Sandbox:
             ping) and no public ports (``expose_port`` is refused); commands
             and files still work. Set at create
             only. Not available with a container volume or snapshot.
+        :param allowed_hosts: With no internet, these stay reachable: a host
+            name (``"pypi.org"``, or ``"*.pythonhosted.org"`` for its subdomains)
+            on ports 80 and 443, or an IPv4 address or range on every port.
+            Implies ``internet_access=False``. Up to 50. With a host name in the
+            list DNS (8.8.8.8) is open too so names resolve; a list of addresses
+            only keeps DNS closed.
 
         Example::
 
@@ -302,8 +312,10 @@ class Sandbox:
         if lizard_token:
             body["lizardToken"] = lizard_token
         # Sent only when asked: every other create stays what it was.
-        if internet_access is False:
+        if internet_access is False or allowed_hosts:
             body["internetAccess"] = False
+        if allowed_hosts:
+            body["allowedHosts"] = list(allowed_hosts)
 
         res = httpx.post(
             f"{config.api_url}/api/sandboxes",
@@ -328,14 +340,18 @@ class Sandbox:
         data = res.json()
         # A server that predates the option ignores it and starts a sandbox WITH internet:
         # asked for none, anything but an explicit false is deleted, never handed over.
-        if internet_access is False and data.get("internetAccess") is not False:
+        # An older server ignores allowed_hosts: that sandbox would have no internet at all.
+        unsupported = bool(allowed_hosts) and not isinstance(data.get("allowedHosts"), list)
+        if unsupported or ((internet_access is False or allowed_hosts) and data.get("internetAccess") is not False):
             try:
                 httpx.delete(f"{config.api_url}/api/sandboxes/{data['sandboxId']}",
                              headers=config.headers, timeout=HTTP_TIMEOUT_S)
             except Exception:
                 pass
             from ..errors import LizardError
-            raise LizardError("This server does not support internet_access=False yet; "
+            raise LizardError("This server does not support allowed_hosts yet; the sandbox it started was deleted"
+                              if unsupported else
+                              "This server does not support internet_access=False yet; "
                               "the sandbox it started had internet and was deleted")
         return cls(
             data["sandboxId"],
