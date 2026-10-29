@@ -92,13 +92,13 @@ export interface Subscription {
     eligible: boolean
     /** Trial length it would get, or got. */
     days: number | null
-    /** Trial credits, in cents. */
+    /** Trial usage included, in cents. */
     creditCents: number | null
     /** Promo code held for the trial, if any. */
     promoCode: string | null
     /** Trial end (ms); null when not trialing. */
     endsAt: number | null
-    /** Trial credits used (trialing only). */
+    /** Trial usage used (trialing only). */
     usedCents: number | null
     remainingCents: number | null
   }
@@ -181,7 +181,7 @@ export interface PromoRedemption {
   /** `pending_payment_method`: held for the trial Checkout starts. `applied`: applied now. */
   status: string
   code?: string
-  /** The trial credits (older servers: the credit amount). */
+  /** The trial usage (older servers: the credit amount). */
   creditCents: number
   expiresAt: number | null
   /** Kept for older clients. */
@@ -196,9 +196,9 @@ export interface PromoRedemption {
 /**
  * The account's plan, balance and usage.
  *
- * Pro costs $19/month, taxes included, with $19 of credits each month; usage above that
+ * Pro costs $19/month, taxes included, with $19 of usage each month; usage above that
  * is pay as you go, invoiced as it builds up. A new account starts with a 7-day trial
- * with $5 of credits. Enterprise is pay as you go, invoiced monthly. Old prepaid
+ * with $5 of usage. Enterprise is pay as you go, invoiced monthly. Old prepaid
  * credits accounts (`plan: 'payg'`) keep {@link balance} and {@link transactions}
  * until 1 November 2026.
  *
@@ -247,7 +247,7 @@ export class BillingAPI {
     return this.client.post('/api/billing/subscription/tier', { tier })
   }
 
-  /** Ends the trial now: charges $19 and starts the first paid month with $19 of credits. */
+  /** Ends the trial now: charges $19 and starts the first paid month with $19 of usage. */
   startProNow(): Promise<StartProNowResult> {
     return this.client.post('/api/billing/subscription/start-now', {})
   }
@@ -262,7 +262,7 @@ export class BillingAPI {
     return this.client.post('/api/billing/subscription/resume', {})
   }
 
-  /** Redeems a promo code: a longer trial with more trial credits. Works only before the first payment. */
+  /** Redeems a promo code: a longer trial with more trial usage. Works only before the first payment. */
   redeemPromo(code: string): Promise<PromoRedemption> {
     return this.client.post('/api/billing/promo/redeem', { code })
   }
