@@ -44,7 +44,7 @@ export type {
   ApiKey, CreatedApiKey, ApiKeyScope, CreateApiKeyOpts,
   Region,
   Balance, Transaction, TransactionPage, ListTransactionsOpts,
-  Plan, SubscriptionStatus, Subscription, StartCheckoutOpts, CheckoutSession, StartProNowResult, PromoRedemption,
+  Plan, SubscriptionStatus, Subscription, ProTier, ProTierOption, TierChange, StartCheckoutOpts, CheckoutSession, StartProNowResult, PromoRedemption,
   Project, CreateProjectOpts,
   Service, CreateServiceOpts, ScaleOpts, LogLine, DeployEvent,
   Addon, AddonType, CreateAddonOpts,

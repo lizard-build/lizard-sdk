@@ -20,7 +20,7 @@ export type { Region } from './regions'
 export { BillingAPI } from './billing'
 export type {
   Balance, Transaction, TransactionPage, ListTransactionsOpts,
-  Plan, SubscriptionStatus, Subscription, StartCheckoutOpts, CheckoutSession, StartProNowResult, PromoRedemption,
+  Plan, SubscriptionStatus, Subscription, ProTier, ProTierOption, TierChange, StartCheckoutOpts, CheckoutSession, StartProNowResult, PromoRedemption,
 } from './billing'
 
 export { StorageAPI } from './storage'

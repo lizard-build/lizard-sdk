@@ -430,7 +430,7 @@ except PaymentRequiredError as err:
     print(err.message, err.url, sep="\n")
 ```
 
-`LimitExceededError` has the platform's sentence as its message. `code` says which limit: `SANDBOX_LIMIT_REACHED` or `SANDBOX_RATE_LIMITED` (the account's sandbox limits; `retryAfterS` / `retry_after_s` says when to try again), `WORKSPACE_SANDBOX_LIMIT` (the workspace's own cap on running sandboxes; `limit` and `running`), or `WORKSPACE_USAGE_LIMIT` (the workspace's apps and databases use as much CPU or memory as its cap; `usage` and `limits`). See [Workspace limits](platform.md#workspace-limits).
+`LimitExceededError` has the platform's sentence as its message. `code` says which limit: `SANDBOX_LIMIT_REACHED` (the account's sandboxes running at once; `unit` says what `limit` and `running` count, `vcpu` or `sandboxes`, and in vCPU `needed` is what the refused sandbox needs), `SANDBOX_RATE_LIMITED` (the account's starts per minute, hour or day; `retryAfterS` / `retry_after_s` says when to try again), `WORKSPACE_SANDBOX_LIMIT` (the workspace's own cap on running sandboxes; `limit` and `running`), or `WORKSPACE_USAGE_LIMIT` (the workspace's apps and databases use as much CPU or memory as its cap; `usage` and `limits`). See [Workspace limits](platform.md#workspace-limits).
 
 ```ts
 try {

@@ -71,7 +71,7 @@ try {
 
 ## Account, pricing and machine size
 
-Lizard Pro costs $19 a month, taxes included, with $19 of usage each month. Unused usage does not carry over. Usage above that amount is pay as you go at the published rates. New accounts can start a 7-day trial with $5 of usage; a card is required, and nothing is charged until the trial ends. If trial usage runs out, workloads pause until Pro starts. See the current [billing and trial terms](https://lizard.build/docs/platform/billing/).
+Lizard Pro costs $19 a month, taxes included, with $19 of usage each month. Unused usage does not carry over. Usage above that amount is pay as you go at the published rates. New accounts can start a 7-day trial with $5 of usage; a card is required, and nothing is charged until the trial ends. If trial usage runs out, workloads pause until Pro starts. Pro 5x ($99 a month with $99 of usage) and Pro 20x ($499 with $499) work the same way, run more Sandboxes at once and have no trial. Sandbox limits count vCPU of running sandboxes (Small 2, Medium 4, Large 8): Pro runs up to 40 vCPU at once, Pro 5x 220 and Pro 20x 1,200; the trial runs up to 4 Small. See the current [billing and trial terms](https://lizard.build/docs/platform/billing/).
 
 Sandbox rates below were checked on October 23, 2026. See [current sizes and prices](https://lizard.build/docs/platform/limits/#sandbox-sizes) before estimating costs.
 

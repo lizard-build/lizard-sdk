@@ -128,6 +128,32 @@ class BillingPeriod:
 
 
 @dataclass
+class ProTierOption:
+    """One of Pro's tiers, as :attr:`Subscription.tiers` lists it.
+
+    ``tier``: ``"pro"`` (Pro, $19/month), ``"pro_99"`` (Pro 5x, $99) or ``"pro_499"`` (Pro 20x, $499).
+    """
+
+    tier: str
+    #: Taxes included.
+    price_cents: int = 0
+    #: Usage included each paid month, in cents.
+    included_cents: int = 0
+    #: vCPU of Sandboxes the tier runs at once.
+    sandbox_vcpu: int = 0
+    #: Only ``"pro"`` starts with a trial; the others charge their price from day one.
+    trial: bool = False
+    #: The account may buy it or move to it now.
+    available: bool = False
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "ProTierOption":
+        return cls(tier=d.get("tier", ""), price_cents=int(d.get("priceCents") or 0),
+                   included_cents=int(d.get("includedCents") or 0), sandbox_vcpu=int(d.get("sandboxVcpu") or 0),
+                   trial=bool(d.get("trial")), available=bool(d.get("available")))
+
+
+@dataclass
 class Subscription:
     """The account's plan.
 
@@ -142,11 +168,17 @@ class Subscription:
     status: str
     #: False when read for a workspace the caller does not own; card and invoice fields are then None.
     is_owner: bool = True
-    #: 1900: $19/month, taxes included.
+    #: The Pro tier (``"pro"``, ``"pro_99"``, ``"pro_499"``); None without a live subscription.
+    tier: str | None = None
+    #: A move to a lower tier that starts with the next period, or None.
+    pending_tier: str | None = None
+    #: Of the current tier, taxes included: 1900 for Pro ($19/month), 9900 for Pro 5x, 49900 for Pro 20x.
     price_cents: int = 1900
     tax_included: bool = True
-    #: Credits included each paid month, in cents.
+    #: Usage included each paid month, in cents, of the current tier.
     included_cents: int = 1900
+    #: Pro's three tiers, in order, and whether this account may have each.
+    tiers: list[ProTierOption] = field(default_factory=list)
     trial: TrialInfo = field(default_factory=TrialInfo)
     #: The current Pro period; None when there is none.
     period: BillingPeriod | None = None
@@ -160,7 +192,9 @@ class Subscription:
     open_invoice_url: str | None = None
     #: ``{"brand", "last4", "expMonth", "expYear"}``.
     payment_method: dict | None = None
-    #: Pro only: ``{"tier": "trial" | "pro", "replicasPerApp": int}``.
+    #: Pro only: ``{"tier", "replicasPerApp", "sandboxVcpu", "maxSandboxCpus"}``. ``tier`` is ``"trial"``
+    #: until the first paid invoice, then the Pro tier; ``sandboxVcpu`` is the vCPU of Sandboxes it
+    #: runs at once, ``maxSandboxCpus`` the largest sandbox, in vCPU.
     limits: dict | None = None
     #: Pro Checkout is open for this account.
     checkout_available: bool = False
@@ -171,9 +205,12 @@ class Subscription:
             plan=d.get("plan", ""),
             status=d.get("status", ""),
             is_owner=bool(d.get("isOwner", True)),
+            tier=d.get("tier"),
+            pending_tier=d.get("pendingTier"),
             price_cents=int(d.get("priceCents") or 1900),
             tax_included=bool(d.get("taxIncluded", True)),
             included_cents=int(d.get("includedCents") or 1900),
+            tiers=[ProTierOption._from_dict(t) for t in (d.get("tiers") or []) if isinstance(t, dict)],
             trial=TrialInfo._from_dict(d.get("trial") or {}),
             period=BillingPeriod._from_dict(d["period"]) if d.get("period") else None,
             next_charge=d.get("nextCharge"),
@@ -199,6 +236,28 @@ class CheckoutSession:
     def _from_dict(cls, d: dict) -> "CheckoutSession":
         return cls(url=d.get("url", ""), session_id=d.get("sessionId", ""),
                    trial_days=d.get("trialDays"), trial_credit_cents=d.get("trialCreditCents"))
+
+
+@dataclass
+class TierChange:
+    """What :meth:`BillingAPI.change_tier` did.
+
+    ``status``: ``"upgraded"`` (charged the prorated difference now; the new limits apply at
+    once), ``"scheduled"`` (the move down starts with the next period, ``effective_at``),
+    ``"unchanged"`` (already on that tier; a pending move down is cancelled) or
+    ``"requires_action"`` (the bank wants a confirmation, or declined: open ``invoice_url``).
+    """
+
+    status: str
+    tier: str = ""
+    pending_tier: str | None = None
+    effective_at: int | None = None
+    invoice_url: str | None = None
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "TierChange":
+        return cls(status=d.get("status", ""), tier=d.get("tier", ""), pending_tier=d.get("pendingTier"),
+                   effective_at=d.get("effectiveAt"), invoice_url=d.get("invoiceUrl"))
 
 
 @dataclass
@@ -282,12 +341,27 @@ class BillingAPI:
         from .client import query
         return Subscription._from_dict(self._client.get(query("/api/billing/subscription", workspaceId=workspace_id)))
 
-    def start_checkout(self, *, return_url: str | None = None) -> CheckoutSession:
+    def start_checkout(self, *, return_url: str | None = None, tier: str | None = None) -> CheckoutSession:
         """Open Stripe Checkout for Pro: the trial when the account can have one,
         otherwise Pro at once ($19 today). Returns the page for the user to finish;
-        a second call while it is open returns the same session."""
-        body = {"returnUrl": return_url} if return_url is not None else {}
+        a second call while it is open returns the same session.
+
+        ``tier``: ``"pro"`` (default), ``"pro_99"`` (Pro 5x) or ``"pro_499"`` (Pro 20x). Pro 5x
+        and Pro 20x have no trial and charge their price today."""
+        body: dict = {"returnUrl": return_url} if return_url is not None else {}
+        if tier is not None:
+            body["tier"] = tier
         return CheckoutSession._from_dict(self._client.post("/api/billing/subscription/checkout", body))
+
+    def change_tier(self, tier: str) -> TierChange:
+        """Move a paid Pro subscription to another tier: ``"pro"``, ``"pro_99"`` (Pro 5x) or ``"pro_499"`` (Pro 20x).
+
+        Up: Stripe charges the prorated difference now, this month's included usage rises by
+        that charge, and the new limits apply at once. Down: nothing is charged; the move
+        starts with the next period. The current tier cancels a pending move down. Refused
+        during the trial (409 ``TRIAL_ACTIVE``): call :meth:`start_pro_now` first.
+        """
+        return TierChange._from_dict(self._client.post("/api/billing/subscription/tier", {"tier": tier}))
 
     def start_pro_now(self) -> StartProNowResult:
         """End the trial now: charge $19 and start the first paid month with $19 of credits."""

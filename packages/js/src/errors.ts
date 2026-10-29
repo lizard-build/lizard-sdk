@@ -96,8 +96,11 @@ export class PaymentRequiredError extends LizardError {
 
 /**
  * A limit was reached (HTTP 429). {@link LizardError.code} says which:
- * - `SANDBOX_LIMIT_REACHED` / `SANDBOX_RATE_LIMITED`: the account's sandbox limits (running at
- *   once, starts per minute/hour/day); {@link retryAfterS} says when to try again.
+ * - `SANDBOX_LIMIT_REACHED`: the account's limit on sandboxes running at once. {@link unit}
+ *   says what {@link limit} and {@link running} count: `vcpu` (Small 2, Medium 4, Large 8)
+ *   or `sandboxes`; in vCPU, {@link needed} is what the refused sandbox needs.
+ * - `SANDBOX_RATE_LIMITED`: the account's starts per minute, hour or day;
+ *   {@link retryAfterS} says when to try again.
  * - `WORKSPACE_SANDBOX_LIMIT`: the workspace's own cap on running sandboxes
  *   (`workspaces.setLimits`).
  * - `WORKSPACE_USAGE_LIMIT`: the workspace's apps and databases use as much CPU or memory as its
@@ -105,10 +108,16 @@ export class PaymentRequiredError extends LizardError {
  * Still a {@link LizardError}, so existing `catch` blocks keep working.
  */
 export class LimitExceededError extends LizardError {
-  /** The limit that was reached (sandbox counts). */
+  /** The limit that was reached, in {@link unit} (`WORKSPACE_SANDBOX_LIMIT`: sandboxes). */
   limit?: number
-  /** How many were running when it was refused. */
+  /** In use when it was refused, in {@link unit} (`WORKSPACE_SANDBOX_LIMIT`: sandboxes). */
   running?: number
+  /** `SANDBOX_LIMIT_REACHED`: `vcpu` when the account's limit counts vCPU of running sandboxes, `sandboxes` when it counts sandboxes. */
+  unit?: 'vcpu' | 'sandboxes'
+  /** `SANDBOX_LIMIT_REACHED` in vCPU: the vCPU the refused sandbox needs. */
+  needed?: number
+  /** `SANDBOX_LIMIT_REACHED` / `SANDBOX_RATE_LIMITED`: the account's limits tier (`trial`, `pro`, `pro_99`, `pro_499`). Missing for scoped keys. */
+  tier?: string
   /** Seconds until a rate limit lets the next start through. */
   retryAfterS?: number
   /** `WORKSPACE_USAGE_LIMIT`: the workspace's current use. */
@@ -160,6 +169,9 @@ export async function handleApiError(res: Response): Promise<never> {
     const n = (key: string) => typeof body[key] === 'number' ? body[key] as number : undefined
     limited.limit = n('limit')
     limited.running = n('running')
+    if (body.unit === 'vcpu' || body.unit === 'sandboxes') limited.unit = body.unit
+    limited.needed = n('needed')
+    limited.tier = text('tier')
     const retry = n('retryAfterS') ?? (Number(res.headers?.get?.('retry-after')) || undefined)
     limited.retryAfterS = retry
     if (body.usage && typeof body.usage === 'object') limited.usage = body.usage as LimitExceededError['usage']

@@ -49,6 +49,24 @@ export interface ListTransactionsOpts {
  */
 export type Plan = 'none' | 'pro' | 'payg' | 'enterprise'
 
+/** Pro's tiers: `pro` (Pro, $19/month), `pro_99` (Pro 5x, $99) and `pro_499` (Pro 20x, $499). */
+export type ProTier = 'pro' | 'pro_99' | 'pro_499'
+
+/** One of Pro's tiers, as {@link Subscription.tiers} lists it. */
+export interface ProTierOption {
+  tier: ProTier | (string & {})
+  /** Taxes included. */
+  priceCents: number
+  /** Usage included each paid month, in cents. */
+  includedCents: number
+  /** vCPU of Sandboxes the tier runs at once. */
+  sandboxVcpu: number
+  /** Only `pro` starts with a trial; the others charge their price from day one. */
+  trial: boolean
+  /** The account may buy it or move to it now. */
+  available: boolean
+}
+
 /** Pro subscription status; `none` when there is no subscription. */
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'none'
 
@@ -57,12 +75,18 @@ export interface Subscription {
   status: SubscriptionStatus | (string & {})
   /** False when read for a workspace the caller does not own; card and invoice fields are then null. */
   isOwner: boolean
-  /** 1900: $19/month. */
+  /** The Pro tier; null without a live subscription. */
+  tier: ProTier | (string & {}) | null
+  /** A move to a lower tier that starts with the next period, or null. */
+  pendingTier: ProTier | (string & {}) | null
+  /** Of the current tier: 1900 for Pro ($19/month), 9900 for Pro 5x, 49900 for Pro 20x. */
   priceCents: number
   /** The price includes taxes. */
   taxIncluded: boolean
-  /** Credits included each paid month, in cents (1900). */
+  /** Usage included each paid month, in cents, of the current tier. */
   includedCents: number
+  /** Pro's three tiers, in order, and whether this account may have each. */
+  tiers: ProTierOption[]
   trial: {
     /** The account can start a trial now. */
     eligible: boolean
@@ -103,8 +127,11 @@ export interface Subscription {
   /** Stripe page that pays it (owner only). */
   openInvoiceUrl: string | null
   paymentMethod: { brand: string; last4: string; expMonth: number; expYear: number } | null
-  /** Pro only: `tier` is `trial` or `pro`. */
-  limits: { tier: string; replicasPerApp: number } | null
+  /**
+   * Pro only. `tier`: `trial` until the first paid invoice, then the Pro tier.
+   * `sandboxVcpu`: vCPU of Sandboxes it runs at once; `maxSandboxCpus`: the largest sandbox, in vCPU.
+   */
+  limits: { tier: string; replicasPerApp: number; sandboxVcpu?: number; maxSandboxCpus?: number } | null
   /** Pro Checkout is open for this account. */
   checkoutAvailable: boolean
 }
@@ -112,6 +139,23 @@ export interface Subscription {
 export interface StartCheckoutOpts {
   /** Dashboard path to come back to after Checkout, e.g. `/projects/abc`. */
   returnUrl?: string
+  /** Default `pro`. `pro_99` and `pro_499` have no trial and charge their price today. */
+  tier?: ProTier
+}
+
+/** What {@link BillingAPI.changeTier} did. */
+export interface TierChange {
+  /**
+   * `upgraded`: charged the prorated difference now; the new limits apply at once.
+   * `scheduled`: the move down starts with the next period ({@link effectiveAt}).
+   * `unchanged`: already on that tier (a pending move down is cancelled).
+   * `requires_action`: the bank wants a confirmation, or declined; open {@link invoiceUrl}.
+   */
+  status: 'upgraded' | 'scheduled' | 'unchanged' | 'requires_action' | (string & {})
+  tier: ProTier | (string & {})
+  pendingTier: ProTier | (string & {}) | null
+  effectiveAt: number | null
+  invoiceUrl: string | null
 }
 
 export interface CheckoutSession {
@@ -185,11 +229,22 @@ export class BillingAPI {
 
   /**
    * Opens Stripe Checkout for Pro: the trial when the account can have one, otherwise
-   * Pro at once ($19 today). Returns the page for the user to finish; a second call
+   * Pro at once ($19 today). With `tier`, Pro 5x or Pro 20x, charged today. Returns the page for the user to finish; a second call
    * while it is open returns the same session.
    */
   startCheckout(opts: StartCheckoutOpts = {}): Promise<CheckoutSession> {
-    return this.client.post('/api/billing/subscription/checkout', { returnUrl: opts.returnUrl })
+    return this.client.post('/api/billing/subscription/checkout', { returnUrl: opts.returnUrl, tier: opts.tier })
+  }
+
+  /**
+   * Moves a paid Pro subscription to another tier. Up: Stripe charges the prorated
+   * difference now, this month's included usage rises by that charge, and the new limits
+   * apply at once. Down: nothing is charged; the move starts with the next period. The
+   * current tier cancels a pending move down. Refused during the trial (409 `TRIAL_ACTIVE`):
+   * call {@link startProNow} first.
+   */
+  changeTier(tier: ProTier): Promise<TierChange> {
+    return this.client.post('/api/billing/subscription/tier', { tier })
   }
 
   /** Ends the trial now: charges $19 and starts the first paid month with $19 of credits. */

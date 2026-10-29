@@ -1,8 +1,8 @@
 from .addons import Addon, AddonsAPI, AddonType
 from .api_keys import ApiKey, ApiKeyScope, ApiKeysAPI
 from .billing import (
-    Balance, BillingAPI, BillingPeriod, CheckoutSession, PromoRedemption, StartProNowResult,
-    Subscription, Transaction, TransactionPage, TrialInfo,
+    Balance, BillingAPI, BillingPeriod, CheckoutSession, PromoRedemption, ProTierOption, StartProNowResult,
+    Subscription, TierChange, Transaction, TransactionPage, TrialInfo,
 )
 from .client import PlatformClient
 from .domains import DomainInfo, DomainsAPI
@@ -17,7 +17,8 @@ __all__ = [
     "Addon", "AddonsAPI", "AddonType",
     "ApiKey", "ApiKeyScope", "ApiKeysAPI",
     "Balance", "BillingAPI", "Transaction", "TransactionPage",
-    "BillingPeriod", "CheckoutSession", "PromoRedemption", "StartProNowResult", "Subscription", "TrialInfo",
+    "BillingPeriod", "CheckoutSession", "PromoRedemption", "ProTierOption", "StartProNowResult", "Subscription",
+    "TierChange", "TrialInfo",
     "Region", "RegionsAPI",
     "ResalePricing", "Workspace", "WorkspaceLimits", "WorkspacesAPI",
     "CostMetrics", "MetricPoint", "MetricsAPI", "ServiceMetrics",

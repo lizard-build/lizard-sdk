@@ -120,7 +120,7 @@ Billing belongs to the account, across all its workspaces. Scoped keys cannot ac
 
 ## Billing
 
-Pro costs $19/month, taxes included, with $19 of credits each month for everything on the account. Usage above that is pay as you go, invoiced as it builds up. A new account starts with a 7-day trial with $5 of credits; Checkout asks for a card and charges nothing until the trial ends. Promo codes give a longer trial with more trial credits and work only before the first payment. Enterprise accounts pay as you go, invoiced monthly. Accounts on the old prepaid credits (`plan: "payg"`) keep `balance()` and `transactions()` until November 1, 2026. There are no top-ups and no crypto or x402 payments.
+Pro costs $19/month, taxes included, with $19 of usage included each month for everything on the account. Usage above that is pay as you go, invoiced as it builds up. Pro 5x ($99/month, $99 included) and Pro 20x ($499/month, $499 included) work the same way and run more Sandboxes at once: 40 vCPU on Pro, 220 on Pro 5x, 1,200 on Pro 20x. A new account starts with a 7-day trial with $5 of usage; Checkout asks for a card and charges nothing until the trial ends. Only Pro has the trial: Pro 5x and Pro 20x charge their price from day one. Promo codes give a longer trial with more trial usage and work only before the first payment. Enterprise accounts pay as you go, invoiced monthly. Accounts on the old prepaid credits (`plan: "payg"`) keep `balance()` and `transactions()` until November 1, 2026. There are no top-ups and no crypto or x402 payments.
 
 ```ts
 const sub = await lizard.billing.subscription()
@@ -143,8 +143,9 @@ elif sub.period:
 
 | TypeScript | Python | What it does |
 | --- | --- | --- |
-| `subscription({ workspaceId? })` | `subscription(workspace_id=None)` | Plan, trial days and credits left, this month's credits and overage, next charge, cancel date, unpaid invoice |
-| `startCheckout({ returnUrl? })` | `start_checkout(return_url=None)` | Stripe Checkout URL for the trial, or for Pro at once when the trial was used |
+| `subscription({ workspaceId? })` | `subscription(workspace_id=None)` | Plan and tier (`tier`, `pendingTier`, `tiers`), trial days and usage left, this month's included usage and overage, next charge, cancel date, unpaid invoice |
+| `startCheckout({ returnUrl?, tier? })` | `start_checkout(return_url=None, tier=None)` | Stripe Checkout URL for the trial, or for Pro at once when the trial was used. `tier: 'pro_99'` (Pro 5x) or `'pro_499'` (Pro 20x) charges that price today |
+| `changeTier(tier)` | `change_tier(tier)` | Move a paid subscription to `pro`, `pro_99` or `pro_499`. Up: charged now, prorated, and the new limits apply at once (`upgraded`). Down: starts with the next period (`scheduled`, `pendingTier`). The current tier cancels a pending move down |
 | `startProNow()` | `start_pro_now()` | End the trial: charge $19 now and start the first paid month. `requires_action` returns an invoice page to open |
 | `cancel()` | `cancel()` | Cancel at the end of the month or trial; returns when it ends |
 | `resume()` | `resume()` | Undo a cancel |
@@ -152,7 +153,7 @@ elif sub.period:
 | `balance()`, `transactions()` | `balance()`, `transactions()` | Prepaid credits and enterprise accounts |
 | `paymentMethods()`, `removePaymentMethod(id)` | `payment_methods()`, `remove_payment_method(id)` | Saved cards; add a card in Checkout or on the Billing page |
 
-Checkout and invoices are web pages: the user finishes them in a browser. `startProNow`, `cancel` and `resume` change what the account pays, so call them only on the account owner's request. Nothing in the SDK retries a payment.
+Checkout and invoices are web pages: the user finishes them in a browser. `startProNow`, `changeTier`, `cancel` and `resume` change what the account pays, so call them only on the account owner's request. Nothing in the SDK retries a payment.
 
 When the account has to pay before it can create something, the call raises `PaymentRequiredError` (HTTP 402) with the platform's sentence and the page to open next; see [Errors](sandboxes.md#errors).
 
