@@ -19,7 +19,7 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 | `git connect`, `git checkout`, `git status` (outside a working copy) | `github.status/installUrl/checkout` |
 | `git` (Lizard Git) | `git.repos/issues/pulls/actions/environments/collaborators/webhooks/branchRules/labels/releases/statuses/notifications/tokens`, `git.me`; working copies (`git clone`, `init`, `status`, `diff`, `commit`, `push`, `uncommit`, `sync`, `switch`, `sparse`, `pr checkout`) are CLI-only |
 | `s3` | `storage.list/upload`; `s3 url` signs the link in the CLI and has no SDK method |
-| `billing` (formerly `credits`) | `billing.subscription/startCheckout/startProNow/cancel/resume/redeemPromo/balance/transactions/summary/live/paymentMethods/removePaymentMethod` |
+| `billing` (formerly `credits`) | `billing.subscription/startCheckout/startProNow/changeTier/cancel/resume/redeemPromo/balance/transactions/summary/live/paymentMethods/removePaymentMethod` |
 | `sandbox` | `Sandbox.create/connect/list/restore/snapshots/mySnapshots/setSnapshotScope/deleteSnapshot`; instance `kill/pause/resume/setTimeout/getInfo/getHost/exposePort/unexpose/fork/snapshot/logs`, `fs.*`, `process.*` |
 | `volume` | `Volume.*`, project-bound `client.volumes.*`, `projects.volumeLimits` |
 | `workspace`, `keys`, `regions`, `whoami` | `workspaces.*`, `apiKeys.*`, `regions.list`, `whoami` |

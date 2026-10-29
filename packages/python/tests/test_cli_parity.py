@@ -244,6 +244,37 @@ def test_checkout_start_now_cancel_resume(calls):
     ]
 
 
+def test_checkout_for_a_tier_and_change_tier(calls):
+    seed(calls,
+         {"url": "https://checkout.test/cs_2", "sessionId": "cs_2", "trialDays": None, "trialCreditCents": None},
+         {"status": "upgraded", "tier": "pro_99", "pendingTier": None, "effectiveAt": 1791200000000, "invoiceUrl": None},
+         {"status": "scheduled", "tier": "pro_99", "pendingTier": "pro", "effectiveAt": 1791800000000, "invoiceUrl": None})
+    billing = lz.Lizard(**KW).billing
+    assert billing.start_checkout(tier="pro_99").session_id == "cs_2"
+    up = billing.change_tier("pro_99")
+    assert isinstance(up, lz.TierChange) and (up.status, up.tier, up.pending_tier) == ("upgraded", "pro_99", None)
+    down = billing.change_tier("pro")
+    assert (down.status, down.pending_tier, down.effective_at) == ("scheduled", "pro", 1791800000000)
+    assert [(c["method"], c["url"], c["body"]) for c in calls] == [
+        ("POST", "/api/billing/subscription/checkout", {"tier": "pro_99"}),
+        ("POST", "/api/billing/subscription/tier", {"tier": "pro_99"}),
+        ("POST", "/api/billing/subscription/tier", {"tier": "pro"}),
+    ]
+
+
+def test_subscription_reads_the_tiers(calls):
+    seed(calls, {"plan": "pro", "status": "active", "tier": "pro_499", "pendingTier": "pro_99", "priceCents": 49900,
+                 "includedCents": 49900, "tiers": [
+                     {"tier": "pro", "priceCents": 1900, "includedCents": 1900, "sandboxVcpu": 40, "trial": True, "available": True},
+                     {"tier": "pro_99", "priceCents": 9900, "includedCents": 9900, "sandboxVcpu": 220, "trial": False, "available": True},
+                     {"tier": "pro_499", "priceCents": 49900, "includedCents": 49900, "sandboxVcpu": 1200, "trial": False, "available": True}],
+                 "limits": {"tier": "pro_499", "replicasPerApp": 5, "sandboxVcpu": 1200, "maxSandboxCpus": 8}})
+    sub = lz.Lizard(**KW).billing.subscription()
+    assert (sub.tier, sub.pending_tier, sub.price_cents) == ("pro_499", "pro_99", 49900)
+    assert [(t.tier, t.sandbox_vcpu, t.trial) for t in sub.tiers] == [("pro", 40, True), ("pro_99", 220, False), ("pro_499", 1200, False)]
+    assert sub.limits["sandboxVcpu"] == 1200
+
+
 def test_promo_returns_the_trial(calls):
     seed(calls, {"status": "pending_payment_method", "code": "ROST", "creditCents": 10000, "expiresAt": None,
                  "balanceCents": 0, "trialDays": 31, "trialCreditCents": 10000, "appliesTo": "next_checkout"})
@@ -359,6 +390,12 @@ def test_429_is_limit_exceeded_with_the_usage(calls):
     with pytest.raises(lz.LimitExceededError) as ei:
         lz.Lizard(**KW).regions.list()
     assert (ei.value.code, ei.value.retry_after_s) == ("SANDBOX_RATE_LIMITED", 40)
+    seed(calls, ({"error": "Your plan runs up to 40 vCPU of Sandboxes at once. 38 are in use and this sandbox needs 4.",
+                  "code": "SANDBOX_LIMIT_REACHED", "tier": "pro", "unit": "vcpu", "limit": 40, "running": 38, "needed": 4}, 429))
+    with pytest.raises(lz.LimitExceededError) as ei:
+        lz.Lizard(**KW).regions.list()
+    e = ei.value
+    assert (e.code, e.unit, e.limit, e.running, e.needed, e.tier) == ("SANDBOX_LIMIT_REACHED", "vcpu", 40, 38, 4, "pro")
 
 
 def test_402_is_payment_required_with_the_links(calls):

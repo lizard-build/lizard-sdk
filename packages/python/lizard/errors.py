@@ -93,8 +93,11 @@ class PaymentRequiredError(LizardError):
 class LimitExceededError(LizardError):
     """A limit was reached (HTTP 429). ``code`` says which:
 
-    ``SANDBOX_LIMIT_REACHED`` / ``SANDBOX_RATE_LIMITED``: the account's sandbox limits
-    (running at once, starts per minute/hour/day); ``retry_after_s`` says when to try again.
+    ``SANDBOX_LIMIT_REACHED``: the account's limit on sandboxes running at once. ``unit`` says
+    what ``limit`` and ``running`` count: ``"vcpu"`` (Small 2, Medium 4, Large 8) or
+    ``"sandboxes"``; in vCPU, ``needed`` is what the refused sandbox needs.
+    ``SANDBOX_RATE_LIMITED``: the account's starts per minute, hour or day;
+    ``retry_after_s`` says when to try again.
     ``WORKSPACE_SANDBOX_LIMIT``: the workspace's own cap on running sandboxes
     (``workspaces.set_limits``). ``WORKSPACE_USAGE_LIMIT``: the workspace's apps and
     databases use as much CPU or memory as its cap; ``usage`` and ``limits`` carry both
@@ -102,11 +105,18 @@ class LimitExceededError(LizardError):
     """
 
     def __init__(self, message: str = "Limit reached", *, limit: int | None = None, running: int | None = None,
-                 retry_after_s: int | None = None, usage: dict | None = None, limits: dict | None = None) -> None:
+                 retry_after_s: int | None = None, usage: dict | None = None, limits: dict | None = None,
+                 unit: str | None = None, needed: int | None = None, tier: str | None = None) -> None:
         super().__init__(message)
         self.message = message
         self.limit = limit
         self.running = running
+        #: ``SANDBOX_LIMIT_REACHED``: ``"vcpu"`` or ``"sandboxes"``, what ``limit`` and ``running`` count.
+        self.unit = unit
+        #: ``SANDBOX_LIMIT_REACHED`` in vCPU: the vCPU the refused sandbox needs.
+        self.needed = needed
+        #: The account's limits tier (``"trial"``, ``"pro"``, ``"pro_99"``, ``"pro_499"``); None for scoped keys.
+        self.tier = tier
         self.retry_after_s = retry_after_s
         self.usage = usage
         self.limits = limits
@@ -166,6 +176,9 @@ def handle_api_error(status_code: int, message: str, *, code: str | None = None)
             message, limit=num("limit"), running=num("running"), retry_after_s=num("retryAfterS"),
             usage=body.get("usage") if isinstance(body.get("usage"), dict) else None,
             limits=body.get("limits") if isinstance(body.get("limits"), dict) else None,
+            unit=body.get("unit") if body.get("unit") in ("vcpu", "sandboxes") else None,
+            needed=num("needed"),
+            tier=body.get("tier") if isinstance(body.get("tier"), str) else None,
         )
     else:
         err = LizardError(f"API error {status_code}: {message}")

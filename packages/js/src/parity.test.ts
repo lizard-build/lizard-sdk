@@ -179,6 +179,23 @@ describe('provisioning surfaces', () => {
     ])
   })
 
+  it('opens Checkout for a tier and moves a subscription between tiers', async () => {
+    const calls = stubFetch([
+      { body: { url: 'https://checkout.test/cs_2', sessionId: 'cs_2', trialDays: null, trialCreditCents: null } },
+      { body: { status: 'upgraded', tier: 'pro_99', pendingTier: null, effectiveAt: 1791200000000, invoiceUrl: null } },
+      { body: { status: 'scheduled', tier: 'pro_99', pendingTier: 'pro', effectiveAt: 1791800000000, invoiceUrl: null } },
+    ])
+    const billing = new Lizard(opts).billing
+    expect((await billing.startCheckout({ tier: 'pro_99' })).sessionId).toBe('cs_2')
+    expect((await billing.changeTier('pro_99')).status).toBe('upgraded')
+    expect((await billing.changeTier('pro')).pendingTier).toBe('pro')
+    expect(calls.map((c) => [c.method, c.url.slice(API.length), c.body])).toEqual([
+      ['POST', '/api/billing/subscription/checkout', { tier: 'pro_99' }],
+      ['POST', '/api/billing/subscription/tier', { tier: 'pro_99' }],
+      ['POST', '/api/billing/subscription/tier', { tier: 'pro' }],
+    ])
+  })
+
   it('returns the trial a promo code gives', async () => {
     stubFetch([{ body: { status: 'applied', code: 'ROST', creditCents: 10000, expiresAt: 1, balanceCents: 0, trialDays: 31, trialCreditCents: 10000, appliesTo: 'current_trial' } }])
     const out = await new Lizard(opts).billing.redeemPromo('ROST')
@@ -299,6 +316,10 @@ describe('payment required (HTTP 402)', () => {
     stubFetch([{ status: 429, body: { error: 'This workspace can run 2 sandboxes at once.', code: 'WORKSPACE_SANDBOX_LIMIT', limit: 2, running: 2 } }])
     const err2 = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
     expect([err2.code, err2.limit, err2.running]).toEqual(['WORKSPACE_SANDBOX_LIMIT', 2, 2])
+    stubFetch([{ status: 429, body: { error: 'Your plan runs up to 40 vCPU of Sandboxes at once. 38 are in use and this sandbox needs 4.', code: 'SANDBOX_LIMIT_REACHED', tier: 'pro', unit: 'vcpu', limit: 40, running: 38, needed: 4 } }])
+    const err3 = await new Lizard(opts).projects.create({ workspaceId: 'w1', name: 'x' }).catch((e) => e)
+    expect([err3.code, err3.unit, err3.limit, err3.running, err3.needed, err3.tier]).toEqual(['SANDBOX_LIMIT_REACHED', 'vcpu', 40, 38, 4, 'pro'])
+    expect(err3.message).toContain('40 vCPU')
   })
 
   it('raises PaymentRequiredError with the sentence, the code and the links', async () => {
