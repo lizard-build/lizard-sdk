@@ -43,8 +43,8 @@ class TimeoutError(LizardError):
 class PaymentRequiredError(LizardError):
     """The account has to pay before it can do this (HTTP 402).
 
-    Every create call answers 402 when the account has no plan yet, its trial credits
-    are used up, or an invoice is unpaid. Show :attr:`message` to the user as is and
+    Every create call answers 402 when the account has no plan yet, its trial usage
+    has run out, or an invoice is unpaid. Show :attr:`message` to the user as is and
     send them to :attr:`url`. Still a :class:`LizardError`, so existing ``except``
     blocks keep working.
 

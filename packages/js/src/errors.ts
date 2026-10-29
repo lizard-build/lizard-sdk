@@ -56,7 +56,7 @@ export class TimeoutError extends LizardError {
 
 /**
  * The account has to pay before it can do this (HTTP 402). Every create call answers
- * 402 when the account has no plan yet, its trial credits are used up, or an invoice
+ * 402 when the account has no plan yet, its trial usage has run out, or an invoice
  * is unpaid. Show {@link message} to the user as is and send them to {@link url}.
  *
  * Still a {@link LizardError}, so existing `catch` blocks keep working.

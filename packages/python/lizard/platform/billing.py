@@ -72,13 +72,13 @@ class TrialInfo:
     eligible: bool = False
     #: Trial length it would get, or got.
     days: int | None = None
-    #: Trial credits, in cents.
+    #: Trial usage included, in cents.
     credit_cents: int | None = None
     #: Promo code held for the trial, if any.
     promo_code: str | None = None
     #: Trial end (ms); None when not trialing.
     ends_at: int | None = None
-    #: Trial credits used (trialing only).
+    #: Trial usage used (trialing only).
     used_cents: int | None = None
     remaining_cents: int | None = None
 
@@ -278,7 +278,7 @@ class StartProNowResult:
 class PromoRedemption:
     #: ``"pending_payment_method"``: held for the trial Checkout starts. ``"applied"``: applied now.
     status: str
-    #: The trial credits (older servers: the credit amount).
+    #: The trial usage (older servers: the credit amount).
     credit_cents: int = 0
     code: str | None = None
     expires_at: int | None = None
@@ -309,9 +309,9 @@ class BillingAPI:
     """
     The account's plan, balance and usage.
 
-    Pro costs $19/month, taxes included, with $19 of credits each month; usage above
+    Pro costs $19/month, taxes included, with $19 of usage each month; usage above
     that is pay as you go, invoiced as it builds up. A new account starts with a
-    7-day trial with $5 of credits. Enterprise is pay as you go, invoiced monthly. Old
+    7-day trial with $5 of usage. Enterprise is pay as you go, invoiced monthly. Old
     prepaid credits accounts (``plan == "payg"``) keep :meth:`balance` and
     :meth:`transactions` until 1 November 2026.
 
@@ -364,7 +364,7 @@ class BillingAPI:
         return TierChange._from_dict(self._client.post("/api/billing/subscription/tier", {"tier": tier}))
 
     def start_pro_now(self) -> StartProNowResult:
-        """End the trial now: charge $19 and start the first paid month with $19 of credits."""
+        """End the trial now: charge $19 and start the first paid month with $19 of usage."""
         return StartProNowResult._from_dict(self._client.post("/api/billing/subscription/start-now", {}))
 
     def cancel(self) -> int | None:
@@ -379,7 +379,7 @@ class BillingAPI:
         self._client.post("/api/billing/subscription/resume", {})
 
     def redeem_promo(self, code: str) -> PromoRedemption:
-        """Redeem a promo code: a longer trial with more trial credits.
+        """Redeem a promo code: a longer trial with more trial usage.
 
         Works only before the first payment.
         """
