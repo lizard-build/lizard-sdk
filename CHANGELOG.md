@@ -6,6 +6,7 @@ From 1.0.0 the SDK follows [semantic versioning](https://semver.org): a change t
 
 ## Unreleased
 
+- Docs: sandbox start limits per tier (per day 100 on the trial, 400 on Pro, 1,000 on Pro 5x, 3,000 on Pro 20x; per minute and per hour too). No code change.
 - Pro has three tiers: Pro ($19/month), Pro 5x ($99) and Pro 20x ($499). `billing.subscription()` returns `tier`, `pendingTier` and `tiers` (Python: `tier`, `pending_tier`, `tiers` as `ProTierOption`). `billing.startCheckout({ tier })` opens Checkout for Pro 5x or Pro 20x, and the new `billing.changeTier(tier)` / `change_tier(tier)` moves a paid subscription between tiers. Moving up is charged now, prorated. Moving down starts with the next period.
 - Account sandbox limits count vCPU of running sandboxes (Small 2, Medium 4, Large 8). On `SANDBOX_LIMIT_REACHED`, `LimitExceededError` now has `unit` (`vcpu` or `sandboxes`), `needed` (the vCPU the refused sandbox needs) and `tier`. `limit` and `running` are in `unit`, so in vCPU they count vCPU, not sandboxes.
 - `Sandbox.create()` with no `region`, volume or snapshot now asks for `us-east-1`. It used to leave the choice to the platform, which also picked `us-east-1`. With a volume or snapshot, the sandbox still starts in their region. If new sandboxes in `us-east-1` are paused (503 `region_unavailable`), the SDK asks once more without a region and the platform picks an open one. A `region` you pass is never swapped for another.
