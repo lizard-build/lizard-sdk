@@ -248,7 +248,7 @@ These operations keep **memory and running processes**, as well as files.
 
 | Operation | TypeScript | Python | Notes |
 | --- | --- | --- | --- |
-| Pause / resume | `pause()`, `resume()`, `waitForStatus(s)` | `pause()`, `resume()`, `wait_for_status(s)` | Same ID; processes continue where they stopped |
+| Pause / resume | `pause()`, `pause({ full: true })`, `resume()`, `waitForStatus(s)` | `pause()`, `pause(full=True)`, `resume()`, `wait_for_status(s)` | Same ID and files. Default pause: files only (~1 s), resume boots fresh. `full`: memory and processes too, they continue where they stopped |
 | Snapshot | `snapshot(name)` | `snapshot(name)` | `ready` when the call returns (about 2 s); the source keeps running |
 | Restore | `Sandbox.restore(snapshotId)` | `Sandbox.restore(snapshot_id)` | A new sandbox from the snapshot in about 0.4 s; restore as often as you like |
 | Fork | `fork({ count })` | `fork(count=...)` | 1–100 live copies of a running sandbox, within the account's running-sandbox limit; the source keeps running |
@@ -259,7 +259,7 @@ let snapshotId: string | undefined
 const copies: Sandbox[] = []
 try {
   await source.process.exec("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
-  await source.pause()
+  await source.pause({ full: true })            // keep the running counter, not only files
   await source.waitForStatus('paused')
   await source.resume()
   await source.waitForStatus('running')          // the counter keeps counting
@@ -285,7 +285,7 @@ saved = None
 copies = []
 try:
     source.process.exec_("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
-    source.pause()
+    source.pause(full=True)                     # keep the running counter, not only files
     source.wait_for_status("paused")
     source.resume()
     source.wait_for_status("running")          # the counter keeps counting

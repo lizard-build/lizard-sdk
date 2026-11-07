@@ -214,13 +214,16 @@ export class SandboxClient {
     return true
   }
 
-  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { fast?: boolean; memory?: boolean }): Promise<boolean> {
+  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { fast?: boolean; full?: boolean; memory?: boolean }): Promise<boolean> {
+    if (opts?.fast === true && opts?.full === true) throw new Error('pause: use either fast or full, not both')
     const config = new ConnectionConfig(opts)
+    // Sent as memory:true/false, which every server accepts (older ones do not know "full").
+    // No choice sends no body: the platform's default applies (files only).
+    const memory = opts?.full === true ? true : opts?.fast === true ? false : opts?.memory
     const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
       method: 'POST',
-      // Sent as memory:false, which every server that has fast pause accepts.
-      ...(opts?.fast === true || opts?.memory === false
-        ? { headers: { ...config.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ memory: false }) }
+      ...(memory !== undefined
+        ? { headers: { ...config.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ memory }) }
         : { headers: config.headers }),
     })
     if (res.status === 404) return false

@@ -430,18 +430,24 @@ class Sandbox:
             handle_api_error(res.status_code, res.text)
         return True
 
-    def pause(self, fast: bool = False, memory: bool = True) -> bool:
-        """Pause the sandbox: its memory, running processes and files are kept and
-        compute stops. Wait with ``wait_for_status("paused")`` before resuming.
-        ``fast=True`` keeps files only: about a second whatever the RAM, but
-        processes end and the resume boots the sandbox fresh (``memory=False`` is
-        the same)."""
+    def pause(self, fast: bool = False, full: bool = False, memory: bool | None = None) -> bool:
+        """Pause the sandbox: compute stops and its files are kept. Wait with
+        ``wait_for_status("paused")`` before resuming. By default (the platform's)
+        the pause keeps files only: about a second whatever the RAM, running
+        processes end and the resume boots the sandbox fresh. ``full=True`` also
+        keeps memory and running processes (slower the more RAM is in use), so the
+        resume picks up exactly where it stopped. ``fast=True`` asks for files only
+        explicitly; ``memory=True``/``False`` is the same as ``full``/``fast``."""
+        if fast and full:
+            raise ValueError("pause: use either fast or full, not both")
+        # Sent as memory: true/false, which every server accepts (older ones lack "full").
+        keep = True if full else False if fast else memory
         import httpx
 
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/pause",
             headers=self._config.headers,
-            json={"memory": False} if fast or not memory else None,
+            json={"memory": keep} if keep is not None else None,
             timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
@@ -452,7 +458,8 @@ class Sandbox:
         return True
 
     def resume(self) -> bool:
-        """Resume a paused sandbox exactly where it stopped, processes included.
+        """Resume a paused sandbox: with its processes after a ``full=True`` pause,
+        booted fresh with its files after a default (files-only) pause.
         Wait with ``wait_for_status("running")`` before running commands."""
         import httpx
 

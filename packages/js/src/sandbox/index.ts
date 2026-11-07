@@ -238,18 +238,21 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Pause the sandbox: its memory, running processes and files are kept and
-   * compute stops. Wait with `waitForStatus('paused')` before resuming.
-   * `{ fast: true }` keeps files only: about a second whatever the RAM, but
-   * processes end and the resume boots the sandbox fresh (`memory: false` is
-   * the same).
+   * Pause the sandbox: compute stops and its files are kept. Wait with
+   * `waitForStatus('paused')` before resuming. By default (the platform's) the
+   * pause keeps files only: about a second whatever the RAM, running processes
+   * end and the resume boots the sandbox fresh. `{ full: true }` also keeps memory
+   * and running processes (slower the more RAM is in use), so the resume picks up
+   * exactly where it stopped. `{ fast: true }` asks for files only explicitly;
+   * `memory: true/false` is the same as `full`/`fast`.
    */
-  async pause(opts?: ConnectionOpts & { fast?: boolean; memory?: boolean }): Promise<boolean> {
+  async pause(opts?: ConnectionOpts & { fast?: boolean; full?: boolean; memory?: boolean }): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
   /**
-   * Resume a paused sandbox exactly where it stopped, processes included. Wait
+   * Resume a paused sandbox: with its processes after a `full` pause, booted fresh
+   * with its files after a default (files-only) pause. Wait
    * with `waitForStatus('running')` before running commands.
    */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
