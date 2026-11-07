@@ -45,6 +45,11 @@ export interface SnapshotOpts {
   /** Where it may be restored. Default `'user'`: any of your projects and workspaces; with a key
    *  limited to a workspace or project, only what the key covers (a wider scope is narrowed). */
   scope?: SnapshotScope
+  /** Also save memory and running processes: sandboxes started from it continue where this one was
+   *  (slower to take, the more RAM is in use). Default (the platform's): files only, about a second;
+   *  sandboxes started from it boot fresh. `fast: true` is the same as the default. */
+  full?: boolean
+  fast?: boolean
 }
 
 /**
@@ -363,14 +368,19 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Save this sandbox -- memory, running processes and files -- as a private
-   * snapshot. A Firecracker snapshot is `ready` as soon as this returns: about 2 s, up to
-   * a few minutes for a sandbox that filled most of its memory (its memory is uploaded
-   * first), so the call waits up to 11 minutes. Start copies of it with {@link Sandbox.restore}
-   * (about 0.4 s each). The source keeps running. Firecracker snapshots ignore `poolSize`.
+   * Save this sandbox as a private snapshot. By default (the platform's) it saves the files:
+   * about a second whatever the RAM, and sandboxes started from it boot fresh with them.
+   * `{ full: true }` also saves memory and running processes, so sandboxes started from it
+   * continue where this one was; that takes longer the more RAM is in use (its memory is
+   * uploaded first), so the call waits up to 11 minutes. The answer's `withMemory` says what
+   * was kept. Start copies with {@link Sandbox.restore}. The source keeps running. Firecracker
+   * snapshots ignore `poolSize`.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope }, SNAPSHOT_TIMEOUT_MS)
+    if (opts.full === true && opts.fast === true) throw new Error('snapshot: use either fast or full, not both')
+    // Sent as memory: true/false, which servers older than the "full" name accept.
+    const memory = opts.full === true ? true : opts.fast === true ? false : undefined
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope, ...(memory !== undefined ? { memory } : {}) }, SNAPSHOT_TIMEOUT_MS)
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)

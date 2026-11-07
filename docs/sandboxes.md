@@ -264,7 +264,7 @@ try {
   await source.resume()
   await source.waitForStatus('running')          // the counter keeps counting
 
-  const saved = await source.snapshot('counter')  // status 'ready'
+  const saved = await source.snapshot('counter', { full: true })  // status 'ready'; full: copies keep the counter running
   snapshotId = saved.id
   copies.push(await Sandbox.restore(saved.id))
 
@@ -290,7 +290,7 @@ try:
     source.resume()
     source.wait_for_status("running")          # the counter keeps counting
 
-    saved = source.snapshot("counter")          # status "ready"
+    saved = source.snapshot("counter", full=True)  # status "ready"; full: copies keep the counter running
     copies.append(Sandbox.restore(saved["id"]))
 
     for f in source.fork(count=2):
