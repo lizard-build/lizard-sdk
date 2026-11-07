@@ -243,7 +243,7 @@ export class Sandbox extends SandboxClient {
    * pause keeps files only: about a second whatever the RAM, running processes
    * end and the resume boots the sandbox fresh. `{ full: true }` also keeps memory
    * and running processes (slower the more RAM is in use), so the resume picks up
-   * exactly where it stopped. `{ fast: true }` asks for files only explicitly;
+   * exactly where it stopped. `{ fast: true }` is the same as the default pause;
    * `memory: true/false` is the same as `full`/`fast`.
    */
   async pause(opts?: ConnectionOpts & { fast?: boolean; full?: boolean; memory?: boolean }): Promise<boolean> {

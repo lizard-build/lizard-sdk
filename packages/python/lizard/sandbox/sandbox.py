@@ -436,8 +436,8 @@ class Sandbox:
         the pause keeps files only: about a second whatever the RAM, running
         processes end and the resume boots the sandbox fresh. ``full=True`` also
         keeps memory and running processes (slower the more RAM is in use), so the
-        resume picks up exactly where it stopped. ``fast=True`` asks for files only
-        explicitly; ``memory=True``/``False`` is the same as ``full``/``fast``."""
+        resume picks up exactly where it stopped. ``fast=True`` is the same as the
+        default pause; ``memory=True``/``False`` is the same as ``full``/``fast``."""
         if fast and full:
             raise ValueError("pause: use either fast or full, not both")
         # Sent as memory: true/false, which every server accepts (older ones lack "full").
