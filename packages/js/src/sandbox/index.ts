@@ -26,7 +26,10 @@ export interface SandboxSnapshot {
   memoryMb: number
   /** Unix milliseconds. */
   createdAt: number
-  /** Where it may be restored; see {@link SnapshotScope}. */
+  /**
+   * Always `'project'`: every snapshot restores only in its own project.
+   * @deprecated Kept because the server still returns it; it no longer tells you anything.
+   */
   scope: SnapshotScope
   /** Whether the source had a volume attached (a restore then cannot attach another); `null` for older snapshots, which cannot take one. */
   sourceVolume: boolean | null
@@ -34,16 +37,18 @@ export interface SandboxSnapshot {
   createdBy: string | null
 }
 /**
- * Where a snapshot may be restored, always in its own region: `'user'` (the default) into any
- * project you can use, in any of your workspaces; `'workspace'` only its own workspace;
- * `'project'` only its own project.
+ * Where a snapshot may be restored. Every snapshot restores only in its own project and region,
+ * so this is always `'project'`; `'user'` and `'workspace'` remain only so old code compiles.
+ * @deprecated Every snapshot restores only in its own project; always `'project'`.
  */
 export type SnapshotScope = 'user' | 'workspace' | 'project'
 export interface SnapshotOpts {
   /** Warm copies to keep ready for an older snapshot. Firecracker snapshots ignore it: they restore from disk. */
   poolSize?: number
-  /** Where it may be restored. Default `'user'`: any of your projects and workspaces; with a key
-   *  limited to a workspace or project, only what the key covers (a wider scope is narrowed). */
+  /**
+   * Ignored and not sent: every snapshot restores only in its own project.
+   * @deprecated Every snapshot restores only in its own project; always `'project'`.
+   */
   scope?: SnapshotScope
   /** Also save memory and running processes: sandboxes started from it continue where this one was
    *  (slower to take, the more RAM is in use). Default (the platform's): files only, about a second;
@@ -373,14 +378,16 @@ export class Sandbox extends SandboxClient {
    * `{ full: true }` also saves memory and running processes, so sandboxes started from it
    * continue where this one was; that takes longer the more RAM is in use (its memory is
    * uploaded first), so the call waits up to 11 minutes. The answer's `withMemory` says what
-   * was kept. Start copies with {@link Sandbox.restore}. The source keeps running. Firecracker
-   * snapshots ignore `poolSize`.
+   * was kept. Start copies with {@link Sandbox.restore}, in this sandbox's project: a snapshot
+   * restores only in its own project. The source keeps running. Firecracker snapshots ignore
+   * `poolSize`. `scope` is ignored and not sent.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
     if (opts.full === true && opts.fast === true) throw new Error('snapshot: use either fast or full, not both')
     // Sent as memory: true/false, which servers older than the "full" name accept.
     const memory = opts.full === true ? true : opts.fast === true ? false : undefined
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, scope: opts.scope, ...(memory !== undefined ? { memory } : {}) }, SNAPSHOT_TIMEOUT_MS)
+    // opts.scope is not sent: every snapshot restores only in its own project.
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, ...(memory !== undefined ? { memory } : {}) }, SNAPSHOT_TIMEOUT_MS)
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
@@ -400,10 +407,10 @@ export class Sandbox extends SandboxClient {
     return new PlatformClient(opts ?? {}).get(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
   }
   /**
-   * Start a new sandbox from a snapshot, in its region. `projectId` puts it in another project,
-   * in any of your workspaces, as the snapshot's scope allows; default: the volume's project, else
-   * the snapshot's own. `volumeId` mounts that volume at `/workspace` (a Firecracker snapshot of a
-   * sandbox that had no volume attached; the volume must be in the snapshot's region).
+   * Start a new sandbox from a snapshot, in its own project and region. A `projectId` for any
+   * other project fails with 403 (`SNAPSHOT_SCOPE`). `volumeId` mounts that volume at `/workspace`
+   * (a Firecracker snapshot of a sandbox that had no volume attached; the volume must be in the
+   * snapshot's project and region).
    */
   static async restore(snapshotId: string, opts?: ConnectionOpts & { timeoutMs?: number; projectId?: string; volumeId?: string }): Promise<Sandbox> {
     const client = new PlatformClient(opts ?? {})
@@ -415,7 +422,11 @@ export class Sandbox extends SandboxClient {
     })
     return new this({ ...opts, sandboxId: result.sandboxId ?? result.id })
   }
-  /** Change where a snapshot you took may be restored. */
+  /**
+   * Changes nothing: every snapshot restores only in its own project. The server accepts the call
+   * and returns the snapshot as it is, with `scope: 'project'`.
+   * @deprecated Every snapshot restores only in its own project; kept so old code keeps running.
+   */
   static setSnapshotScope(snapshotId: string, scope: SnapshotScope, opts?: ConnectionOpts): Promise<SandboxSnapshot> {
     return new PlatformClient(opts ?? {}).patch(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`, { scope })
   }

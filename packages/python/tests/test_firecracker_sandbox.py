@@ -90,6 +90,30 @@ def test_fork_volume_conflict():
         sb.fork()
 
 
+def test_snapshot_still_takes_scope_but_does_not_send_it():
+    sb = Sandbox("s", **CONFIG)
+    seen = []
+    mock_platform(sb, lambda req: seen.append(json.loads(req.content)) or httpx.Response(
+        200, json={"id": "snap1", "scope": "project"}))
+    saved = sb.snapshot("base", scope="user", full=True)
+    assert seen == [{"name": "base", "poolSize": 5, "memory": True}]
+    assert saved["scope"] == "project"
+
+
+def test_set_snapshot_scope_still_patches_and_returns_the_snapshot(monkeypatch):
+    seen = []
+
+    def handler(req):
+        seen.append((req.method, str(req.url), json.loads(req.content)))
+        return httpx.Response(200, json={"id": "snap1", "scope": "project"})
+
+    original = httpx.Client.__init__
+    monkeypatch.setattr(httpx.Client, "__init__", lambda self, *a, **kw: original(self, *a, **{**kw, "transport": httpx.MockTransport(handler)}))
+    saved = Sandbox.set_snapshot_scope("snap1", "workspace", **CONFIG)
+    assert seen == [("PATCH", "https://test.invalid/api/sandbox-snapshots/snap1", {"scope": "workspace"})]
+    assert saved == {"id": "snap1", "scope": "project"}
+
+
 def test_platform_client_is_reused_and_closed():
     sb = Sandbox("s", **CONFIG)
     pc = sb._platform()

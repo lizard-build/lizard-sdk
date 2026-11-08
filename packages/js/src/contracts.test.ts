@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { Lizard, Sandbox, Volume } from './index'
+import { Lizard, Sandbox, Volume, type SnapshotScope } from './index'
 
 const cases: any[] = JSON.parse(readFileSync(new URL('../../../tests/contracts/platform.json', import.meta.url), 'utf8'))
 const config = { apiKey: 'liz_contract_test', apiUrl: 'https://contract.invalid' }
@@ -52,6 +52,7 @@ describe('CLI/backend wire contracts (shared with Python)', () => {
         restore: (id: string) => Sandbox.restore(id, config),
         getSnapshot: (id: string) => Sandbox.getSnapshot(id, config),
         setSnapshotWarmPool: (id: string, count: number) => Sandbox.setSnapshotWarmPool(id, count, config),
+        setSnapshotScope: (id: string, scope: SnapshotScope) => Sandbox.setSnapshotScope(id, scope, config),
         pauseSnapshot: (id: string) => Sandbox.pauseSnapshot(id, config),
         resumeSnapshot: (id: string) => Sandbox.resumeSnapshot(id, config),
         deleteSnapshot: (id: string) => Sandbox.deleteSnapshot(id, config),
@@ -71,6 +72,7 @@ describe('CLI/backend wire contracts (shared with Python)', () => {
       if (test.name === 'metrics.all') expect(result).toMatchObject({ networkRx: [{ t: 100, value: 1 }, { t: 200, value: 2 }] })
       if (test.name === 'domains.list') expect(result).toMatchObject([{ domain: 'example.test', live: true }, { domain: 'pending.test', txtValue: 'proof', verified: false }])
       if (test.name === 'services.logs') expect(result).toHaveLength(1)
+      if (test.name === 'Sandbox.setSnapshotScope') expect(result).toEqual({ id: 'snap1', projectId: 'p1', scope: 'project' })
     }
     expect(index).toBe(test.requests.length)
   })

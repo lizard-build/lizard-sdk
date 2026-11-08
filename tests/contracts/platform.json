@@ -3117,6 +3117,42 @@
     "expectRequests": 1
   },
   {
+    "name": "sandbox.snapshot.scope_not_sent",
+    "ts": {
+      "path": "sandbox.snapshot",
+      "args": [
+        "snap",
+        {
+          "scope": "workspace"
+        }
+      ]
+    },
+    "py": {
+      "path": "sandbox.snapshot",
+      "args": [
+        "snap"
+      ],
+      "kwargs": {
+        "scope": "workspace"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/sandboxes/sb1/snapshot",
+        "response": {
+          "id": "snap1",
+          "scope": "project"
+        },
+        "body": {
+          "name": "snap",
+          "poolSize": 5
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
     "name": "sandbox.unexpose",
     "ts": {
       "path": "sandbox.unexpose",
@@ -4361,6 +4397,39 @@
         },
         "body": {
           "poolSize": 3
+        }
+      }
+    ],
+    "expectRequests": 1
+  },
+  {
+    "name": "Sandbox.setSnapshotScope",
+    "ts": {
+      "path": "Sandbox.setSnapshotScope",
+      "args": [
+        "snap1",
+        "user"
+      ]
+    },
+    "py": {
+      "path": "Sandbox.set_snapshot_scope",
+      "args": [
+        "snap1",
+        "user"
+      ],
+      "kwargs": {}
+    },
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/sandbox-snapshots/snap1",
+        "response": {
+          "id": "snap1",
+          "projectId": "p1",
+          "scope": "project"
+        },
+        "body": {
+          "scope": "user"
         }
       }
     ],

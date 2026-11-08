@@ -24,7 +24,8 @@ class SandboxSnapshot(TypedDict):
     memoryMb: int
     #: Unix milliseconds.
     createdAt: int
-    #: Where it may be restored; see :data:`SnapshotScope`.
+    #: Deprecated: always ``"project"``, since every snapshot restores only in its own project.
+    #: Kept because the server still returns it.
     scope: "SnapshotScope"
     #: The user who took it; ``None`` for snapshots from before snapshots belonged to a user.
     createdBy: str | None
@@ -33,9 +34,9 @@ class SandboxSnapshot(TypedDict):
     sourceVolume: bool | None
 
 
-#: Where a snapshot may be restored, always in its own region: ``"user"`` (the default) into any
-#: project you can use, in any of your workspaces; ``"workspace"`` only its own workspace;
-#: ``"project"`` only its own project.
+#: Deprecated: every snapshot restores only in its own project and region, so a snapshot's
+#: scope is always ``"project"``. ``"user"`` and ``"workspace"`` remain only so old code keeps
+#: working.
 SnapshotScope = Literal["user", "workspace", "project"]
 
 
@@ -219,9 +220,9 @@ class Sandbox:
         project for you.
 
         :param template: Template name. Defaults to ``base``.
-        :param snapshot_id: Create from a private saved snapshot. The sandbox runs
-            at the source sandbox's size and is billed flat at that size; ``size``
-            is ignored.
+        :param snapshot_id: Create from a private saved snapshot. The project must be
+            the snapshot's own. The sandbox runs at the source sandbox's size and is
+            billed flat at that size; ``size`` is ignored.
         :param size: Machine size, billed flat per hour (per second of running
             time): ``"small"`` (2 vCPU / 4 GB, $0.0162/h), ``"medium"`` (4 vCPU /
             8 GB, $0.0324/h, the default) or ``"large"`` (8 vCPU / 16 GB,
@@ -619,16 +620,14 @@ class Sandbox:
         running processes, so sandboxes started from it continue where this one was; that takes
         longer the more RAM is in use (its memory is uploaded first), so the call waits up to
         11 minutes. The answer's ``withMemory`` says what was kept. ``fast=True`` is the same as
-        the default. Start copies with :meth:`restore`. The source keeps running. Firecracker
-        snapshots ignore ``pool_size``. ``scope`` says where it may be restored
-        (:data:`SnapshotScope`); by default any of your projects and workspaces, or with a key
-        limited to a workspace or project only what the key covers (a wider scope is narrowed).
+        the default. Start copies with :meth:`restore`, in this sandbox's project: a snapshot
+        restores only in its own project. The source keeps running. Firecracker snapshots
+        ignore ``pool_size``. ``scope`` is deprecated, ignored and not sent.
         """
         if full and fast:
             raise ValueError("snapshot: use either fast or full, not both")
+        # scope is not sent: every snapshot restores only in its own project.
         body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
-        if scope is not None:
-            body["scope"] = scope
         # Sent as memory: true/false, which servers older than the "full" name accept.
         if full or fast:
             body["memory"] = bool(full)
@@ -687,11 +686,10 @@ class Sandbox:
 
     @classmethod
     def restore(cls, snapshot_id: str, *, timeout_ms: int = DEFAULT_SANDBOX_TIMEOUT_MS, project_id: str | None = None, volume_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> "Sandbox":
-        """Start a new sandbox from a snapshot, in its region. ``project_id`` puts it in another
-        project, in any of your workspaces, as the snapshot's scope allows; default: the
-        volume's project, else the snapshot's own. ``volume_id`` mounts that volume at
-        ``/workspace`` (a Firecracker snapshot of a sandbox that had no volume attached; the
-        volume must be in the snapshot's region)."""
+        """Start a new sandbox from a snapshot, in its own project and region. A ``project_id``
+        for any other project fails with 403 (``SNAPSHOT_SCOPE``). ``volume_id`` mounts that
+        volume at ``/workspace`` (a Firecracker snapshot of a sandbox that had no volume
+        attached; the volume must be in the snapshot's project and region)."""
         from ..platform.client import PlatformClient
         snapshot = cls.get_snapshot(snapshot_id, api_key=api_key, api_url=api_url)
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as client:
@@ -706,7 +704,10 @@ class Sandbox:
 
     @classmethod
     def set_snapshot_scope(cls, snapshot_id: str, scope: SnapshotScope, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
-        """Change where a snapshot you took may be restored."""
+        """Deprecated: changes nothing, since every snapshot restores only in its own project.
+
+        Kept so old code keeps running. The server accepts the call and returns the snapshot
+        as it is, with ``scope`` ``"project"``."""
         from ..platform.client import PlatformClient, segment
         with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
             return pc.patch(f"/api/sandbox-snapshots/{segment(snapshot_id)}", {"scope": scope})

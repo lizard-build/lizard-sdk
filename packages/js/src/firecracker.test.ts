@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Sandbox } from './sandbox'
+import { Sandbox, type SnapshotScope } from './sandbox'
 import { CodeSandbox } from './code-interpreter'
 import { RUNNER_SOURCE } from './code-interpreter/runner'
 import { ConflictError, LizardError } from './errors'
@@ -72,6 +72,27 @@ describe('fork', () => {
   it('surfaces the volume conflict', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_url: unknown, _init?: RequestInit) => new Response('{"error":"A sandbox with a volume attached cannot be forked"}', { status: 409 })))
     await expect(new Sandbox({ sandboxId: 's', ...opts }).fork()).rejects.toBeInstanceOf(ConflictError)
+  })
+})
+
+describe('snapshot scope (deprecated)', () => {
+  it('still takes scope but does not send it', async () => {
+    const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response(JSON.stringify({ id: 'snap1', scope: 'project' })))
+    vi.stubGlobal('fetch', fetch)
+    const scope: SnapshotScope = 'user'
+    const saved = await new Sandbox({ sandboxId: 's', ...opts }).snapshot('base', { scope, full: true })
+    expect(body(fetch)).toEqual({ name: 'base', poolSize: 5, memory: true })
+    expect(saved.scope).toBe('project')
+  })
+
+  it('setSnapshotScope still sends the PATCH and returns the snapshot', async () => {
+    const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response(JSON.stringify({ id: 'snap1', scope: 'project' })))
+    vi.stubGlobal('fetch', fetch)
+    const saved = await Sandbox.setSnapshotScope('snap1', 'workspace', opts)
+    expect(String(fetch.mock.calls[0][0])).toBe('https://api.fc.invalid/api/sandbox-snapshots/snap1')
+    expect(fetch.mock.calls[0][1]?.method).toBe('PATCH')
+    expect(body(fetch)).toEqual({ scope: 'workspace' })
+    expect(saved).toEqual({ id: 'snap1', scope: 'project' })
   })
 })
 

@@ -24,6 +24,8 @@ Both SDKs expose projects, project config, services, deploys, addons, secrets, d
 | `volume` | `Volume.*`, project-bound `client.volumes.*`, `projects.volumeLimits` |
 | `workspace`, `keys`, `regions`, `whoami` | `workspaces.*`, `apiKeys.*`, `regions.list`, `whoami` |
 
+Every snapshot restores only in its own project, so `sandbox snapshot-scope` and `Sandbox.setSnapshotScope` / `set_snapshot_scope` change nothing. They remain, deprecated, so old scripts keep running.
+
 API methods take explicit IDs. Interactive pickers and directory links belong to the CLI. `services.upload` takes tar.gz bytes; the CLI handles directory packing and `.gitignore`. GitHub App installation and Pro Checkout return a URL the caller opens to finish consent or payment.
 
 ## Optional CLI adapter

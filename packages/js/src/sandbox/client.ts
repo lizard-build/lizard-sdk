@@ -53,8 +53,8 @@ export interface SandboxOpts extends ConnectionOpts {
   projectId?: string
   template?: string
   /**
-   * Create from a private saved snapshot. The sandbox runs at the source sandbox's
-   * size and is billed flat at that size; `size` is ignored.
+   * Create from a private saved snapshot. The project must be the snapshot's own. The sandbox
+   * runs at the source sandbox's size and is billed flat at that size; `size` is ignored.
    */
   snapshotId?: string
   /**
