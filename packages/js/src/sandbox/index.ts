@@ -96,7 +96,10 @@ export interface SandboxScheduleRun {
   woke: boolean
   slept: boolean
   startedAt: string
+  /** Set once the run is over and its sandbox is back asleep (if the run woke it). */
   endedAt: string | null
+  /** endedAt is set. */
+  finished: boolean
   durationMs: number | null
   exitCode: number | null
   promptId: string | null
