@@ -338,6 +338,38 @@ Use `Sandbox.getSnapshot(id)` / `Sandbox.get_snapshot(id)` to inspect a snapshot
 
 `poolSize`, `setSnapshotWarmPool` and `pauseSnapshot` / `resumeSnapshot` manage warm copies of older snapshots. Firecracker snapshots ignore them.
 
+## Schedules (wake, run, sleep)
+
+The platform can wake a paused sandbox on a timer, run a prompt (the coding agent) or a shell
+command in it, and put it back to sleep. You pay only while it is awake; files in `/workspace`
+carry over between runs. A sandbox that was already running is left running.
+
+```ts
+const s = await sandbox.schedule({ every: '5m', prompt: 'Continue the research in /workspace/research; append findings to notes.md' })
+await sandbox.schedule({ cron: '0 9 * * mon-fri', timezone: 'Europe/Berlin', command: './report.sh', timeoutSeconds: 900 })
+await Sandbox.runSchedule(s.id)                      // now
+const runs = await Sandbox.scheduleRuns(s.id)        // status, output, error, exitCode, durationMs
+await Sandbox.updateSchedule(s.id, { enabled: false })
+await Sandbox.deleteSchedule(s.id)
+```
+
+```python
+s = sandbox.schedule(every="5m", prompt="Continue the research in /workspace/research")
+Sandbox.run_schedule(s["id"])
+runs = Sandbox.schedule_runs(s["id"])
+Sandbox.update_schedule(s["id"], enabled=False)
+Sandbox.delete_schedule(s["id"])
+```
+
+- `every` ("5m", "1h"; 1 minute at least) or `cron` (5 fields, with `timezone`); `prompt` or `command`.
+- Each prompt run is a new agent conversation: keep state in files. A command runs in `/workspace`
+  as root; success is exit code 0.
+- Sleep is files-only by default; `keepMemory: true` keeps processes and open apps between runs.
+- A run still going when the next is due makes that one skip; `timeoutSeconds` (default 600) stops a
+  run; five failed runs in a row switch the schedule off (`disabledReason`).
+- Prompt schedules need a key with no scopes (403 `ACCOUNT_SCOPE_REQUIRED`). Not on every account
+  yet: 403 `SCHEDULES_NOT_ENABLED`. Keep the sandbox from expiring (`timeoutMs: 0`).
+
 ## Desktop (computer use)
 
 The `desktop` template runs a graphical desktop — Xvfb, the Openbox window manager with a top bar and dock, and Chromium on `DISPLAY=:1` — that you can watch in a browser and an agent can drive with screenshots, mouse and keyboard. The desktop is not running when the sandbox boots; `desktop.start()` starts it (about a second) and publishes its stream, sent over WebRTC with noVNC as the fallback. `DISPLAY` is set in the image, so anything you `exec` (for example a Playwright script or `xdotool`) talks to the same screen.

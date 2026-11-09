@@ -707,6 +707,77 @@ class Sandbox:
             result = client.post("/api/sandboxes", body)
         return cls(result.get("sandboxId") or result["id"], api_key=api_key, api_url=api_url)
 
+    # ── schedules ─────────────────────────────────────────────────────────
+    @staticmethod
+    def _schedule_body(every=None, cron=None, timezone=None, prompt=None, command=None, agent=None, model=None,
+                       reasoning_effort=None, timeout_seconds=None, keep_memory=None, name=None, enabled=None) -> dict:
+        body = {"every": every, "cron": cron, "timezone": timezone, "prompt": prompt, "command": command, "agent": agent,
+                "model": model, "reasoningEffort": reasoning_effort, "timeoutSeconds": timeout_seconds,
+                "keepMemory": keep_memory, "name": name, "enabled": enabled}
+        return {k: v for k, v in body.items() if v is not None}
+
+    def schedule(self, *, every: str | int | None = None, cron: str | None = None, timezone: str | None = None,
+                 prompt: str | None = None, command: str | None = None, agent: str | None = None, model: str | None = None,
+                 reasoning_effort: str | None = None, timeout_seconds: int | None = None, keep_memory: bool | None = None,
+                 name: str | None = None, enabled: bool | None = None) -> dict:
+        """Run a prompt or a command in this sandbox on a schedule. Each run wakes the sandbox if it
+        is paused, runs, and puts it back to sleep (files only unless ``keep_memory``); a sandbox that
+        was already running is left running. You pay only while it is awake.
+
+        ``every="5m"`` or ``cron="*/5 * * * *"`` (with ``timezone``); ``prompt`` (the coding agent, a
+        new conversation each run) or ``command`` (shell, in /workspace; success = exit code 0).
+
+            sandbox.schedule(every="5m", prompt="Continue the research in /workspace/research")
+            sandbox.schedule(cron="0 9 * * mon-fri", timezone="Europe/Berlin", command="./report.sh")
+        """
+        body = self._schedule_body(every, cron, timezone, prompt, command, agent, model, reasoning_effort,
+                                   timeout_seconds, keep_memory, name, enabled)
+        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/schedules", body)
+
+    def schedules(self) -> list[dict]:
+        """This sandbox's schedules."""
+        return self._platform().get(f"/api/sandboxes/{self.sandbox_id}/schedules")["schedules"]
+
+    @classmethod
+    def list_schedules(cls, *, sandbox_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> list[dict]:
+        """Every schedule you can see, or one sandbox's."""
+        from ..platform.client import PlatformClient, query
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get(query("/api/sandbox-schedules", sandboxId=sandbox_id))["schedules"]
+
+    @classmethod
+    def get_schedule(cls, schedule_id: str, *, api_key: str | None = None, api_url: str | None = None) -> dict:
+        from ..platform.client import PlatformClient, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get(f"/api/sandbox-schedules/{segment(schedule_id)}")
+
+    @classmethod
+    def update_schedule(cls, schedule_id: str, *, api_key: str | None = None, api_url: str | None = None, **changes: Any) -> dict:
+        """Change any setting (same names as ``schedule``); ``enabled=False`` switches it off."""
+        from ..platform.client import PlatformClient, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.patch(f"/api/sandbox-schedules/{segment(schedule_id)}", cls._schedule_body(**changes))
+
+    @classmethod
+    def delete_schedule(cls, schedule_id: str, *, api_key: str | None = None, api_url: str | None = None):
+        from ..platform.client import PlatformClient, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.delete(f"/api/sandbox-schedules/{segment(schedule_id)}")
+
+    @classmethod
+    def run_schedule(cls, schedule_id: str, *, api_key: str | None = None, api_url: str | None = None) -> dict:
+        """Run the schedule now (within a few seconds); also switches it back on."""
+        from ..platform.client import PlatformClient, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.post(f"/api/sandbox-schedules/{segment(schedule_id)}/run", {})
+
+    @classmethod
+    def schedule_runs(cls, schedule_id: str, *, limit: int = 20, api_key: str | None = None, api_url: str | None = None) -> list[dict]:
+        """The schedule's recent runs, newest first: status, output, error, exitCode, durationMs."""
+        from ..platform.client import PlatformClient, query, segment
+        with PlatformClient(ConnectionConfig(api_key=api_key, api_url=api_url)) as pc:
+            return pc.get(query(f"/api/sandbox-schedules/{segment(schedule_id)}/runs", limit=limit))["runs"]
+
     @classmethod
     def set_snapshot_scope(cls, snapshot_id: str, scope: SnapshotScope, *, api_key: str | None = None, api_url: str | None = None) -> SandboxSnapshot:
         """Change where a snapshot you took may be restored."""

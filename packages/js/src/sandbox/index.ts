@@ -38,6 +38,70 @@ export interface SandboxSnapshot {
  * project you can use, in any of your workspaces; `'workspace'` only its own workspace;
  * `'project'` only its own project.
  */
+/** What a schedule runs and when: `every` ("5m", "1h") or `cron` ("*\/5 * * * *"), and `prompt` or `command`. */
+export interface ScheduleOpts {
+  every?: string | number
+  cron?: string
+  /** IANA time zone for `cron` (default UTC). */
+  timezone?: string
+  /** Run the coding agent with this prompt; each run is a new conversation. */
+  prompt?: string
+  /** Or run this shell command (in /workspace, as root; success = exit code 0). */
+  command?: string
+  agent?: string
+  model?: string | null
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null
+  /** Stop a run after this many seconds (default 600). */
+  timeoutSeconds?: number
+  /** Sleep with memory between runs (processes and open apps survive; slower pause). Default false: files only. */
+  keepMemory?: boolean
+  name?: string | null
+  enabled?: boolean
+}
+
+export interface SandboxSchedule {
+  id: string
+  sandboxId: string
+  name: string | null
+  every: string | null
+  everySeconds: number | null
+  cron: string | null
+  timezone: string
+  kind: 'prompt' | 'command'
+  prompt: string | null
+  command: string | null
+  agent: string | null
+  model: string | null
+  reasoningEffort: string | null
+  timeoutSeconds: number
+  keepMemory: boolean
+  enabled: boolean
+  disabledReason: string | null
+  nextRunAt: string | null
+  running: boolean
+  lastRunAt: string | null
+  lastStatus: string | null
+  consecutiveFailures: number
+  skippedCount: number
+}
+
+export interface SandboxScheduleRun {
+  id: string
+  scheduleId: string
+  sandboxId: string
+  status: 'running' | 'succeeded' | 'failed' | 'timeout' | 'interrupted'
+  woke: boolean
+  slept: boolean
+  startedAt: string
+  endedAt: string | null
+  durationMs: number | null
+  exitCode: number | null
+  promptId: string | null
+  conversationId: string | null
+  output: string | null
+  error: string | null
+}
+
 export type SnapshotScope = 'user' | 'workspace' | 'project'
 export interface SnapshotOpts {
   /** Warm copies to keep ready for an older snapshot. Firecracker snapshots ignore it: they restore from disk. */
@@ -443,6 +507,46 @@ export class Sandbox extends SandboxClient {
   }
   static deleteSnapshot(snapshotId: string, opts?: ConnectionOpts): Promise<void> {
     return new PlatformClient(opts ?? {}).delete(`/api/sandbox-snapshots/${encodeURIComponent(snapshotId)}`)
+  }
+
+  /**
+   * Run a prompt or a command in this sandbox on a schedule. Each run wakes the sandbox if it is
+   * paused, runs, and puts it back to sleep (files only unless `keepMemory`); a sandbox that was
+   * already running is left running. You pay only while it is awake.
+   *
+   * ```ts
+   * await sandbox.schedule({ every: '5m', prompt: 'Continue the research in /workspace/research' })
+   * await sandbox.schedule({ cron: '0 9 * * mon-fri', timezone: 'Europe/Berlin', command: './report.sh' })
+   * ```
+   */
+  schedule(opts: ScheduleOpts): Promise<SandboxSchedule> {
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/schedules`, opts)
+  }
+  /** This sandbox's schedules. */
+  async schedules(): Promise<SandboxSchedule[]> {
+    return (await new PlatformClient(this.resolveOpts()).get<{ schedules: SandboxSchedule[] }>(`/api/sandboxes/${this.sandboxId}/schedules`)).schedules
+  }
+  /** Every schedule you can see, or one sandbox's with `sandboxId`. */
+  static async listSchedules(opts: ConnectionOpts & { sandboxId?: string } = {}): Promise<SandboxSchedule[]> {
+    return (await new PlatformClient(opts).get<{ schedules: SandboxSchedule[] }>(query('/api/sandbox-schedules', { sandboxId: opts.sandboxId }))).schedules
+  }
+  static getSchedule(scheduleId: string, opts?: ConnectionOpts): Promise<SandboxSchedule> {
+    return new PlatformClient(opts ?? {}).get(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`)
+  }
+  /** Change any of the schedule's settings; `{ enabled: false }` switches it off. */
+  static updateSchedule(scheduleId: string, patch: ScheduleOpts, opts?: ConnectionOpts): Promise<SandboxSchedule> {
+    return new PlatformClient(opts ?? {}).patch(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`, patch)
+  }
+  static deleteSchedule(scheduleId: string, opts?: ConnectionOpts): Promise<void> {
+    return new PlatformClient(opts ?? {}).delete(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`)
+  }
+  /** Run the schedule now (within a few seconds); also switches it back on. */
+  static runSchedule(scheduleId: string, opts?: ConnectionOpts): Promise<SandboxSchedule> {
+    return new PlatformClient(opts ?? {}).post(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}/run`, {})
+  }
+  /** The schedule's recent runs, newest first. */
+  static async scheduleRuns(scheduleId: string, opts: ConnectionOpts & { limit?: number } = {}): Promise<SandboxScheduleRun[]> {
+    return (await new PlatformClient(opts).get<{ runs: SandboxScheduleRun[] }>(query(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}/runs`, { limit: opts.limit }))).runs
   }
 
   private resolveOpts(opts?: ConnectionOpts): ConnectionOpts {
