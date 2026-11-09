@@ -190,7 +190,7 @@ class Sandbox:
         template: str | None = None,
         *,
         snapshot_id: str | None = None,
-        size: Literal["small", "medium", "large"] | None = None,
+        size: Literal["mini", "small", "medium", "large"] | None = None,
         project: str | None = None,
         project_id: str | None = None,
         api_key: str | None = None,
@@ -229,6 +229,9 @@ class Sandbox:
             On the Pro trial only ``"small"`` (also the default there) in a US
             region starts; another size or region raises ``AuthenticationError``
             (HTTP 403, ``TRIAL_SANDBOX_SIZE`` / ``TRIAL_SANDBOX_REGION``).
+            ``"mini"`` (1 vCPU / 2 GB, $0.0081/h) only for accounts Lizard has
+            enabled it for; others raise ``AuthenticationError`` (HTTP 403,
+            ``SANDBOX_SIZE_NOT_ALLOWED``).
             Sandbox egress includes 2 TB per account over a rolling 30 days:
             https://lizard.build/docs/platform/limits/#sandbox-egress
             A successful pause stops compute charges; Persistent Volumes storage bills separately.

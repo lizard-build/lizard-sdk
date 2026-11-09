@@ -101,7 +101,7 @@ class Lizard:
         template: str | None = None,
         *,
         snapshot_id: str | None = None,
-        size: Literal["small", "medium", "large"] | None = None,
+        size: Literal["mini", "small", "medium", "large"] | None = None,
         timeout_ms: int | None = None,
         metadata: dict[str, str] | None = None,
         envs: dict[str, str] | None = None,
@@ -120,6 +120,9 @@ class Lizard:
             default there) in a US region starts; another size or region raises
             ``AuthenticationError`` (HTTP 403, ``TRIAL_SANDBOX_SIZE`` /
             ``TRIAL_SANDBOX_REGION``) until the first Pro payment.
+            ``"mini"`` (1 vCPU / 2 GB, $0.0081/h) only for accounts Lizard has
+            enabled it for; others get ``AuthenticationError`` (HTTP 403,
+            ``SANDBOX_SIZE_NOT_ALLOWED``).
         """
         return Sandbox.create(
             template,

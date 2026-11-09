@@ -13,8 +13,8 @@ export interface SandboxInfo {
   /** The sandbox runtime: `'firecracker'` (a microVM), or `null` when unknown. */
   runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
-  /** Machine size (`'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage. */
-  size?: 'small' | 'medium' | 'large' | null
+  /** Machine size (`'small' | 'medium' | 'large'`, or `'mini'` where enabled); may be `null` for a sandbox billed by measured usage. */
+  size?: 'mini' | 'small' | 'medium' | 'large' | null
   /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage. */
   pricePerHour?: number | null
   /** `false` when the sandbox was created with `internetAccess: false`; absent from older servers. */
@@ -71,8 +71,9 @@ export interface SandboxOpts extends ConnectionOpts {
    * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
    * A successful pause stops compute charges; Persistent Volumes storage bills separately.
    * Ignored with {@link SandboxOpts.snapshotId}.
+   * `'mini'` (1 vCPU / 2 GB) is available only to accounts Lizard has enabled it for; others get a 403.
    */
-  size?: 'small' | 'medium' | 'large'
+  size?: 'mini' | 'small' | 'medium' | 'large'
   /** Your own key/value labels for the sandbox, returned by `getInfo()` and `list()`. */
   metadata?: Record<string, string>
   /** Environment variables set in the sandbox, visible to every command it runs. */
