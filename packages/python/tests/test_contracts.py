@@ -78,4 +78,6 @@ def test_contract(case, monkeypatch):
             assert len(result.network_rx) == 2
         if case["name"] == "domains.list":
             assert result[1].txt_value == "proof"
+        if case["name"] == "Sandbox.setSnapshotScope":
+            assert result == {"id": "snap1", "projectId": "p1", "scope": "project"}
     assert len(calls) == len(case["requests"])
