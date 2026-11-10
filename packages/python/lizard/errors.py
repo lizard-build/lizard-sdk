@@ -94,7 +94,7 @@ class LimitExceededError(LizardError):
     """A limit was reached (HTTP 429). ``code`` says which:
 
     ``SANDBOX_LIMIT_REACHED``: the account's limit on sandboxes running at once. ``unit`` says
-    what ``limit`` and ``running`` count: ``"vcpu"`` (Small 2, Medium 4, Large 8) or
+    what ``limit`` and ``running`` count: ``"vcpu"`` (Mini 1, Small 2, Medium 4, Large 8) or
     ``"sandboxes"``; in vCPU, ``needed`` is what the refused sandbox needs.
     ``SANDBOX_RATE_LIMITED``: the account's starts per minute, hour or day;
     ``retry_after_s`` says when to try again.

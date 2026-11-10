@@ -97,7 +97,7 @@ export class PaymentRequiredError extends LizardError {
 /**
  * A limit was reached (HTTP 429). {@link LizardError.code} says which:
  * - `SANDBOX_LIMIT_REACHED`: the account's limit on sandboxes running at once. {@link unit}
- *   says what {@link limit} and {@link running} count: `vcpu` (Small 2, Medium 4, Large 8)
+ *   says what {@link limit} and {@link running} count: `vcpu` (Mini 1, Small 2, Medium 4, Large 8)
  *   or `sandboxes`; in vCPU, {@link needed} is what the refused sandbox needs.
  * - `SANDBOX_RATE_LIMITED`: the account's starts per minute, hour or day;
  *   {@link retryAfterS} says when to try again.

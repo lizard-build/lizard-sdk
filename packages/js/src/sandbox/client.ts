@@ -13,7 +13,7 @@ export interface SandboxInfo {
   /** The sandbox runtime: `'firecracker'` (a microVM), or `null` when unknown. */
   runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
-  /** Machine size (`'small' | 'medium' | 'large'`, or `'mini'` where enabled); may be `null` for a sandbox billed by measured usage. */
+  /** Machine size (`'mini' | 'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage. */
   size?: 'mini' | 'small' | 'medium' | 'large' | null
   /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage. */
   pricePerHour?: number | null
