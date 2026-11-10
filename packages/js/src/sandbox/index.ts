@@ -3,7 +3,7 @@ import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '..
 import { Process } from './process'
 import { Fs } from './fs'
 import { Desktop } from './desktop'
-import { SandboxClient, SandboxInfo, SandboxOpts, ExposedPort } from './client'
+import { SandboxClient, SandboxInfo, SandboxOpts, ExposedPort, PauseOpts } from './client'
 import { TimeoutError, ConflictError } from '../errors'
 
 /** The server allows a snapshot 10 minutes (its memory upload); a little more here. */
@@ -56,10 +56,17 @@ export interface ScheduleOpts {
   reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null
   /** Stop a run after this many seconds (default 600). */
   timeoutSeconds?: number
-  /** Sleep with memory between runs (processes and open apps survive; slower pause). Default false: files only. */
+  /** @deprecated Memory pauses are off: a schedule always sleeps files only. Ignored and not sent. */
   keepMemory?: boolean
   name?: string | null
   enabled?: boolean
+}
+
+/** Memory pauses are off: `keepMemory: true` is never sent (false still is, it is the default). */
+function withoutKeepMemory(opts: ScheduleOpts): ScheduleOpts {
+  if (opts.keepMemory !== true) return opts
+  const { keepMemory: _ignored, ...rest } = opts
+  return rest
 }
 
 export interface SandboxSchedule {
@@ -117,10 +124,9 @@ export interface SnapshotOpts {
    * @deprecated Every snapshot restores only in its own project; always `'project'`.
    */
   scope?: SnapshotScope
-  /** Also save memory and running processes: sandboxes started from it continue where this one was
-   *  (slower to take, the more RAM is in use). Default (the platform's): files only, about a second;
-   *  sandboxes started from it boot fresh. `fast: true` is the same as the default. */
+  /** @deprecated Memory snapshots are off: a snapshot saves files only. Ignored and not sent. */
   full?: boolean
+  /** @deprecated Every snapshot is files only. Ignored and not sent. */
   fast?: boolean
 }
 
@@ -316,20 +322,17 @@ export class Sandbox extends SandboxClient {
 
   /**
    * Pause the sandbox: compute stops and its files are kept. Wait with
-   * `waitForStatus('paused')` before resuming. By default (the platform's) the
-   * pause keeps files only: about a second whatever the RAM, running processes
-   * end and the resume boots the sandbox fresh. `{ full: true }` also keeps memory
-   * and running processes (slower the more RAM is in use), so the resume picks up
-   * exactly where it stopped. `{ fast: true }` is the same as the default pause;
-   * `memory: true/false` is the same as `full`/`fast`.
+   * `waitForStatus('paused')` before resuming. The pause keeps files only: about
+   * a second whatever the RAM, running processes end and the resume boots the
+   * sandbox fresh. `fast`, `full` and `memory` are deprecated and ignored (memory
+   * pauses are off).
    */
-  async pause(opts?: ConnectionOpts & { fast?: boolean; full?: boolean; memory?: boolean }): Promise<boolean> {
+  async pause(opts?: ConnectionOpts & PauseOpts): Promise<boolean> {
     return SandboxClient.pauseSandbox(this.sandboxId, this.resolveOpts(opts))
   }
 
   /**
-   * Resume a paused sandbox: with its processes after a `full` pause, booted fresh
-   * with its files after a default (files-only) pause. Wait
+   * Resume a paused sandbox: booted fresh with its saved files. Wait
    * with `waitForStatus('running')` before running commands.
    */
   async resume(opts?: ConnectionOpts): Promise<boolean> {
@@ -440,21 +443,16 @@ export class Sandbox extends SandboxClient {
   }
 
   /**
-   * Save this sandbox as a private snapshot. By default (the platform's) it saves the files:
-   * about a second whatever the RAM, and sandboxes started from it boot fresh with them.
-   * `{ full: true }` also saves memory and running processes, so sandboxes started from it
-   * continue where this one was; that takes longer the more RAM is in use (its memory is
-   * uploaded first), so the call waits up to 11 minutes. The answer's `withMemory` says what
-   * was kept. Start copies with {@link Sandbox.restore}, in this sandbox's project: a snapshot
+   * Save this sandbox as a private snapshot of its files: about a second whatever the RAM,
+   * and sandboxes started from it boot fresh with them. `full`/`fast` are deprecated and
+   * ignored (memory snapshots are off). Start copies with {@link Sandbox.restore}, in this sandbox's project: a snapshot
    * restores only in its own project. The source keeps running. Firecracker snapshots ignore
    * `poolSize`. `scope` is ignored and not sent.
    */
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
-    if (opts.full === true && opts.fast === true) throw new Error('snapshot: use either fast or full, not both')
-    // Sent as memory: true/false, which servers older than the "full" name accept.
-    const memory = opts.full === true ? true : opts.fast === true ? false : undefined
-    // opts.scope is not sent: every snapshot restores only in its own project.
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5, ...(memory !== undefined ? { memory } : {}) }, SNAPSHOT_TIMEOUT_MS)
+    // opts.scope, opts.full and opts.fast are not sent: every snapshot restores only in its own
+    // project, and memory snapshots are off (the platform's default, files only, applies).
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5 }, SNAPSHOT_TIMEOUT_MS)
   }
   unexpose(port: number): Promise<void> {
     return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
@@ -525,7 +523,7 @@ export class Sandbox extends SandboxClient {
 
   /**
    * Run a prompt or a command in this sandbox on a schedule. Each run wakes the sandbox if it is
-   * paused, runs, and puts it back to sleep (files only unless `keepMemory`); a sandbox that was
+   * paused, runs, and puts it back to sleep (files only); a sandbox that was
    * already running is left running. You pay only while it is awake.
    *
    * ```ts
@@ -534,7 +532,7 @@ export class Sandbox extends SandboxClient {
    * ```
    */
   schedule(opts: ScheduleOpts): Promise<SandboxSchedule> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/schedules`, opts)
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/schedules`, withoutKeepMemory(opts))
   }
   /** This sandbox's schedules. */
   async schedules(): Promise<SandboxSchedule[]> {
@@ -549,7 +547,7 @@ export class Sandbox extends SandboxClient {
   }
   /** Change any of the schedule's settings; `{ enabled: false }` switches it off. */
   static updateSchedule(scheduleId: string, patch: ScheduleOpts, opts?: ConnectionOpts): Promise<SandboxSchedule> {
-    return new PlatformClient(opts ?? {}).patch(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`, patch)
+    return new PlatformClient(opts ?? {}).patch(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`, withoutKeepMemory(patch))
   }
   static deleteSchedule(scheduleId: string, opts?: ConnectionOpts): Promise<void> {
     return new PlatformClient(opts ?? {}).delete(`/api/sandbox-schedules/${encodeURIComponent(scheduleId)}`)

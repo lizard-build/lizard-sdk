@@ -90,13 +90,13 @@ def test_fork_volume_conflict():
         sb.fork()
 
 
-def test_snapshot_still_takes_scope_but_does_not_send_it():
+def test_snapshot_still_takes_scope_and_full_but_sends_neither():
     sb = Sandbox("s", **CONFIG)
     seen = []
     mock_platform(sb, lambda req: seen.append(json.loads(req.content)) or httpx.Response(
         200, json={"id": "snap1", "scope": "project"}))
     saved = sb.snapshot("base", scope="user", full=True)
-    assert seen == [{"name": "base", "poolSize": 5, "memory": True}]
+    assert seen == [{"name": "base", "poolSize": 5}]
     assert saved["scope"] == "project"
 
 
@@ -220,3 +220,22 @@ def test_allowed_hosts_ignored_by_the_server_deletes_the_sandbox(monkeypatch):
     with pytest.raises(LizardError, match="allowed_hosts"):
         Sandbox.create("base", project_id="p1", allowed_hosts=["pypi.org"], **CONFIG)
     assert deleted == ["https://test.invalid/api/sandboxes/s8"]
+
+
+def test_pause_never_asks_for_memory():
+    sb = Sandbox("s", **CONFIG)
+    seen = []
+    import httpx as _httpx
+    real = _httpx.post
+    _httpx.post = lambda url, **kw: (seen.append(kw.get("json")), _httpx.Response(200, json={}))[1]
+    try:
+        assert sb.pause(full=True) is True
+        assert sb.pause(fast=True, memory=True) is True
+    finally:
+        _httpx.post = real
+    assert seen == [None, None]
+
+
+def test_schedule_never_sends_keep_memory_true():
+    assert "keepMemory" not in Sandbox._schedule_body(every="5m", command="x", keep_memory=True)
+    assert Sandbox._schedule_body(every="5m", command="x", keep_memory=False)["keepMemory"] is False

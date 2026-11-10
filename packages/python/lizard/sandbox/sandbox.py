@@ -134,7 +134,7 @@ class Sandbox:
 
     Run commands, read and write files, and expose HTTP ports in a sandbox. A
     sandbox boots in well under a second; :meth:`pause` and :meth:`resume` keep its
-    memory and running processes, :meth:`snapshot` saves it in about 2 s and
+    files (processes restart), :meth:`snapshot` saves it in about 2 s and
     :meth:`restore` starts a copy in about 0.4 s, and :meth:`fork` clones a running
     sandbox, processes and all.
 
@@ -436,22 +436,16 @@ class Sandbox:
 
     def pause(self, fast: bool = False, full: bool = False, memory: bool | None = None) -> bool:
         """Pause the sandbox: compute stops and its files are kept. Wait with
-        ``wait_for_status("paused")`` before resuming. By default (the platform's)
-        the pause keeps files only: about a second whatever the RAM, running
-        processes end and the resume boots the sandbox fresh. ``full=True`` also
-        keeps memory and running processes (slower the more RAM is in use), so the
-        resume picks up exactly where it stopped. ``fast=True`` is the same as the
-        default pause; ``memory=True``/``False`` is the same as ``full``/``fast``."""
-        if fast and full:
-            raise ValueError("pause: use either fast or full, not both")
-        # Sent as memory: true/false, which every server accepts (older ones lack "full").
-        keep = True if full else False if fast else memory
+        ``wait_for_status("paused")`` before resuming. The pause keeps files only:
+        about a second whatever the RAM, running processes end and the resume boots
+        the sandbox fresh. ``fast``, ``full`` and ``memory`` are deprecated and
+        ignored (memory pauses are off)."""
+        # Memory pauses are off: no choice is sent, so the platform's default (files only) applies.
         import httpx
 
         res = httpx.post(
             f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/pause",
             headers=self._config.headers,
-            json={"memory": keep} if keep is not None else None,
             timeout=HTTP_TIMEOUT_S,
         )
         if res.status_code == 404:
@@ -462,8 +456,7 @@ class Sandbox:
         return True
 
     def resume(self) -> bool:
-        """Resume a paused sandbox: with its processes after a ``full=True`` pause,
-        booted fresh with its files after a default (files-only) pause.
+        """Resume a paused sandbox: booted fresh with its saved files.
         Wait with ``wait_for_status("running")`` before running commands."""
         import httpx
 
@@ -618,23 +611,16 @@ class Sandbox:
                  full: bool = False, fast: bool = False) -> SandboxSnapshot:
         """Save this sandbox as a private snapshot.
 
-        By default (the platform's) it saves the files: about a second whatever the RAM, and
-        sandboxes started from it boot fresh with them. ``full=True`` also saves memory and
-        running processes, so sandboxes started from it continue where this one was; that takes
-        longer the more RAM is in use (its memory is uploaded first), so the call waits up to
-        11 minutes. The answer's ``withMemory`` says what was kept. ``fast=True`` is the same as
-        the default. Start copies with :meth:`restore`, in this sandbox's project: a snapshot
+        It saves the files: about a second whatever the RAM, and sandboxes started from it boot
+        fresh with them. ``full`` and ``fast`` are deprecated and ignored (memory snapshots are
+        off). Start copies with :meth:`restore`, in this sandbox's project: a snapshot
         restores only in its own project. The source keeps running. Firecracker snapshots
         ignore ``pool_size``. ``scope`` is deprecated, ignored and not sent.
         """
-        if full and fast:
-            raise ValueError("snapshot: use either fast or full, not both")
-        # scope is not sent: every snapshot restores only in its own project.
+        # scope, full and fast are not sent: every snapshot restores only in its own project, and
+        # memory snapshots are off (the platform's default, files only, applies).
         body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
-        # Sent as memory: true/false, which servers older than the "full" name accept.
-        if full or fast:
-            body["memory"] = bool(full)
-        # The server allows a snapshot 10 minutes (its memory upload); a little more here.
+        # The server allows a snapshot 10 minutes; a little more here.
         return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", body, timeout=11 * 60)
 
     def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
@@ -711,7 +697,8 @@ class Sandbox:
                        reasoning_effort=None, timeout_seconds=None, keep_memory=None, name=None, enabled=None) -> dict:
         body = {"every": every, "cron": cron, "timezone": timezone, "prompt": prompt, "command": command, "agent": agent,
                 "model": model, "reasoningEffort": reasoning_effort, "timeoutSeconds": timeout_seconds,
-                "keepMemory": keep_memory, "name": name, "enabled": enabled}
+                # Memory pauses are off: keep_memory=True is deprecated and not sent.
+                "keepMemory": False if keep_memory is False else None, "name": name, "enabled": enabled}
         return {k: v for k, v in body.items() if v is not None}
 
     def schedule(self, *, every: str | int | None = None, cron: str | None = None, timezone: str | None = None,
@@ -719,7 +706,7 @@ class Sandbox:
                  reasoning_effort: str | None = None, timeout_seconds: int | None = None, keep_memory: bool | None = None,
                  name: str | None = None, enabled: bool | None = None) -> dict:
         """Run a prompt or a command in this sandbox on a schedule. Each run wakes the sandbox if it
-        is paused, runs, and puts it back to sleep (files only unless ``keep_memory``); a sandbox that
+        is paused, runs, and puts it back to sleep (files only; ``keep_memory`` is deprecated and ignored); a sandbox that
         was already running is left running. You pay only while it is awake.
 
         ``every="5m"`` or ``cron="*/5 * * * *"`` (with ``timezone``); ``prompt`` (the coding agent, a

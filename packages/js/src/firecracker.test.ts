@@ -76,12 +76,12 @@ describe('fork', () => {
 })
 
 describe('snapshot scope (deprecated)', () => {
-  it('still takes scope but does not send it', async () => {
+  it('still takes scope and full but sends neither', async () => {
     const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response(JSON.stringify({ id: 'snap1', scope: 'project' })))
     vi.stubGlobal('fetch', fetch)
     const scope: SnapshotScope = 'user'
     const saved = await new Sandbox({ sandboxId: 's', ...opts }).snapshot('base', { scope, full: true })
-    expect(body(fetch)).toEqual({ name: 'base', poolSize: 5, memory: true })
+    expect(body(fetch)).toEqual({ name: 'base', poolSize: 5 })
     expect(saved.scope).toBe('project')
   })
 
@@ -186,5 +186,21 @@ describe('allowedHosts', () => {
     vi.stubGlobal('fetch', old)
     await expect(Sandbox.create({ projectId: 'p1', allowedHosts: ['pypi.org'], ...opts })).rejects.toThrow(/allowedHosts/)
     expect(old.mock.calls.some(([u, i]) => i?.method === 'DELETE' && String(u).endsWith('/api/sandboxes/a2'))).toBe(true)
+  })
+})
+
+describe('memory pauses are off', () => {
+  it('pause sends no memory choice, whatever is asked', async () => {
+    const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response('{}'))
+    vi.stubGlobal('fetch', fetch)
+    await new Sandbox({ sandboxId: 's', ...opts }).pause({ full: true })
+    await new Sandbox({ sandboxId: 's', ...opts }).pause({ memory: true })
+    for (const call of fetch.mock.calls) expect(call[1]?.body).toBeUndefined()
+  })
+  it('schedule never sends keepMemory: true', async () => {
+    const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response('{}'))
+    vi.stubGlobal('fetch', fetch)
+    await new Sandbox({ sandboxId: 's', ...opts }).schedule({ every: '5m', command: 'x', keepMemory: true })
+    expect(body(fetch)).toEqual({ every: '5m', command: 'x' })
   })
 })

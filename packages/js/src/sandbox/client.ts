@@ -27,6 +27,16 @@ export interface SandboxInfo {
 }
 
 /** A sandbox port published on a public HTTPS hostname. See {@link Sandbox.exposePort}. */
+/** Memory pauses are off: every pause keeps files only. These are accepted so older callers compile, and ignored. */
+export interface PauseOpts {
+  /** @deprecated Every pause is files only. Ignored. */
+  fast?: boolean
+  /** @deprecated Memory pauses are off. Ignored. */
+  full?: boolean
+  /** @deprecated Memory pauses are off. Ignored. */
+  memory?: boolean
+}
+
 export interface ExposedPort {
   /** Hostname without a scheme, e.g. `abc-3000.sandbox.eu-west-lim-a.onlizard.com`. */
   hostname: string
@@ -215,17 +225,13 @@ export class SandboxClient {
     return true
   }
 
-  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & { fast?: boolean; full?: boolean; memory?: boolean }): Promise<boolean> {
-    if (opts?.fast === true && opts?.full === true) throw new Error('pause: use either fast or full, not both')
+  protected static async pauseSandbox(sandboxId: string, opts?: ConnectionOpts & PauseOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    // Sent as memory:true/false, which every server accepts (older ones do not know "full").
-    // No choice sends no body: the platform's default applies (files only).
-    const memory = opts?.full === true ? true : opts?.fast === true ? false : opts?.memory
+    // Memory pauses are off: no choice is sent, so the platform's default (files only) applies.
+    // fast/full/memory are still accepted (deprecated) so older callers compile, and ignored.
     const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
       method: 'POST',
-      ...(memory !== undefined
-        ? { headers: { ...config.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ memory }) }
-        : { headers: config.headers }),
+      headers: config.headers,
     })
     if (res.status === 404) return false
     if (!res.ok) await handleApiError(res)

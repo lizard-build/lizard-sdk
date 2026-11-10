@@ -142,7 +142,7 @@ Create a sandbox from the `desktop` template, call `await sandbox.desktop.start(
 
 Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. Use Persistent Volumes mounted at `/workspace` to keep files after a sandbox ends.
 
-- `pause()` keeps the sandbox's files (about a second; processes end, `resume()` boots it fresh); `pause({ full: true })` / `pause(full=True)` also keeps memory and running processes.
+- `pause()` keeps the sandbox's files (about a second; processes end, `resume()` boots it fresh).
 - `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
 - `fork()` clones a running sandbox, processes and all.
 

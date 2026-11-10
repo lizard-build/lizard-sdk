@@ -50,7 +50,7 @@ These are CLI-backed operations, not native HTTP implementations. The CLI must b
 
 ## Backend limits
 
-Sandbox pause/resume (memory and processes kept), snapshot creation/restoration and fork are supported on Firecracker sandboxes. Both SDKs also expose snapshot get/list/delete and wait helpers, plus warm-pool resizing and pool pause/resume for older snapshots.
+Sandbox pause/resume (files kept, processes end), snapshot creation/restoration and fork are supported on Firecracker sandboxes. Both SDKs also expose snapshot get/list/delete and wait helpers, plus warm-pool resizing and pool pause/resume for older snapshots.
 
 Sandbox file upload accepts UTF-8 text. Passing invalid UTF-8 bytes fails locally instead of corrupting data. Use `readBytes` / `read_bytes` for binary downloads.
 

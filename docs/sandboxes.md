@@ -244,11 +244,11 @@ Error codes: `volume_shrink_unsupported` (a smaller size), `volume_too_large` (a
 
 ## Pause, resume, snapshots and fork
 
-These operations keep **memory and running processes**, as well as files.
+Pause and snapshots keep **files**: running processes end, and a resumed or restored sandbox boots fresh with them. Fork copies a running sandbox live, processes and all.
 
 | Operation | TypeScript | Python | Notes |
 | --- | --- | --- | --- |
-| Pause / resume | `pause()`, `pause({ full: true })`, `resume()`, `waitForStatus(s)` | `pause()`, `pause(full=True)`, `resume()`, `wait_for_status(s)` | Same ID and files. Default pause: files only (~1 s), resume boots fresh. `full`: memory and processes too, they continue where they stopped |
+| Pause / resume | `pause()`, `resume()`, `waitForStatus(s)` | `pause()`, `resume()`, `wait_for_status(s)` | Same ID and files (~1 s at any RAM); processes end and the resume boots fresh |
 | Snapshot | `snapshot(name)` | `snapshot(name)` | `ready` when the call returns (about 2 s); the source keeps running |
 | Restore | `Sandbox.restore(snapshotId)` | `Sandbox.restore(snapshot_id)` | A new sandbox from the snapshot in about 0.4 s, in the snapshot's own project; restore as often as you like |
 | Fork | `fork({ count })` | `fork(count=...)` | 1–100 live copies of a running sandbox, within the account's running-sandbox limit; the source keeps running |
@@ -259,12 +259,13 @@ let snapshotId: string | undefined
 const copies: Sandbox[] = []
 try {
   await source.process.exec("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
-  await source.pause({ full: true })            // keep the running counter, not only files
+  await source.pause()                           // files only: the counter stops
   await source.waitForStatus('paused')
   await source.resume()
-  await source.waitForStatus('running')          // the counter keeps counting
+  await source.waitForStatus('running')          // booted fresh: start processes again
 
-  const saved = await source.snapshot('counter', { full: true })  // status 'ready'; full: copies keep the counter running
+  await source.process.exec("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
+  const saved = await source.snapshot('counter')  // status 'ready'; files only
   snapshotId = saved.id
   copies.push(await Sandbox.restore(saved.id))
 
@@ -285,12 +286,13 @@ saved = None
 copies = []
 try:
     source.process.exec_("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
-    source.pause(full=True)                     # keep the running counter, not only files
+    source.pause()                              # files only: the counter stops
     source.wait_for_status("paused")
     source.resume()
-    source.wait_for_status("running")          # the counter keeps counting
+    source.wait_for_status("running")          # booted fresh: start processes again
 
-    saved = source.snapshot("counter", full=True)  # status "ready"; full: copies keep the counter running
+    source.process.exec_("nohup sh -c 'i=0; while true; do i=$((i+1)); echo $i > /tmp/n; sleep 1; done' >/dev/null 2>&1 &")
+    saved = source.snapshot("counter")         # status "ready"; files only
     copies.append(Sandbox.restore(saved["id"]))
 
     for f in source.fork(count=2):
@@ -344,7 +346,7 @@ Sandbox.delete_schedule(s["id"])
 - `every` ("5m", "1h"; 1 minute at least) or `cron` (5 fields, with `timezone`); `prompt` or `command`.
 - Each prompt run is a new agent conversation: keep state in files. A command runs in `/workspace`
   as root; success is exit code 0.
-- Sleep is files-only by default; `keepMemory: true` keeps processes and open apps between runs.
+- Sleep is files only: processes end, the next wake boots fresh.
 - A run still going when the next is due makes that one skip; `timeoutSeconds` (default 600) stops a
   run; five failed runs in a row switch the schedule off (`disabledReason`).
 - Prompt schedules need a key with no scopes (403 `ACCOUNT_SCOPE_REQUIRED`). Not on every account
