@@ -125,6 +125,11 @@ class Lizard:
             ``TRIAL_SANDBOX_SIZE``), another region ``TRIAL_SANDBOX_REGION``,
             and a second Small or a third Mini ``TRIAL_SIZE_RUNNING`` (pause or
             delete one first).
+        :param timeout_ms: Sandbox lifetime in milliseconds (default 5 minutes;
+            ``0`` = no deadline). On the Pro trial a sandbox lives 1 hour at
+            most, then it is deleted: ``0`` gets 1 hour, and more than 3,600,000
+            raises ``AuthenticationError`` (HTTP 403, ``code``
+            ``TRIAL_SANDBOX_LIFETIME``).
         """
         return Sandbox.create(
             template,

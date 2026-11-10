@@ -18,7 +18,7 @@ Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. If a san
 | `apiUrl` | `api_url` | API base URL; defaults to `LIZARD_API_URL` or `https://lizard.build` |
 | `size` | `size` | `'mini'` (1 vCPU / 2 GB, $0.0081/h; `base`, `claude`, `codex` and `interpreter` templates only), `'small'` (2 vCPU / 4 GB, $0.0162/h), `'medium'` (4 vCPU / 8 GB, $0.0324/h) or `'large'` (8 vCPU / 16 GB, $0.0648/h); default `'medium'`, `'small'` on the Pro trial. The trial runs 1 Small and 2 Mini at a time, in US regions only; Medium and Large unlock after the first payment (403 `TRIAL_SANDBOX_SIZE`, `TRIAL_SANDBOX_REGION`, or `TRIAL_SIZE_RUNNING` for a second Small or a third Mini). Ignored when restoring a snapshot |
 | `snapshotId` | `snapshot_id` | Create from a private saved snapshot; see [Snapshots](#pause-resume-snapshots-and-fork) |
-| `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms |
+| `timeoutMs` | `timeout_ms` | Sandbox lifetime on `create()`; default 300,000 ms. On the Pro trial at most 3,600,000 (1 hour): `0` gets 1 hour, longer fails with 403 `TRIAL_SANDBOX_LIFETIME`, and `setTimeout` / `set_timeout` cannot move it past 1 hour from creation |
 | `envs` | `envs` | Environment variables set in the sandbox, visible to every command |
 | `metadata` | `metadata` | Your own string labels, returned by `getInfo()` / `get_info()` |
 | `region` | `region` | Region ID; default `us-east-1`, or the volume's or snapshot's region when you pass one |

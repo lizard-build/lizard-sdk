@@ -235,9 +235,17 @@ class Sandbox:
             ``AuthenticationError`` (HTTP 403, ``code`` ``TRIAL_SANDBOX_SIZE``),
             another region ``TRIAL_SANDBOX_REGION``, and a second Small or a
             third Mini ``TRIAL_SIZE_RUNNING`` (pause or delete one first).
+            Trial sandboxes are deleted 1 hour after they start at the latest
+            (see ``timeout_ms``).
             Sandbox egress includes 2 TB per account over a rolling 30 days:
             https://lizard.build/docs/platform/limits/#sandbox-egress
             A successful pause stops compute charges; Persistent Volumes storage bills separately.
+        :param timeout_ms: Sandbox lifetime in milliseconds (default 300,000 =
+            5 minutes; ``0`` = no deadline). On the Pro trial a sandbox lives
+            1 hour at most, then it is deleted: ``0`` gets 1 hour, and more than
+            3,600,000 raises ``AuthenticationError`` (HTTP 403, ``code``
+            ``TRIAL_SANDBOX_LIFETIME``). Longer lifetimes unlock after the first
+            payment.
         :param project: Project ID, slug, or name the sandbox belongs to.
         :param metadata: Your own key/value labels for the sandbox, returned by
             :meth:`get_info` and :meth:`list`.
@@ -475,7 +483,12 @@ class Sandbox:
         return True
 
     def set_timeout(self, timeout_ms: int) -> None:
-        """Extend or reduce the sandbox timeout."""
+        """Extend or reduce the sandbox timeout (milliseconds from now).
+
+        On the Pro trial a sandbox cannot live past 1 hour from its creation: a
+        later deadline raises ``AuthenticationError`` (HTTP 403, ``code``
+        ``TRIAL_SANDBOX_LIFETIME``, with ``latestExpiresAt``).
+        """
         import httpx
 
         res = httpx.post(
@@ -587,7 +600,8 @@ class Sandbox:
         a volume attached cannot be forked (:class:`~lizard.ConflictError`, 409).
 
         :param timeout_ms: Lifetime of each fork; 0 (the default) uses the
-            source's timeout.
+            source's timeout. On the Pro trial at most 1 hour (more raises 403
+            ``TRIAL_SANDBOX_LIFETIME``; an inherited one is cut to 1 hour).
 
         Example::
 

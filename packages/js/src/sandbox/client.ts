@@ -79,7 +79,8 @@ export interface SandboxOpts extends ConnectionOpts {
    * there); Medium and Large unlock after the first payment. Until then `'medium'` or
    * `'large'` throws `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_SIZE`), another
    * region `TRIAL_SANDBOX_REGION`, and a second Small or a third Mini `TRIAL_SIZE_RUNNING`
-   * (pause or delete one first).
+   * (pause or delete one first). Trial sandboxes are deleted 1 hour after they start at the
+   * latest (see {@link SandboxOpts.timeoutMs}).
    *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
    * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
@@ -105,6 +106,12 @@ export interface SandboxOpts extends ConnectionOpts {
    * (8.8.8.8) is open too so names resolve; a list of addresses only keeps DNS closed.
    */
   allowedHosts?: string[]
+  /**
+   * Sandbox lifetime in milliseconds (default 300,000 = 5 minutes; `0` = no deadline). On the
+   * Pro trial a sandbox lives 1 hour at most, then it is deleted: `0` gets 1 hour, and more
+   * than 3,600,000 throws `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_LIFETIME`).
+   * Longer lifetimes unlock after the first payment.
+   */
   timeoutMs?: number
   /**
    * Region to run the sandbox in, e.g. `'us-east-1'`.

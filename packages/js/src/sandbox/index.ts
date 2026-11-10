@@ -364,7 +364,9 @@ export class Sandbox extends SandboxClient {
   /**
    * Extend or reduce the sandbox timeout.
    *
-   * @param timeoutMs New timeout in milliseconds measured from now.
+   * @param timeoutMs New timeout in milliseconds measured from now. On the Pro trial a sandbox
+   * cannot live past 1 hour from its creation: a later deadline throws `AuthenticationError`
+   * (HTTP 403, `code` `TRIAL_SANDBOX_LIFETIME`, with `latestExpiresAt`).
    */
   async setTimeout(timeoutMs: number, opts?: ConnectionOpts): Promise<void> {
     return SandboxClient.setTimeoutSandbox(this.sandboxId, timeoutMs, this.resolveOpts(opts))
@@ -423,7 +425,8 @@ export class Sandbox extends SandboxClient {
    * `{ error }` for a copy that could not be made (e.g. the account's sandbox
    * limit). A sandbox with a volume attached cannot be forked (`ConflictError`, 409).
    *
-   * @param opts.timeoutMs Lifetime of each fork; defaults to the source's timeout.
+   * @param opts.timeoutMs Lifetime of each fork; defaults to the source's timeout. On the Pro
+   * trial at most 1 hour (more throws 403 `TRIAL_SANDBOX_LIFETIME`; an inherited one is cut to 1 hour).
    *
    * @example
    * ```ts

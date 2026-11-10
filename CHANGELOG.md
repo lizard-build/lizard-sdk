@@ -6,6 +6,7 @@ From 1.0.0 the SDK follows [semantic versioning](https://semver.org): a change t
 
 ## Unreleased
 
+- Docs: on the Pro trial a sandbox lives 1 hour at most, then it is deleted. A create or fork with no lifetime (`0`) gets 1 hour; a longer `timeoutMs` / `timeout_ms`, or `setTimeout` / `set_timeout` past 1 hour from creation, fails with `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_LIFETIME`). Longer lifetimes unlock after the first payment. No code change.
 - Docs: the Pro trial runs 1 Small and 2 Mini sandboxes at a time, in US regions only; Medium and Large unlock after the first payment. A second running Small or a third Mini fails with `AuthenticationError` (HTTP 403, `code` `TRIAL_SIZE_RUNNING`). Mini is listed with the other sizes. No code change.
 - Snapshots restore only in their own project. `Sandbox.restore` or `Sandbox.create` with a snapshot and any other project fails with 403 (`SNAPSHOT_SCOPE`), and a key limited to a workspace or project sees only the snapshots inside its scope. `snapshot(name, { scope })` / `snapshot(name, scope=...)` still takes `scope` but no longer sends it. `Sandbox.setSnapshotScope` / `set_snapshot_scope` still returns the snapshot but changes nothing. Both are deprecated, as is `SnapshotScope`; the `scope` field stays and is always `'project'`. Code that sets a scope compiles and runs as before.
 - Docs: sandbox start limits per tier (per day 100 on the trial, 400 on Pro, 1,000 on Pro 5x, 3,000 on Pro 20x; per minute and per hour too). No code change.
