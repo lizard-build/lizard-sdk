@@ -69,19 +69,22 @@ export interface SandboxOpts extends ConnectionOpts {
   snapshotId?: string
   /**
    * Machine size, billed flat per hour (per second of running time):
+   * - `'mini'`   — 1 vCPU / 2 GB, $0.0081/h (`base`, `claude`, `codex` and `interpreter`
+   *   templates only; another template gets a 400 `SANDBOX_SIZE_NOT_ALLOWED`)
    * - `'small'`  — 2 vCPU / 4 GB, $0.0162/h
    * - `'medium'` — 4 vCPU / 8 GB, $0.0324/h (default)
    * - `'large'`  — 8 vCPU / 16 GB, $0.0648/h
    *
-   * On the Pro trial only `'small'` (also the default there) in a US region starts; another
-   * size or region throws `AuthenticationError` (HTTP 403, `TRIAL_SANDBOX_SIZE` /
-   * `TRIAL_SANDBOX_REGION`) until the first Pro payment.
+   * The Pro trial runs 1 Small and 2 Mini at a time, in US regions only (no size = `'small'`
+   * there); Medium and Large unlock after the first payment. Until then `'medium'` or
+   * `'large'` throws `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_SIZE`), another
+   * region `TRIAL_SANDBOX_REGION`, and a second Small or a third Mini `TRIAL_SIZE_RUNNING`
+   * (pause or delete one first).
    *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
    * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
    * A successful pause stops compute charges; Persistent Volumes storage bills separately.
    * Ignored with {@link SandboxOpts.snapshotId}.
-   * `'mini'` (1 vCPU / 2 GB) is available only to accounts Lizard has enabled it for; others get a 403.
    */
   size?: 'mini' | 'small' | 'medium' | 'large'
   /** Your own key/value labels for the sandbox, returned by `getInfo()` and `list()`. */

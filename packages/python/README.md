@@ -69,7 +69,7 @@ Lizard Pro costs $19 a month, taxes included, with $19 of usage each month. Unus
 
 Sandbox rates below were checked on October 23, 2026. See [current sizes and prices](https://lizard.build/docs/platform/limits/#sandbox-sizes) before estimating costs.
 
-Sandboxes come in three sizes: `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused.
+Sandboxes come in four sizes: `mini` (1 vCPU / 2 GB, $0.0081/h; `base`, `claude`, `codex` and `interpreter` templates only), `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). The Pro trial runs 1 Small and 2 Mini at a time, in US regions only (no size = `small` there); Medium and Large unlock after the first payment. Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused.
 
 ```python
 with lizard.create("base", size="large") as sandbox:
