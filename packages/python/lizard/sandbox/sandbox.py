@@ -239,7 +239,10 @@ class Sandbox:
             (see ``timeout_ms``).
             Sandbox egress includes 2 TB per account over a rolling 30 days:
             https://lizard.build/docs/platform/limits/#sandbox-egress
-            A successful pause stops compute charges; Persistent Volumes storage bills separately.
+            A successful pause stops compute charges. A paused sandbox costs
+            $0.14 per GB-month of used disk space until you resume or delete it,
+            and so does each snapshot until you delete it. Persistent Volumes
+            bill separately.
         :param timeout_ms: Sandbox lifetime in milliseconds (default 300,000 =
             5 minutes; ``0`` = no deadline). On the Pro trial a sandbox lives
             1 hour at most, then it is deleted: ``0`` gets 1 hour, and more than

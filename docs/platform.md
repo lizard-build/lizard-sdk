@@ -108,7 +108,7 @@ lizard.workspaces.set_limits(workspace.id, max_running_sandboxes=5, max_cpu_vcpu
 info = lizard.workspaces.get_limits(workspace.id)  # info.running_sandboxes, info.cpu_vcpus, info.memory_mb
 ```
 
-- `maxRunningSandboxes`: sandboxes running or resuming at once (paused ones are free). A create, fork or resume past it fails with HTTP 429 `WORKSPACE_SANDBOX_LIMIT`.
+- `maxRunningSandboxes`: sandboxes running or resuming at once (paused ones don't count). A create, fork or resume past it fails with HTTP 429 `WORKSPACE_SANDBOX_LIMIT`.
 - `maxCpuVcpus`, `maxMemoryMb`: what the workspace's apps and databases **use**, measured every ~10 seconds across regions, not their configured sizes. Memory is the working set: what the processes hold, without the file cache the kernel frees on demand (a database that has read a lot of data is not counted for its cache). While usage is at or over a cap, deploys, redeploys, restarts, scale-ups, new databases and resumes there fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`. Services already running keep running.
 - `maxDiskGb`: the SSD the workspace's databases and volumes **hold** (data written, measured; not the sizes they were created with). While at or over it, new volumes, volume growth, new databases and template deploys fail with HTTP 429 `WORKSPACE_USAGE_LIMIT`; data already written stays. A sandbox's own `/workspace` disk is not counted.
 

@@ -145,7 +145,7 @@ export interface SnapshotWaitOpts extends ConnectionOpts { waitTimeoutMs?: numbe
  *
  * Run commands, read and write files, and expose HTTP ports in a sandbox. A
  * sandbox boots in well under a second; {@link pause} and {@link resume} keep its
- * memory and running processes, {@link snapshot} saves it in about 2 s and
+ * files (processes restart), {@link snapshot} saves it in about 2 s and
  * {@link restore} starts a copy in about 0.4 s, and {@link fork} clones a running
  * sandbox, processes and all.
  *

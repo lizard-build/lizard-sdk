@@ -84,7 +84,9 @@ export interface SandboxOpts extends ConnectionOpts {
    *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
    * account over a rolling 30 days: https://lizard.build/docs/platform/limits/#sandbox-egress
-   * A successful pause stops compute charges; Persistent Volumes storage bills separately.
+   * A successful pause stops compute charges. A paused sandbox costs $0.14 per GB-month of used
+   * disk space until you resume or delete it, and so does each snapshot until you delete it.
+   * Persistent Volumes bill separately.
    * Ignored with {@link SandboxOpts.snapshotId}.
    */
   size?: 'mini' | 'small' | 'medium' | 'large'

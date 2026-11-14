@@ -110,7 +110,7 @@ Lizard Pro costs $19 a month, taxes included, with $19 of usage each month. Unus
 
 Sandbox rates below were checked on October 23, 2026. See [current sizes and prices](https://lizard.build/docs/platform/limits/#sandbox-sizes) before estimating costs.
 
-Sandboxes come in four sizes: `mini` (1 vCPU / 2 GB, $0.0081/h; `base`, `claude`, `codex` and `interpreter` templates only), `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). The Pro trial runs 1 Small and 2 Mini at a time, in US regions only (no size = `small` there), and each trial sandbox is deleted 1 hour after it starts at the latest (a longer lifetime fails with 403 `TRIAL_SANDBOX_LIFETIME`); Medium, Large and longer lifetimes unlock after the first payment. Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges; storage in Persistent Volumes is billed separately, including while paused.
+Sandboxes come in four sizes: `mini` (1 vCPU / 2 GB, $0.0081/h; `base`, `claude`, `codex` and `interpreter` templates only), `small` (2 vCPU / 4 GB, $0.0162/h), `medium` (4 vCPU / 8 GB, $0.0324/h, the default) and `large` (8 vCPU / 16 GB, $0.0648/h). The Pro trial runs 1 Small and 2 Mini at a time, in US regions only (no size = `small` there), and each trial sandbox is deleted 1 hour after it starts at the latest (a longer lifetime fails with 403 `TRIAL_SANDBOX_LIFETIME`); Medium, Large and longer lifetimes unlock after the first payment. Billing is flat by size, per second while the sandbox runs, including idle time. CPU and RAM are included. The sandbox egress allowance is [2 TB per account over a rolling 30 days](https://lizard.build/docs/platform/limits/#sandbox-egress), with no separate per-GB charge. A successful pause stops compute charges. A paused sandbox costs $0.14 per GB-month of used disk space until you resume or delete it, and so does each snapshot until you delete it. Persistent Volumes bill separately, including while paused.
 
 Pass `{ size: 'large' }` in TypeScript or `size="large"` in Python when creating a sandbox. See the package guides for examples that clean up when the task ends.
 
@@ -143,7 +143,7 @@ Create a sandbox from the `desktop` template, call `await sandbox.desktop.start(
 Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. Use Persistent Volumes mounted at `/workspace` to keep files after a sandbox ends.
 
 - `pause()` keeps the sandbox's files (about a second; processes end, `resume()` boots it fresh).
-- `snapshot()` saves a running sandbox (memory, processes and files) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
+- `snapshot()` saves a running sandbox's files (a restored copy boots fresh) and is ready in about 2 s; `Sandbox.restore()` starts a copy in about 0.4 s.
 - `fork()` clones a running sandbox, processes and all.
 
 See the [snapshot guide](https://github.com/lizard-build/lizard-sdk/blob/main/docs/sandboxes.md#pause-resume-snapshots-and-fork). File watching and sandbox log streaming are not available yet. A volume can grow but not shrink, and a sandbox with a volume attached cannot be forked.
