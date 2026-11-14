@@ -191,7 +191,7 @@ class Sandbox:
         template: str | None = None,
         *,
         snapshot_id: str | None = None,
-        size: Literal["mini", "small", "medium", "large"] | None = None,
+        size: Literal["nano", "mini", "small", "medium", "large", "big"] | None = None,
         project: str | None = None,
         project_id: str | None = None,
         api_key: str | None = None,
@@ -224,17 +224,23 @@ class Sandbox:
             the snapshot's own. The sandbox runs at the source sandbox's size and is
             billed flat at that size; ``size`` is ignored.
         :param size: Machine size, billed flat per hour (per second of running
-            time): ``"mini"`` (1 vCPU / 2 GB, $0.0081/h; ``base``, ``claude``,
+            time): ``"nano"`` (0.5 vCPU / 1 GB, $0.00405/h; one vCPU held to
+            half a core; ``base``, ``claude`` and ``codex`` templates only),
+            ``"mini"`` (1 vCPU / 2 GB, $0.0081/h; ``base``, ``claude``,
             ``codex`` and ``interpreter`` templates only), ``"small"`` (2 vCPU /
             4 GB, $0.0162/h), ``"medium"`` (4 vCPU / 8 GB, $0.0324/h, the
-            default) or ``"large"`` (8 vCPU / 16 GB, $0.0648/h). CPU/RAM are
-            included; idle running time is billed.
-            The Pro trial runs 1 Small and 2 Mini at a time, in US regions only
-            (no size = ``"small"`` there); Medium and Large unlock after the
-            first payment. Until then ``"medium"`` or ``"large"`` raises
-            ``AuthenticationError`` (HTTP 403, ``code`` ``TRIAL_SANDBOX_SIZE``),
-            another region ``TRIAL_SANDBOX_REGION``, and a second Small or a
-            third Mini ``TRIAL_SIZE_RUNNING`` (pause or delete one first).
+            default), ``"large"`` (8 vCPU / 16 GB, $0.0648/h) or ``"big"``
+            (16 vCPU / 32 GB, $0.1296/h; paid plans only; ``base``, ``claude``,
+            ``codex``, ``interpreter`` and ``desktop`` templates only). Nano,
+            Mini and Big take no volume. CPU/RAM are included; idle running
+            time is billed.
+            The Pro trial runs 1 Small, 2 Mini and 2 Nano at a time, in US
+            regions only (no size = ``"small"`` there); Medium, Large and Big
+            unlock after the first payment. Until then ``"medium"``,
+            ``"large"`` or ``"big"`` raises ``AuthenticationError`` (HTTP 403,
+            ``code`` ``TRIAL_SANDBOX_SIZE``), another region
+            ``TRIAL_SANDBOX_REGION``, and a second Small or a third Mini or Nano
+            ``TRIAL_SIZE_RUNNING`` (pause or delete one first).
             Trial sandboxes are deleted 1 hour after they start at the latest
             (see ``timeout_ms``).
             Sandbox egress includes 2 TB per account over a rolling 30 days:

@@ -13,8 +13,8 @@ export interface SandboxInfo {
   /** The sandbox runtime: `'firecracker'` (a microVM), or `null` when unknown. */
   runtime?: 'firecracker' | 'container' | null
   pauseError?: string | null
-  /** Machine size (`'mini' | 'small' | 'medium' | 'large'`); may be `null` for a sandbox billed by measured usage. */
-  size?: 'mini' | 'small' | 'medium' | 'large' | null
+  /** Machine size (`'nano' | 'mini' | 'small' | 'medium' | 'large' | 'big'`); may be `null` for a sandbox billed by measured usage. */
+  size?: 'nano' | 'mini' | 'small' | 'medium' | 'large' | 'big' | null
   /** Flat hourly price in USD for `size`, billed per second while running; may be `null` when billed by measured usage. */
   pricePerHour?: number | null
   /** `false` when the sandbox was created with `internetAccess: false`; absent from older servers. */
@@ -69,17 +69,24 @@ export interface SandboxOpts extends ConnectionOpts {
   snapshotId?: string
   /**
    * Machine size, billed flat per hour (per second of running time):
+   * - `'nano'`   — 0.5 vCPU / 1 GB, $0.00405/h (one vCPU held to half a core; `base`, `claude`
+   *   and `codex` templates only)
    * - `'mini'`   — 1 vCPU / 2 GB, $0.0081/h (`base`, `claude`, `codex` and `interpreter`
-   *   templates only; another template gets a 400 `SANDBOX_SIZE_NOT_ALLOWED`)
+   *   templates only)
    * - `'small'`  — 2 vCPU / 4 GB, $0.0162/h
    * - `'medium'` — 4 vCPU / 8 GB, $0.0324/h (default)
    * - `'large'`  — 8 vCPU / 16 GB, $0.0648/h
+   * - `'big'`    — 16 vCPU / 32 GB, $0.1296/h (paid plans only; `base`, `claude`, `codex`,
+   *   `interpreter` and `desktop` templates only)
    *
-   * The Pro trial runs 1 Small and 2 Mini at a time, in US regions only (no size = `'small'`
-   * there); Medium and Large unlock after the first payment. Until then `'medium'` or
-   * `'large'` throws `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_SIZE`), another
-   * region `TRIAL_SANDBOX_REGION`, and a second Small or a third Mini `TRIAL_SIZE_RUNNING`
-   * (pause or delete one first). Trial sandboxes are deleted 1 hour after they start at the
+   * Nano, Mini and Big take no volume; with one, or with another template, they get a 400
+   * `SANDBOX_SIZE_NOT_ALLOWED`.
+   *
+   * The Pro trial runs 1 Small, 2 Mini and 2 Nano at a time, in US regions only (no size =
+   * `'small'` there); Medium, Large and Big unlock after the first payment. Until then
+   * `'medium'`, `'large'` or `'big'` throws `AuthenticationError` (HTTP 403, `code`
+   * `TRIAL_SANDBOX_SIZE`), another region `TRIAL_SANDBOX_REGION`, and a second Small or a
+   * third Mini or Nano `TRIAL_SIZE_RUNNING` (pause or delete one first). Trial sandboxes are deleted 1 hour after they start at the
    * latest (see {@link SandboxOpts.timeoutMs}).
    *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per
@@ -89,7 +96,7 @@ export interface SandboxOpts extends ConnectionOpts {
    * Persistent Volumes bill separately.
    * Ignored with {@link SandboxOpts.snapshotId}.
    */
-  size?: 'mini' | 'small' | 'medium' | 'large'
+  size?: 'nano' | 'mini' | 'small' | 'medium' | 'large' | 'big'
   /** Your own key/value labels for the sandbox, returned by `getInfo()` and `list()`. */
   metadata?: Record<string, string>
   /** Environment variables set in the sandbox, visible to every command it runs. */
