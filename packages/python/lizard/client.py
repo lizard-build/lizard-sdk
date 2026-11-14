@@ -125,9 +125,10 @@ class Lizard:
             sandbox's size and is billed flat at that size. The Pro trial runs
             1 Small, 2 Mini and 2 Nano at a time, in US regions only (no size =
             ``"small"`` there); Medium, Large and Big unlock after the first
-            payment. Until then ``"medium"``, ``"large"`` or ``"big"`` raises
-            ``AuthenticationError`` (HTTP 403, ``code`` ``TRIAL_SANDBOX_SIZE``),
-            another region ``TRIAL_SANDBOX_REGION``, and a second Small or a
+            payment. Until then ``"medium"`` raises ``AuthenticationError``
+            (HTTP 403, ``code`` ``TRIAL_SANDBOX_SIZE``), ``"large"`` or
+            ``"big"`` the same with ``SANDBOX_SIZE_NOT_ALLOWED``, another region
+            ``TRIAL_SANDBOX_REGION``, and a second Small or a
             third Mini or Nano ``TRIAL_SIZE_RUNNING`` (pause or delete one
             first).
         :param timeout_ms: Sandbox lifetime in milliseconds (default 5 minutes;

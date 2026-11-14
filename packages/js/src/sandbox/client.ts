@@ -84,9 +84,9 @@ export interface SandboxOpts extends ConnectionOpts {
    *
    * The Pro trial runs 1 Small, 2 Mini and 2 Nano at a time, in US regions only (no size =
    * `'small'` there); Medium, Large and Big unlock after the first payment. Until then
-   * `'medium'`, `'large'` or `'big'` throws `AuthenticationError` (HTTP 403, `code`
-   * `TRIAL_SANDBOX_SIZE`), another region `TRIAL_SANDBOX_REGION`, and a second Small or a
-   * third Mini or Nano `TRIAL_SIZE_RUNNING` (pause or delete one first). Trial sandboxes are deleted 1 hour after they start at the
+   * `'medium'` throws `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_SIZE`), `'large'`
+   * or `'big'` the same with `SANDBOX_SIZE_NOT_ALLOWED`, another region `TRIAL_SANDBOX_REGION`,
+   * and a second Small or a third Mini or Nano `TRIAL_SIZE_RUNNING` (pause or delete one first). Trial sandboxes are deleted 1 hour after they start at the
    * latest (see {@link SandboxOpts.timeoutMs}).
    *
    * CPU/RAM are included; running time includes idle time. Sandbox egress includes 2 TB per

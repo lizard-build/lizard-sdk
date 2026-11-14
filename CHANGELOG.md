@@ -6,6 +6,7 @@ From 1.0.0 the SDK follows [semantic versioning](https://semver.org): a change t
 
 ## Unreleased
 
+- Docs: on the Pro trial, `'large'` and `'big'` fail with HTTP 403 `SANDBOX_SIZE_NOT_ALLOWED` (their vCPU is over the trial's 4 per sandbox), not `TRIAL_SANDBOX_SIZE`; only `'medium'` gets `TRIAL_SANDBOX_SIZE`. No code change.
 - `size` accepts `'nano'` (0.5 vCPU / 1 GB, $0.00405/h; `base`, `claude` and `codex` templates only) and `'big'` (16 vCPU / 32 GB, $0.1296/h; paid plans only; `base`, `claude`, `codex`, `interpreter` and `desktop` templates only), in TypeScript and in Python's `Literal`. `SandboxInfo.size` can be either. Nano, Mini and Big take no volume. The trial runs 1 Small, 2 Mini and 2 Nano at a time; Big unlocks after the first payment, like Medium and Large.
 - Docs: a paused sandbox costs $0.14 per GB-month of used disk space until it is resumed or deleted, and so does each snapshot until it is deleted (billed since November 11, 2026). Snapshots keep files only. No code change.
 - Docs: on the Pro trial a sandbox lives 1 hour at most, then it is deleted. A create or fork with no lifetime (`0`) gets 1 hour; a longer `timeoutMs` / `timeout_ms`, or `setTimeout` / `set_timeout` past 1 hour from creation, fails with `AuthenticationError` (HTTP 403, `code` `TRIAL_SANDBOX_LIFETIME`). Longer lifetimes unlock after the first payment. No code change.
