@@ -109,6 +109,7 @@ class Lizard:
         volume_id: str | None = None,
         volume_name: str | None = None,
         lizard_token: str | None = None,
+        environment: str | None = None,
     ) -> Sandbox:
         """Create a new sandbox in this client's project.
 
@@ -150,6 +151,7 @@ class Lizard:
             volume_id=volume_id,
             volume_name=volume_name,
             lizard_token=lizard_token,
+            environment=environment,
             project_id=self.project_id(),
         )
 

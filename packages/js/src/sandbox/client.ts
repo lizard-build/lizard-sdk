@@ -162,6 +162,12 @@ export interface SandboxOpts extends ConnectionOpts {
    * ```
    */
   lizardToken?: string
+  /**
+   * Start with the variables of one of the project's named sandbox environments (dashboard:
+   * Sandboxes → Environment; CLI: `lizard sandbox environments`) instead of its default ones.
+   * The environment's name. `envs` given here still win over it. An unknown name is refused.
+   */
+  environment?: string
 }
 
 /** The platform's answer for a region that takes no new sandboxes for now. Reads a clone. */
@@ -208,6 +214,7 @@ export class SandboxClient {
         volumeId: opts?.volumeId,
         volumeName: opts?.volumeName,
         lizardToken: opts?.lizardToken,
+        ...(opts?.environment ? { environment: opts.environment } : {}),
         // Sent only when asked: every other create stays what it was.
         ...(opts?.internetAccess === false || opts?.allowedHosts?.length ? { internetAccess: false } : {}),
         ...(opts?.allowedHosts?.length ? { allowedHosts: opts.allowedHosts } : {}),

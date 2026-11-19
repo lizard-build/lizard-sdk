@@ -203,6 +203,7 @@ class Sandbox:
         volume_id: str | None = None,
         volume_name: str | None = None,
         lizard_token: str | None = None,
+        environment: str | None = None,
         internet_access: bool = True,
         allowed_hosts: list[str] | None = None,
     ) -> "Sandbox":
@@ -273,6 +274,11 @@ class Sandbox:
             usually what you want. Requires an exact ``project_id``.
         :param volume_id: Attach a persistent volume by id, mounted at ``/workspace``
             inside the sandbox. See :class:`lizard.Volume`.
+        :param environment: Start with the variables of one of the project's named
+            sandbox environments (dashboard: Sandboxes → Environment; CLI:
+            ``lizard sandbox environments``) instead of its default ones. The
+            environment's name. ``envs`` given here still win over it; an unknown
+            name is refused.
         :param lizard_token: A ``liz_`` API key to write into the sandbox so the
             ``lizard`` CLI works inside it. The CLI is preinstalled in every
             template; this is what authenticates it. The key must belong to the
@@ -335,6 +341,8 @@ class Sandbox:
             body["volumeName"] = volume_name
         if lizard_token:
             body["lizardToken"] = lizard_token
+        if environment:
+            body["environment"] = environment
         # Sent only when asked: every other create stays what it was.
         if internet_access is False or allowed_hosts:
             body["internetAccess"] = False

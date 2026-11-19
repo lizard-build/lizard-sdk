@@ -24,6 +24,7 @@ Lizard Sandboxes run as Firecracker microVMs, each with its own kernel. If a san
 | `region` | `region` | Region ID; default `us-east-1`, or the volume's or snapshot's region when you pass one |
 | `volumeName` / `volumeId` | `volume_name` / `volume_id` | Attach a persistent volume at `/workspace` |
 | `lizardToken` | `lizard_token` | Inject a Lizard key for tools inside the sandbox |
+| `environment` | `environment` | Start with the variables of one of the project's named [environments](#environments) instead of its default ones |
 
 `Lizard({ project })` / `Lizard(project=...)` resolves the project for sandbox creation and volumes. Its `create()` passes that project to `Sandbox.create()`, so `lizard.create(template)` and `Sandbox.create(template, { project })` / `Sandbox.create(template, project=...)` send the same request; both are stable. `project` is optional for platform APIs. Use an exact project ID when names are ambiguous. Configuration comes from the environment or explicit options; the SDK does not load `.env` files itself.
 
@@ -326,8 +327,14 @@ The platform can wake a paused sandbox on a timer, run a prompt (the coding agen
 command in it, and put it back to sleep. You pay only while it is awake; files in `/workspace`
 carry over between runs. A sandbox that was already running is left running.
 
+**A schedule is set when the sandbox is created.** `schedule()` works on a sandbox in its first
+15 minutes; an older sandbox answers 409 `SCHEDULE_ONLY_AT_CREATE`. Its existing schedules can
+still be changed, run and deleted. So create the sandbox and schedule it in one go:
+
 ```ts
+const sandbox = await Sandbox.create('claude', { projectId, timeoutMs: 0 })
 const s = await sandbox.schedule({ every: '5m', prompt: 'Continue the research in /workspace/research; append findings to notes.md' })
+// or a command, on a cron:
 await sandbox.schedule({ cron: '0 9 * * mon-fri', timezone: 'Europe/Berlin', command: './report.sh', timeoutSeconds: 900 })
 await Sandbox.runSchedule(s.id)                      // now
 const runs = await Sandbox.scheduleRuns(s.id)        // status, output, error, exitCode, durationMs
@@ -336,6 +343,7 @@ await Sandbox.deleteSchedule(s.id)
 ```
 
 ```python
+sandbox = Sandbox.create("claude", project_id=project_id, timeout_ms=0)
 s = sandbox.schedule(every="5m", prompt="Continue the research in /workspace/research")
 Sandbox.run_schedule(s["id"])
 runs = Sandbox.schedule_runs(s["id"])
@@ -343,14 +351,46 @@ Sandbox.update_schedule(s["id"], enabled=False)
 Sandbox.delete_schedule(s["id"])
 ```
 
-- `every` ("5m", "1h"; 1 minute at least) or `cron` (5 fields, with `timezone`); `prompt` or `command`.
+- `every` ("5m", "1h"; 1 minute to 30 days) or `cron` (5 fields, with `timezone`); `prompt` or
+  `command`. Once a day at 09:00 on weekdays is `cron: '0 9 * * 1-5'`.
 - Each prompt run is a new agent conversation: keep state in files. A command runs in `/workspace`
   as root; success is exit code 0.
+- A prompt needs a sandbox with a coding agent (the `claude`, `codex`, `opencode`, `pi` or `prime`
+  template): on `base` or `interpreter` it is refused with 400 `AGENT_NOT_IN_SANDBOX`. A command
+  works on any template.
 - Sleep is files only: processes end, the next wake boots fresh.
-- A run still going when the next is due makes that one skip; `timeoutSeconds` (default 600) stops a
-  run; five failed runs in a row switch the schedule off (`disabledReason`).
-- Prompt schedules need a key with no scopes (403 `ACCOUNT_SCOPE_REQUIRED`). Not on every account
-  yet: 403 `SCHEDULES_NOT_ENABLED`. Keep the sandbox from expiring (`timeoutMs: 0`).
+- A run still going when the next is due makes that one skip; `timeoutSeconds` (default 600, at most
+  6 hours) stops a run; five failed runs in a row switch the schedule off (`disabledReason`).
+- Prompt schedules need a key with no scopes (403 `ACCOUNT_SCOPE_REQUIRED`), and only whoever
+  created one may change or run it (403 `SCHEDULE_CREATOR_ONLY`). At most 50 schedules per account
+  (429 `SCHEDULE_LIMIT`). Not on every account yet: 403 `SCHEDULES_NOT_ENABLED`.
+- Keep the sandbox from expiring (`timeoutMs: 0`).
+
+## Environments
+
+A project's environment is what every sandbox created in it starts with: variables, the agents'
+instruction files (a user-level `CLAUDE.md` and `AGENTS.md`) and GitHub access (chosen repositories
+cloned into `/workspace/<name>`, with `git` and `gh` signed in). It is set in the dashboard
+(Sandboxes → Environment) or with the CLI (`lizard sandbox environments`, `environment-set`,
+`environment-instructions`); the SDK uses it.
+
+A project can also hold named environments: other complete sets of variables. Create a sandbox
+with one and it gets those variables instead of the default ones (never both); instructions and
+GitHub access stay the project's.
+
+```ts
+const sandbox = await Sandbox.create('base', { projectId, environment: 'staging' })
+```
+
+```python
+sandbox = Sandbox.create("base", project_id=project_id, environment="staging")
+```
+
+- `envs` passed to `create()` win over the environment's variables.
+- An unknown name is refused (`SANDBOX_ENVIRONMENT_NOT_FOUND`); `'default'` is the same as leaving
+  it out.
+- A change to an environment applies to sandboxes created after it.
+- Not on every account yet.
 
 ## Desktop (computer use)
 
