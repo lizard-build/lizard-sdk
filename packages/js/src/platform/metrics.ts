@@ -36,13 +36,13 @@ export interface ProjectCost { projectId: string; costUsd: number; [key: string]
 export class MetricsAPI {
   constructor(private readonly client: PlatformClient) {}
   service(id: string, range: MetricRange = '1h'): Promise<RawMetrics> {
-    return this.client.get(`/api/apps/${id}/metrics?range=${range}`)
+    return this.client.get(`/api/apps/${encodeURIComponent(id)}/metrics?range=${encodeURIComponent(range)}`)
   }
   addon(projectId: string, addonId: string, range: MetricRange = '1h'): Promise<RawMetrics> {
-    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/metrics?range=${range}`)
+    return this.client.get(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/metrics?range=${encodeURIComponent(range)}`)
   }
   project(id: string, opts: { range?: MetricRange; live?: boolean } = {}): Promise<unknown> {
-    return this.client.get(query(`/api/projects/${id}/metrics`, opts))
+    return this.client.get(query(`/api/projects/${encodeURIComponent(id)}/metrics`, opts))
   }
   private points(raw: RawMetrics, name: string): MetricPoint[] {
     const series = raw.series.find(s => s.metric === name)
@@ -64,7 +64,7 @@ export class MetricsAPI {
   }
   /** Return the backend's project cost row in USD, without guessing missing totals. */
   async cost(projectId: string, range: MetricRange = '30d'): Promise<ProjectCost | null> {
-    const project = await this.client.get<{ workspaceId: string }>(`/api/projects/${projectId}`)
+    const project = await this.client.get<{ workspaceId: string }>(`/api/projects/${encodeURIComponent(projectId)}`)
     const summary = await this.client.get<{ projects: ProjectCost[] }>(query('/api/billing/summary', { workspaceId: project.workspaceId, range }))
     return summary.projects.find(p => p.projectId === projectId) ?? null
   }

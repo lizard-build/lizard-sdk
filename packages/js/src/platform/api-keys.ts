@@ -92,6 +92,6 @@ export class ApiKeysAPI {
 
   /** Revoke a key by id. It stops working immediately, everywhere. */
   delete(id: string): Promise<void> {
-    return this.client.delete(`/api/account/api-keys/${id}`)
+    return this.client.delete(`/api/account/api-keys/${encodeURIComponent(id)}`)
   }
 }

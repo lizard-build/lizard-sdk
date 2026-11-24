@@ -113,12 +113,12 @@ export class WorkspacesAPI {
    * Each keeps its URL, host, port, password, settings and volumes.
    */
   pause(id: string): Promise<PauseResult> {
-    return this.client.post(`/api/workspaces/${id}/pause`, {})
+    return this.client.post(`/api/workspaces/${encodeURIComponent(id)}/pause`, {})
   }
 
   /** Resume what was paused in a workspace (owner only; not what a billing freeze paused). */
   resume(id: string): Promise<PauseResult> {
-    return this.client.post(`/api/workspaces/${id}/resume`, {})
+    return this.client.post(`/api/workspaces/${encodeURIComponent(id)}/resume`, {})
   }
 
   /**
@@ -128,7 +128,7 @@ export class WorkspacesAPI {
    * prices can neither read nor change them.
    */
   getResalePricing(id: string): Promise<ResalePricing> {
-    return this.client.get(`/api/workspaces/${id}/resale-pricing`)
+    return this.client.get(`/api/workspaces/${encodeURIComponent(id)}/resale-pricing`)
   }
 
   /**
@@ -142,12 +142,12 @@ export class WorkspacesAPI {
    * ```
    */
   setResalePricing(id: string, multipliers: Partial<ResaleMultipliers>): Promise<ResalePricing> {
-    return this.client.put(`/api/workspaces/${id}/resale-pricing`, multipliers)
+    return this.client.put(`/api/workspaces/${encodeURIComponent(id)}/resale-pricing`, multipliers)
   }
 
   /** Turn resale prices off: scoped keys see Lizard's prices again (owner only). */
   clearResalePricing(id: string): Promise<ResalePricing> {
-    return this.client.put(`/api/workspaces/${id}/resale-pricing`, {})
+    return this.client.put(`/api/workspaces/${encodeURIComponent(id)}/resale-pricing`, {})
   }
 
   /**
@@ -155,7 +155,7 @@ export class WorkspacesAPI {
    * including a key scoped to it (your customer sees how close they are).
    */
   getLimits(id: string): Promise<WorkspaceLimitsInfo> {
-    return this.client.get(`/api/workspaces/${id}/limits`)
+    return this.client.get(`/api/workspaces/${encodeURIComponent(id)}/limits`)
   }
 
   /**
@@ -177,7 +177,7 @@ export class WorkspacesAPI {
    * ```
    */
   setLimits(id: string, limits: Partial<WorkspaceLimits>): Promise<WorkspaceLimitsInfo> {
-    return this.client.put(`/api/workspaces/${id}/limits`, limits)
+    return this.client.put(`/api/workspaces/${encodeURIComponent(id)}/limits`, limits)
   }
 
   /**
@@ -192,7 +192,7 @@ export class WorkspacesAPI {
    */
   delete(id: string, opts?: { force?: boolean }): Promise<void> {
     const qs = opts?.force ? '' : '?requireEmpty=true'
-    return this.client.delete(`/api/workspaces/${id}${qs}`)
+    return this.client.delete(`/api/workspaces/${encodeURIComponent(id)}${qs}`)
   }
 
   /**

@@ -96,7 +96,8 @@ export class Process {
     // to be asked for it with an SSE Accept header.
     const streaming = Boolean(opts?.onStdout || opts?.onStderr || opts?.onPid)
 
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/exec`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/exec`, {
+      redirect: 'error',
       method: 'POST',
       headers: streaming
         ? { ...this.config.headers, Accept: 'text/event-stream' }
@@ -132,7 +133,8 @@ export class Process {
    * ```
    */
   async list(): Promise<ProcessInfo[]> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/processes`, {
+      redirect: 'error',
       headers: this.config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -155,7 +157,8 @@ export class Process {
    * ```
    */
   async kill(pid: number, signal: ProcessSignal = 'SIGTERM'): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/processes/signal`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/processes/signal`, {
+      redirect: 'error',
       method: 'POST',
       headers: this.config.headers,
       body: JSON.stringify({ pid, signal }),

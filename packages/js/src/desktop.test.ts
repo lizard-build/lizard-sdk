@@ -101,8 +101,15 @@ describe('sandbox.desktop input', () => {
     const url = 'https://example.com/?q=$(id)&x=`id`'
     await sandbox().desktop.openUrl(url)
     const argv = exec(calls)
-    expect(argv).toEqual(['sh', '-c', 'setsid chromium --new-window "$1" >/dev/null 2>&1 < /dev/null &', 'sh', url])
+    expect(argv).toEqual(['sh', '-c', 'setsid chromium --new-window -- "$1" >/dev/null 2>&1 < /dev/null &', 'sh', url])
     expect(argv[2]).not.toContain(url)
+  })
+  it('openUrl refuses anything but http(s) URLs', async () => {
+    const calls = stub()
+    for (const bad of ['--renderer-cmd-prefix=touch /tmp/x', 'file:///etc/passwd', 'javascript:alert(1)', ' https://x', '']) {
+      await expect(sandbox().desktop.openUrl(bad)).rejects.toThrow(LizardError)
+    }
+    expect(calls).toEqual([])
   })
   it('cursorPosition parses xdotool --shell output', async () => {
     const calls = stub({ stdout: 'X=640\nY=400\nSCREEN=0\nWINDOW=123\n', stderr: '', exitCode: 0 })

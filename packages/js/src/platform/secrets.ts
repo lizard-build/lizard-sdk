@@ -29,9 +29,9 @@ export class SecretsAPI {
    */
   list(projectId: string, opts?: ListSecretsOpts): Promise<Secret[]> {
     if (opts?.serviceId) {
-      return this.client.get(`/api/apps/${opts.serviceId}/secrets`)
+      return this.client.get(`/api/apps/${encodeURIComponent(opts.serviceId)}/secrets`)
     }
-    return this.client.get(`/api/projects/${projectId}/secrets`)
+    return this.client.get(`/api/projects/${encodeURIComponent(projectId)}/secrets`)
   }
 
   /**
@@ -60,7 +60,7 @@ export class SecretsAPI {
     }
     const services: Record<string, Record<string, string | null>> = {}
     for (const [id, values] of byService) {
-      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${id}`)
+      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${encodeURIComponent(id)}`)
       if (svc.projectId !== projectId) throw new Error('Service does not belong to this project')
       services[svc.name] = values
     }
@@ -69,13 +69,13 @@ export class SecretsAPI {
   async delete(projectId: string, opts: { key: string; serviceId?: string }): Promise<void> {
     const secrets: { shared?: Record<string, null>; services?: Record<string, Record<string, null>> } = {}
     if (opts.serviceId) {
-      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${opts.serviceId}`)
+      const svc = await this.client.get<{ name: string; projectId: string }>(`/api/apps/${encodeURIComponent(opts.serviceId)}`)
       if (svc.projectId !== projectId) throw new Error('Service does not belong to this project')
       secrets.services = { [svc.name]: { [opts.key]: null } }
     } else secrets.shared = { [opts.key]: null }
     await this.client.applyConfig(projectId, { secrets })
   }
   refs(projectId: string, serviceId?: string): Promise<unknown> {
-    return this.client.get(serviceId ? `/api/apps/${serviceId}/variables:refs` : `/api/projects/${projectId}/variables:refs`)
+    return this.client.get(serviceId ? `/api/apps/${encodeURIComponent(serviceId)}/variables:refs` : `/api/projects/${encodeURIComponent(projectId)}/variables:refs`)
   }
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -105,4 +106,4 @@ class ApiKeysAPI:
 
     def delete(self, id: str) -> None:
         """Revoke a key by id. It stops working immediately, everywhere."""
-        self._client.delete(f"/api/account/api-keys/{id}")
+        self._client.delete(f"/api/account/api-keys/{_q(id)}")

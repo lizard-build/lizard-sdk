@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -43,7 +44,7 @@ class AddonsAPI:
 
     def list(self, *, project_id: str) -> list[Addon]:
         """List all addons in a project."""
-        return [Addon._from_dict(a) for a in self._client.get(f"/api/projects/{project_id}/addons")]
+        return [Addon._from_dict(a) for a in self._client.get(f"/api/projects/{_q(project_id)}/addons")]
 
     def get(self, project_id: str, addon_id: str) -> Addon:
         """Get an addon by project + addon ID."""
@@ -73,11 +74,11 @@ class AddonsAPI:
         body = {"type": "mongo" if type == "mongodb" else type, "config": config}
         if name is not None: body["name"] = name
         if region is not None: body["region"] = region
-        return Addon._from_dict(self._client.post(f"/api/projects/{project_id}/addons", body))
+        return Addon._from_dict(self._client.post(f"/api/projects/{_q(project_id)}/addons", body))
 
     def delete(self, project_id: str, addon_id: str) -> None:
         """Delete an addon."""
-        self._client.delete(f"/api/projects/{project_id}/addons/{addon_id}")
+        self._client.delete(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}")
 
     def resize(
         self,
@@ -102,33 +103,33 @@ class AddonsAPI:
 
     def redeploy(self, project_id: str, addon_id: str) -> None:
         """Trigger a redeploy of an addon."""
-        self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/redeploy")
+        self._client.post(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/redeploy")
 
     def pause(self, project_id: str, addon_id: str) -> dict:
         """Pause a managed database (Postgres, Redis): it scales to 0 (connections are refused)
         and keeps its host, port, password and data. Returns ``{"ok": True, "status": "paused"}``."""
-        return self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/pause")
+        return self._client.post(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/pause")
 
     def resume(self, project_id: str, addon_id: str) -> dict:
         """Resume a paused database: same host, port, password and data."""
-        return self._client.post(f"/api/projects/{project_id}/addons/{addon_id}/resume")
+        return self._client.post(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/resume")
 
     def get_sleep(self, project_id: str, addon_id: str) -> dict:
         """Serverless setting of a database (Postgres, Redis)."""
-        return self._client.get(f"/api/projects/{project_id}/addons/{addon_id}/sleep")
+        return self._client.get(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/sleep")
 
     def set_sleep(self, project_id: str, addon_id: str, *, enabled: bool, idle_minutes: int | None = None) -> dict:
         """Make a database serverless (sleep when idle, wake on the next connection) or always on."""
         body: dict = {"enabled": enabled}
         if idle_minutes is not None:
             body["idleMinutes"] = idle_minutes
-        return self._client.put(f"/api/projects/{project_id}/addons/{addon_id}/sleep", body)
+        return self._client.put(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/sleep", body)
 
     def rename(self, project_id: str, addon_id: str, name: str):
-        return self._client.patch(f"/api/projects/{project_id}/addons/{addon_id}", {"name": name})
+        return self._client.patch(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}", {"name": name})
 
     def secrets(self, project_id: str, addon_id: str):
-        return self._client.get(f"/api/projects/{project_id}/addons/{addon_id}/secrets")
+        return self._client.get(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/secrets")
 
     def logs(self, project_id: str, addon_id: str):
-        return self._client.get(f"/api/projects/{project_id}/addons/{addon_id}/logs")
+        return self._client.get(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/logs")

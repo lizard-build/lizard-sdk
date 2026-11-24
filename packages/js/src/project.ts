@@ -24,7 +24,7 @@ export async function resolveProjectId(ref: string, config: ConnectionConfig): P
   const cached = projectIdCache.get(cacheKey)
   if (cached) return cached
 
-  const res = await fetch(`${config.apiUrl}/api/projects`, { headers: config.headers })
+  const res = await fetch(`${config.apiUrl}/api/projects`, { redirect: 'error', headers: config.headers })
   if (!res.ok) await handleApiError(res)
   const projects = (await res.json()) as ProjectRecord[]
 

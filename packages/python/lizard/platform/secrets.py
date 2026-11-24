@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -28,7 +29,7 @@ class SecretsAPI:
         self._client = client
 
     def list(self, project_id: str, *, service_id: str | None = None) -> list[Secret]:
-        path = f"/api/apps/{service_id}/secrets" if service_id else f"/api/projects/{project_id}/secrets"
+        path = f"/api/apps/{_q(service_id)}/secrets" if service_id else f"/api/projects/{_q(project_id)}/secrets"
         return [Secret._from_dict(s) for s in self._client.get(path)]
 
     def set(self, project_id: str, secrets: dict[str, str] | list[dict], *, service_id: str | None = None) -> None:
@@ -38,7 +39,7 @@ class SecretsAPI:
             target = None if item.get("global") else item.get("serviceId", item.get("appId", service_id))
             if target:
                 if target not in names:
-                    svc = self._client.get(f"/api/apps/{target}")
+                    svc = self._client.get(f"/api/apps/{_q(target)}")
                     if svc["projectId"] != project_id:
                         raise ValueError("Service does not belong to this project")
                     names[target] = svc["name"]
@@ -51,4 +52,4 @@ class SecretsAPI:
         self.set(project_id, [{"key": key, "value": None}], service_id=service_id)
 
     def refs(self, project_id: str, *, service_id: str | None = None):
-        return self._client.get(f"/api/apps/{service_id}/variables:refs" if service_id else f"/api/projects/{project_id}/variables:refs")
+        return self._client.get(f"/api/apps/{_q(service_id)}/variables:refs" if service_id else f"/api/projects/{_q(project_id)}/variables:refs")

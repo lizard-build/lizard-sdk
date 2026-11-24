@@ -53,7 +53,7 @@ export class ProjectsAPI {
 
   /** Get a project by ID. */
   get(id: string): Promise<Project> {
-    return this.client.get(`/api/projects/${id}`)
+    return this.client.get(`/api/projects/${encodeURIComponent(id)}`)
   }
 
   /**
@@ -66,7 +66,7 @@ export class ProjectsAPI {
 
   /** Update a project's name. */
   update(id: string, opts: { name?: string }): Promise<Project> {
-    return this.client.patch(`/api/projects/${id}`, opts)
+    return this.client.patch(`/api/projects/${encodeURIComponent(id)}`, opts)
   }
 
   /**
@@ -74,32 +74,32 @@ export class ProjectsAPI {
    * host, port, password, settings and volumes. Skipped ones are listed with why.
    */
   pause(id: string): Promise<PauseResult> {
-    return this.client.post(`/api/projects/${id}/pause`, {})
+    return this.client.post(`/api/projects/${encodeURIComponent(id)}/pause`, {})
   }
 
   /** Resume what was paused in a project (not what a billing freeze paused). */
   resume(id: string): Promise<PauseResult> {
-    return this.client.post(`/api/projects/${id}/resume`, {})
+    return this.client.post(`/api/projects/${encodeURIComponent(id)}/resume`, {})
   }
 
   /** Delete a project. */
   delete(id: string): Promise<void> {
-    return this.client.delete(`/api/projects/${id}`)
+    return this.client.delete(`/api/projects/${encodeURIComponent(id)}`)
   }
   apply(id: string, config: ProjectConfig): Promise<ConfigResult> {
     return this.client.applyConfig(id, config)
   }
   services(id: string): Promise<{ apps: import('./services').Service[]; addons: import('./addons').Addon[] }> {
-    return this.client.get(`/api/projects/${id}/services`)
+    return this.client.get(`/api/projects/${encodeURIComponent(id)}/services`)
   }
   volumeLimits(id: string): Promise<Record<string, unknown>> {
-    return this.client.get(`/api/projects/${id}/volume-limits`)
+    return this.client.get(`/api/projects/${encodeURIComponent(id)}/volume-limits`)
   }
 
   logs(id: string, opts: { service?: string; level?: string; limit?: number; since?: string; until?: string } = {}): Promise<import('./services').LogLine[]> {
-    return this.client.get(query(`/api/projects/${id}/logs`, opts))
+    return this.client.get(query(`/api/projects/${encodeURIComponent(id)}/logs`, opts))
   }
-  streamLogs(id: string, signal?: AbortSignal) { return this.client.events(`/api/projects/${id}/logs/stream`, { signal }) }
+  streamLogs(id: string, signal?: AbortSignal) { return this.client.events(`/api/projects/${encodeURIComponent(id)}/logs/stream`, { signal }) }
 
 }
 

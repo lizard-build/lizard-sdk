@@ -200,9 +200,14 @@ export class Desktop {
    * been launched, not when the page has loaded — take a screenshot to see it.
    */
   async openUrl(url: string): Promise<void> {
+    // Only http(s): anything else (e.g. `--renderer-cmd-prefix=...`) could become a
+    // Chromium switch. `--` ends Chromium's switch parsing as a second guard.
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+      throw new LizardError('openUrl() needs an http:// or https:// URL')
+    }
     // The URL is "$1" of the script, never part of the script text.
     await this.run([
-      'sh', '-c', 'setsid chromium --new-window "$1" >/dev/null 2>&1 < /dev/null &', 'sh', url,
+      'sh', '-c', 'setsid chromium --new-window -- "$1" >/dev/null 2>&1 < /dev/null &', 'sh', url,
     ])
   }
 

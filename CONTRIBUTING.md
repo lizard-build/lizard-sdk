@@ -21,7 +21,7 @@ npm run build
 .venv/bin/python -m build packages/python
 ```
 
-Most tests use mock HTTP responses, including shared contracts in `tests/contracts/platform.json`. The node-agent tests skip by default. They need `LIZARD_LIVE_TESTS=1` and `ADMIN_SECRET` on an approved test host, and create and kill sandboxes. Passing mock tests does not prove live platform behavior.
+Most tests use mock HTTP responses, including shared contracts in `tests/contracts/platform.json`. Passing mock tests does not prove live platform behavior.
 
 The optional CLI discovery audit needs Lizard CLI 4.0.77, the version pinned in `tests/contracts/cli-coverage.json`:
 

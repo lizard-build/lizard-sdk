@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -144,18 +145,18 @@ class WorkspacesAPI:
         """Pause every app and managed database in every project of a workspace (owner only).
         Each keeps its URL, host, port, password, settings and volumes."""
         from .projects import PauseResult
-        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{id}/pause"))
+        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{_q(id)}/pause"))
 
     def resume(self, id: str) -> "PauseResult":
         """Resume what was paused in a workspace (owner only; not what a billing freeze paused)."""
         from .projects import PauseResult
-        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{id}/resume"))
+        return PauseResult._from_dict(self._client.post(f"/api/workspaces/{_q(id)}/resume"))
 
     def get_resale_pricing(self, id: str) -> ResalePricing:
         """The workspace's resale prices (owner only, key with no scopes). A scoped key
         gets HTTP 403 ``ACCOUNT_SCOPE_REQUIRED``: the keys that see these prices can
         neither read nor change them."""
-        return ResalePricing._from_dict(self._client.get(f"/api/workspaces/{id}/resale-pricing"))
+        return ResalePricing._from_dict(self._client.get(f"/api/workspaces/{_q(id)}/resale-pricing"))
 
     def set_resale_pricing(
         self,
@@ -180,16 +181,16 @@ class WorkspacesAPI:
             "cpu": cpu, "memory": memory, "storage": storage, "egress": egress,
             "objectStorage": object_storage, "sandbox": sandbox,
         }.items() if v is not None}
-        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{id}/resale-pricing", body))
+        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{_q(id)}/resale-pricing", body))
 
     def clear_resale_pricing(self, id: str) -> ResalePricing:
         """Turn resale prices off: scoped keys see Lizard's prices again (owner only)."""
-        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{id}/resale-pricing", {}))
+        return ResalePricing._from_dict(self._client.put(f"/api/workspaces/{_q(id)}/resale-pricing", {}))
 
     def get_limits(self, id: str) -> WorkspaceLimits:
         """The workspace's limits and what it uses now. Anyone in the workspace may read
         them, including a key scoped to it."""
-        return WorkspaceLimits._from_dict(self._client.get(f"/api/workspaces/{id}/limits"))
+        return WorkspaceLimits._from_dict(self._client.get(f"/api/workspaces/{_q(id)}/limits"))
 
     def set_limits(
         self,
@@ -217,7 +218,7 @@ class WorkspacesAPI:
             "maxRunningSandboxes": max_running_sandboxes, "maxCpuVcpus": max_cpu_vcpus, "maxMemoryMb": max_memory_mb,
             "maxDiskGb": max_disk_gb,
         }.items() if v is not _UNCHANGED}
-        return WorkspaceLimits._from_dict(self._client.put(f"/api/workspaces/{id}/limits", body))
+        return WorkspaceLimits._from_dict(self._client.put(f"/api/workspaces/{_q(id)}/limits", body))
 
     def delete(self, id: str, *, force: bool = False) -> None:
         """Delete a workspace.
@@ -230,7 +231,7 @@ class WorkspacesAPI:
         sandboxes and delete its volumes and snapshots first.
         """
         qs = "" if force else "?requireEmpty=true"
-        self._client.delete(f"/api/workspaces/{id}{qs}")
+        self._client.delete(f"/api/workspaces/{_q(id)}{qs}")
 
     def find(self, name_or_slug_or_id: str) -> Workspace | None:
         """Find a workspace by name, slug, or id, or ``None``.

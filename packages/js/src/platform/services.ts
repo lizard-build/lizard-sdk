@@ -90,11 +90,11 @@ export class DeployHandle {
   async *logs(): AsyncGenerator<string> {
     let buildId = this._buildId
     if (!buildId) {
-      const svc = await this._client.get<{ builds?: Array<{ id: string }> }>(`/api/apps/${this._serviceId}`)
+      const svc = await this._client.get<{ builds?: Array<{ id: string }> }>(`/api/apps/${encodeURIComponent(this._serviceId)}`)
       buildId = svc.builds?.[0]?.id
     }
     if (!buildId) throw new LizardError('No build found for this deploy')
-    for await (const event of this._client.events(`/api/builds/${buildId}/logs`)) {
+    for await (const event of this._client.events(`/api/builds/${encodeURIComponent(buildId)}/logs`)) {
       if (event.event === 'error') throw new LizardError(event.data)
       if (event.event === 'done') return
       let data: unknown
@@ -113,11 +113,11 @@ export class DeployHandle {
     while (Date.now() < deadline) {
       let buildDone = true
       if (this._buildId) {
-        const build = await this._client.get<{ status: string }>(`/api/builds/${this._buildId}`)
+        const build = await this._client.get<{ status: string }>(`/api/builds/${encodeURIComponent(this._buildId)}`)
         if (build.status === 'failed' || build.status === 'cancelled') throw new LizardError(`Deploy ${build.status}`)
         buildDone = build.status === 'done'
       }
-      const svc = await this._client.get<Service>(`/api/apps/${this._serviceId}`)
+      const svc = await this._client.get<Service>(`/api/apps/${encodeURIComponent(this._serviceId)}`)
       if (svc.deployStatus === 'idle') {
         if (buildDone && svc.status === 'running') return { url: svc.domain ? `https://${svc.domain}` : null, status: 'running' }
         if (svc.status === 'crashed') throw new LizardError(`Service crashed after deploy`)
@@ -134,12 +134,12 @@ export class ServicesAPI {
 
   /** List all services in a project. */
   list(opts: { projectId: string }): Promise<Service[]> {
-    return this.client.get(`/api/projects/${opts.projectId}/apps`)
+    return this.client.get(`/api/projects/${encodeURIComponent(opts.projectId)}/apps`)
   }
 
   /** Get a service by ID. */
   get(id: string): Promise<Service> {
-    return this.client.get(`/api/apps/${id}`)
+    return this.client.get(`/api/apps/${encodeURIComponent(id)}`)
   }
 
   /**
@@ -164,7 +164,7 @@ export class ServicesAPI {
       containerPort: opts.port ?? opts.containerPort,
       region: opts.region,
     }
-    const svc = await this.client.post<Service & { buildId?: string }>(`/api/projects/${opts.projectId}/apps`, body)
+    const svc = await this.client.post<Service & { buildId?: string }>(`/api/projects/${encodeURIComponent(opts.projectId)}/apps`, body)
     const handle = new DeployHandle(this.client, svc.id, svc.buildId)
     if (opts.waitForDeploy) await handle.wait()
     return handle
@@ -180,7 +180,7 @@ export class ServicesAPI {
     startCommand?: string; buildCommand?: string; preDeployCommand?: string; port?: number; region?: string
   }): Promise<DeployHandle> {
     if (!opts.name && !opts.serviceId) throw new LizardError('name or serviceId is required')
-    const path = query(`/api/projects/${opts.projectId}/apps/upload`, {
+    const path = query(`/api/projects/${encodeURIComponent(opts.projectId)}/apps/upload`, {
       name: opts.name, appId: opts.serviceId, startCommand: opts.startCommand,
       buildCommand: opts.buildCommand, preDeployCommand: opts.preDeployCommand,
       port: opts.port, region: opts.region,
@@ -191,13 +191,13 @@ export class ServicesAPI {
 
   /** Trigger a redeploy (rebuild from current source). */
   async redeploy(id: string): Promise<DeployHandle> {
-    const build = await this.client.post<{ id: string }>(`/api/apps/${id}/redeploy`, {})
+    const build = await this.client.post<{ id: string }>(`/api/apps/${encodeURIComponent(id)}/redeploy`, {})
     return new DeployHandle(this.client, id, build.id)
   }
 
   /** Restart a service without rebuilding. */
   restart(id: string): Promise<void> {
-    return this.client.post(`/api/apps/${id}/restart`, {})
+    return this.client.post(`/api/apps/${encodeURIComponent(id)}/restart`, {})
   }
 
   /**
@@ -205,17 +205,17 @@ export class ServicesAPI {
    * and volumes. Restart and redeploy are refused until it is resumed.
    */
   pause(id: string): Promise<PauseState> {
-    return this.client.post(`/api/apps/${id}/pause`, {})
+    return this.client.post(`/api/apps/${encodeURIComponent(id)}/pause`, {})
   }
 
   /** Resume a paused service: it starts again from the same image, with its data. */
   resume(id: string): Promise<PauseState> {
-    return this.client.post(`/api/apps/${id}/resume`, {})
+    return this.client.post(`/api/apps/${encodeURIComponent(id)}/resume`, {})
   }
 
   /** Serverless setting of a service: whether it sleeps when idle, and how often it did. */
   getSleep(id: string): Promise<SleepSetting> {
-    return this.client.get(`/api/apps/${id}/sleep`)
+    return this.client.get(`/api/apps/${encodeURIComponent(id)}/sleep`)
   }
 
   /**
@@ -223,13 +223,13 @@ export class ServicesAPI {
    * always on. Turning it on restarts it once. Needs one replica and a port.
    */
   setSleep(id: string, opts: SleepOpts): Promise<SleepSetting> {
-    return this.client.put(`/api/apps/${id}/sleep`, opts)
+    return this.client.put(`/api/apps/${encodeURIComponent(id)}/sleep`, opts)
   }
 
   /** Scale a service. */
   async scale(id: string, opts: ScaleOpts): Promise<void> {
     if (opts.storageMi !== undefined) throw new LizardError('Storage scaling is only supported for addons')
-    if (opts.replicas !== undefined) await this.client.patch(`/api/apps/${id}/scale`, { replicas: opts.replicas })
+    if (opts.replicas !== undefined) await this.client.patch(`/api/apps/${encodeURIComponent(id)}/scale`, { replicas: opts.replicas })
     if (opts.cpuMillis !== undefined || opts.memoryMi !== undefined) {
       await this.update(id, {
         ...(opts.cpuMillis !== undefined ? { cpuLimit: `${opts.cpuMillis}m` } : {}),
@@ -245,14 +245,14 @@ export class ServicesAPI {
    */
   async logs(id: string, opts?: { limit?: number; since?: string }): Promise<LogLine[]> {
     const svc = await this.get(id)
-    const result = await this.client.get<{ logs: LogLine[] } | LogLine[]>(query(`/api/projects/${svc.projectId}/logs`, { service: svc.name, limit: opts?.limit ?? 200, since: opts?.since }))
+    const result = await this.client.get<{ logs: LogLine[] } | LogLine[]>(query(`/api/projects/${encodeURIComponent(svc.projectId)}/logs`, { service: svc.name, limit: opts?.limit ?? 200, since: opts?.since }))
     return Array.isArray(result) ? result : (result.logs ?? [])
   }
 
   /** Execute a command; collect SSE output and require an exit event. */
   async exec(id: string, cmd: string, opts?: { timeoutMs?: number }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const result = { stdout: '', stderr: '', exitCode: -1 }
-    for await (const event of this.client.events(`/api/apps/${id}/exec`, {
+    for await (const event of this.client.events(`/api/apps/${encodeURIComponent(id)}/exec`, {
       method: 'POST', body: { cmd }, signal: AbortSignal.timeout(opts?.timeoutMs ?? 300_000),
     })) {
       if (event.event === 'error') throw new LizardError(event.data)
@@ -268,7 +268,7 @@ export class ServicesAPI {
     const svc = await this.get(id)
     let revision = controls.revision
     if (!controls.force && revision === undefined) {
-      const project = await this.client.get<{ configRevision: number }>(`/api/projects/${svc.projectId}`)
+      const project = await this.client.get<{ configRevision: number }>(`/api/projects/${encodeURIComponent(svc.projectId)}`)
       revision = project.configRevision
     }
     return this.client.applyConfig(svc.projectId, {
@@ -276,18 +276,18 @@ export class ServicesAPI {
     })
   }
   events(id: string, buildId?: string): Promise<unknown[]> {
-    return this.client.get(query(`/api/apps/${id}/deploy-events`, { buildId }))
+    return this.client.get(query(`/api/apps/${encodeURIComponent(id)}/deploy-events`, { buildId }))
   }
-  pods(id: string): Promise<{ pods: unknown[] }> { return this.client.get(`/api/apps/${id}/pod-status`) }
+  pods(id: string): Promise<{ pods: unknown[] }> { return this.client.get(`/api/apps/${encodeURIComponent(id)}/pod-status`) }
   history(id: string, opts: { limit?: number; before?: string; level?: string } = {}): Promise<unknown> {
-    return this.client.get(query(`/api/apps/${id}/logs/history`, opts))
+    return this.client.get(query(`/api/apps/${encodeURIComponent(id)}/logs/history`, opts))
   }
-  streamLogs(id: string, signal?: AbortSignal) { return this.client.events(`/api/apps/${id}/logs`, { signal }) }
-  buildLogs(buildId: string, signal?: AbortSignal) { return this.client.events(`/api/builds/${buildId}/logs`, { signal }) }
+  streamLogs(id: string, signal?: AbortSignal) { return this.client.events(`/api/apps/${encodeURIComponent(id)}/logs`, { signal }) }
+  buildLogs(buildId: string, signal?: AbortSignal) { return this.client.events(`/api/builds/${encodeURIComponent(buildId)}/logs`, { signal }) }
 
   /** Delete a service. */
   delete(id: string): Promise<void> {
-    return this.client.delete(`/api/apps/${id}`)
+    return this.client.delete(`/api/apps/${encodeURIComponent(id)}`)
   }
 }
 

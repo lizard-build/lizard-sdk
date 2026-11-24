@@ -1,5 +1,5 @@
 import { ConnectionConfig } from '../config'
-import { handleApiError } from '../errors'
+import { handleApiError, LizardError } from '../errors'
 
 export interface FsOpts {
   user?: string
@@ -70,7 +70,8 @@ export class Fs {
     const body = typeof data === 'string'
       ? { path, content: data, user: opts?.user }
       : { path, content: bytesToBase64(data instanceof ArrayBuffer ? new Uint8Array(data) : data), encoding: 'base64', user: opts?.user }
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files`, {
+      redirect: 'error',
       method: 'POST',
       headers: this.config.headers,
       body: JSON.stringify(body),
@@ -90,21 +91,21 @@ export class Fs {
    * ```
    */
   async read(path: string, opts?: FsOpts): Promise<string> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files`)
     url.searchParams.set('path', path)
     if (opts?.user) url.searchParams.set('user', opts.user)
 
-    const res = await fetch(url.toString(), { headers: this.config.headers })
+    const res = await fetch(url.toString(), { redirect: 'error', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
     return res.text()
   }
 
   /** Read a file as bytes. */
   async readBytes(path: string, opts?: FsOpts): Promise<Uint8Array> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files`)
     url.searchParams.set('path', path)
     if (opts?.user) url.searchParams.set('user', opts.user)
-    const res = await fetch(url, { headers: this.config.headers })
+    const res = await fetch(url, { redirect: 'error', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
     return new Uint8Array(await res.arrayBuffer())
   }
@@ -118,11 +119,11 @@ export class Fs {
    * ```
    */
   async list(path: string, opts?: FsOpts): Promise<FileInfo[]> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/list`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/list`)
     url.searchParams.set('path', path)
     if (opts?.user) url.searchParams.set('user', opts.user)
 
-    const res = await fetch(url.toString(), { headers: this.config.headers })
+    const res = await fetch(url.toString(), { redirect: 'error', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
     return res.json() as Promise<FileInfo[]>
   }
@@ -131,7 +132,8 @@ export class Fs {
    * Remove a file or directory from the sandbox filesystem.
    */
   async remove(path: string, opts?: FsOpts): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files`, {
+      redirect: 'error',
       method: 'DELETE',
       headers: this.config.headers,
       body: JSON.stringify({ path, user: opts?.user }),
@@ -143,7 +145,8 @@ export class Fs {
    * Create a directory (and any missing parents) inside the sandbox.
    */
   async makeDir(path: string, opts?: FsOpts): Promise<void> {
-    await this.execInternal(`mkdir -p ${JSON.stringify(path)}`, opts?.user)
+    // argv, never a shell string: `$(...)`, backticks and `$VAR` in the path stay literal.
+    await this.execInternal(['mkdir', '-p', '--', path], opts?.user)
   }
 
   /**
@@ -161,11 +164,11 @@ export class Fs {
    * Throws `NotFoundError` if the path does not exist.
    */
   async stat(path: string, opts?: FsOpts): Promise<FileInfo> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/stat`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/stat`)
     url.searchParams.set('path', path)
     if (opts?.user) url.searchParams.set('user', opts.user)
 
-    const res = await fetch(url.toString(), { headers: this.config.headers })
+    const res = await fetch(url.toString(), { redirect: 'error', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
     return res.json() as Promise<FileInfo>
   }
@@ -179,7 +182,8 @@ export class Fs {
    * ```
    */
   async move(from: string, to: string): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/move`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/move`, {
+      redirect: 'error',
       method: 'POST',
       headers: this.config.headers,
       body: JSON.stringify({ from, to }),
@@ -209,7 +213,8 @@ export class Fs {
    * Not available yet: the call throws `LizardError` (501).
    */
   async watch(path: string, opts?: { recursive?: boolean }): Promise<Watcher> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/watch`, {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/watch`, {
+      redirect: 'error',
       method: 'POST',
       headers: this.config.headers,
       body: JSON.stringify({ path, recursive: opts?.recursive ?? false }),
@@ -219,13 +224,18 @@ export class Fs {
     return new Watcher(this.sandboxId, this.config, watcherId)
   }
 
-  private async execInternal(cmd: string, user?: string): Promise<void> {
-    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/exec`, {
+  private async execInternal(argv: string[], user?: string): Promise<void> {
+    const res = await fetch(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/exec`, {
+      redirect: 'error',
       method: 'POST',
       headers: this.config.headers,
-      body: JSON.stringify({ cmd, user }),
+      body: JSON.stringify({ cmd: argv, user }),
     })
     if (!res.ok) await handleApiError(res)
+    const r = (await res.json().catch(() => ({}))) as { exitCode?: number; stderr?: string; stdout?: string }
+    if (typeof r.exitCode === 'number' && r.exitCode !== 0) {
+      throw new LizardError(`${argv[0]} failed (exit ${r.exitCode}): ${(r.stderr || r.stdout || '').trim()}`)
+    }
   }
 }
 
@@ -245,18 +255,18 @@ export class Watcher {
    * has happened — that is not an error, just a quiet interval.
    */
   async getEvents(): Promise<FsEvent[]> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/watch/events`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/watch/events`)
     url.searchParams.set('watcherId', this.watcherId)
-    const res = await fetch(url.toString(), { headers: this.config.headers })
+    const res = await fetch(url.toString(), { redirect: 'error', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
     return res.json() as Promise<FsEvent[]>
   }
 
   /** Stop watching and release the guest-side queue. */
   async close(): Promise<void> {
-    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${this.sandboxId}/files/watch`)
+    const url = new URL(`${this.config.apiUrl}/api/sandboxes/${encodeURIComponent(this.sandboxId)}/files/watch`)
     url.searchParams.set('watcherId', this.watcherId)
-    const res = await fetch(url.toString(), { method: 'DELETE', headers: this.config.headers })
+    const res = await fetch(url.toString(), { redirect: 'error', method: 'DELETE', headers: this.config.headers })
     if (!res.ok) await handleApiError(res)
   }
 }

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..config import HTTP_TIMEOUT_S
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from ..config import ConnectionConfig
@@ -97,7 +98,7 @@ class Fs:
             body["user"] = user
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files",
             headers=self._config.headers,
             json=body,
             timeout=HTTP_TIMEOUT_S,
@@ -127,7 +128,7 @@ class Fs:
             params["user"] = user
 
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files",
             headers=self._config.headers,
             params=params,
             timeout=HTTP_TIMEOUT_S,
@@ -143,7 +144,7 @@ class Fs:
         from ..errors import handle_api_error
         params = {"path": path}
         if user: params["user"] = user
-        res = httpx.get(f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files", headers=self._config.headers, params=params, timeout=HTTP_TIMEOUT_S)
+        res = httpx.get(f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files", headers=self._config.headers, params=params, timeout=HTTP_TIMEOUT_S)
         if not res.is_success: handle_api_error(res.status_code, res.text)
         return res.content
 
@@ -164,7 +165,7 @@ class Fs:
             params["user"] = user
 
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/list",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/list",
             headers=self._config.headers,
             params=params,
             timeout=HTTP_TIMEOUT_S,
@@ -185,7 +186,7 @@ class Fs:
 
         res = httpx.request(
             "DELETE",
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files",
             headers=self._config.headers,
             json=body,
             timeout=HTTP_TIMEOUT_S,
@@ -197,14 +198,15 @@ class Fs:
     def make_dir(self, path: str, *, user: str | None = None) -> None:
         """Create a directory (and any missing parents) inside the sandbox."""
         import httpx
-        import json
 
-        body: dict = {"cmd": f"mkdir -p {json.dumps(path)}"}
+        # argv, never a shell string: ``$(...)``, backticks and ``$VAR`` in the
+        # path stay literal.
+        body: dict = {"cmd": ["mkdir", "-p", "--", path]}
         if user:
             body["user"] = user
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/exec",
             headers=self._config.headers,
             json=body,
             timeout=HTTP_TIMEOUT_S,
@@ -212,6 +214,14 @@ class Fs:
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
+        try:
+            r = res.json()
+        except ValueError:
+            r = {}
+        code = r.get("exitCode") if isinstance(r, dict) else None
+        if isinstance(code, int) and code != 0:
+            from ..errors import LizardError
+            raise LizardError(f"mkdir failed (exit {code}): {(r.get('stderr') or r.get('stdout') or '').strip()}")
 
     def stat(self, path: str, *, user: str | None = None) -> FileInfo:
         """Metadata for a single path -- size, type, permissions, modification time.
@@ -227,7 +237,7 @@ class Fs:
         if user:
             params["user"] = user
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/stat",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/stat",
             headers=self._config.headers,
             params=params,
             timeout=HTTP_TIMEOUT_S,
@@ -242,7 +252,7 @@ class Fs:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/move",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/move",
             headers=self._config.headers,
             json={"from": from_path, "to": to_path},
             timeout=HTTP_TIMEOUT_S,
@@ -269,7 +279,7 @@ class Fs:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/watch",
             headers=self._config.headers,
             json={"path": path, "recursive": recursive},
             timeout=HTTP_TIMEOUT_S,
@@ -298,7 +308,7 @@ class Watcher:
         import httpx
 
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch/events",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/watch/events",
             headers=self._config.headers,
             params={"watcherId": self.watcher_id},
             timeout=HTTP_TIMEOUT_S,
@@ -314,7 +324,7 @@ class Watcher:
 
         res = httpx.request(
             "DELETE",
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/files/watch",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/files/watch",
             headers=self._config.headers,
             params={"watcherId": self.watcher_id},
             timeout=HTTP_TIMEOUT_S,

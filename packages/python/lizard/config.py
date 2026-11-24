@@ -36,3 +36,10 @@ class ConnectionConfig:
             "X-API-Key": self.api_key,
             "Content-Type": "application/json",
         }
+
+
+def path_segment(value: object) -> str:
+    """Percent-encode one path segment (an id interpolated into an API path), ``/`` included."""
+    from urllib.parse import quote
+
+    return quote(str(value), safe="")

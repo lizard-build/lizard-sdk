@@ -5,6 +5,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from ..config import ConnectionConfig
 from ..errors import ConfigApplyError, handle_api_error
+from ..config import path_segment as _q
 
 
 def segment(value: str) -> str:
@@ -57,7 +58,7 @@ class PlatformClient:
         return self._json(self._http.request("DELETE", path, json=body))
 
     def apply_config(self, project_id: str, body: Any) -> Any:
-        result = self.post(f"/api/projects/{project_id}/config:apply", body)
+        result = self.post(f"/api/projects/{_q(project_id)}/config:apply", body)
         if result and result.get("sideEffectFailures"):
             raise ConfigApplyError(result)
         return result

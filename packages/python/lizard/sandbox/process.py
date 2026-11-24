@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence, TYPE_CHECKING
 
 from ..config import HTTP_TIMEOUT_S
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from ..config import ConnectionConfig
@@ -116,7 +117,7 @@ class Process:
             return self._exec_streaming(body, timeout, on_stdout, on_stderr, on_pid)
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/exec",
             headers=self._config.headers,
             json=body,
             timeout=timeout,
@@ -161,7 +162,7 @@ class Process:
 
         with httpx.stream(
             "POST",
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/exec",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/exec",
             headers=headers,
             json=body,
             timeout=timeout,
@@ -208,7 +209,7 @@ class Process:
         import httpx
 
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/processes",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -242,7 +243,7 @@ class Process:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self._sandbox_id}/processes/signal",
+            f"{self._config.api_url}/api/sandboxes/{_q(self._sandbox_id)}/processes/signal",
             headers=self._config.headers,
             json={"pid": pid, "signal": signal},
             timeout=HTTP_TIMEOUT_S,

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .client import PlatformClient
 
 from ..errors import LizardError, TimeoutError as LizardTimeoutError
+from ..config import path_segment as _q
 
 
 @dataclass
@@ -85,11 +86,11 @@ class DeployHandle:
         """Stream build logs until the server closes the build stream."""
         build_id = self.build_id
         if not build_id:
-            builds = self._client.get(f"/api/apps/{self.service_id}").get("builds", [])
+            builds = self._client.get(f"/api/apps/{_q(self.service_id)}").get("builds", [])
             if not builds:
                 raise LizardError("No build found for this deploy")
             build_id = builds[0]["id"]
-        for event in self._client.events(f"/api/builds/{build_id}/logs"):
+        for event in self._client.events(f"/api/builds/{_q(build_id)}/logs"):
             if event["event"] == "error":
                 raise LizardError(event["data"])
             if event["event"] == "done":
@@ -111,11 +112,11 @@ class DeployHandle:
         while time.time() < deadline:
             build_done = True
             if self.build_id:
-                build = self._client.get(f"/api/builds/{self.build_id}")
+                build = self._client.get(f"/api/builds/{_q(self.build_id)}")
                 if build["status"] in ("failed", "cancelled"):
                     raise LizardError(f"Deploy {build['status']}")
                 build_done = build["status"] == "done"
-            svc_dict = self._client.get(f"/api/apps/{self.service_id}")
+            svc_dict = self._client.get(f"/api/apps/{_q(self.service_id)}")
             deploy_status = svc_dict.get("deployStatus", "")
             status = svc_dict.get("status", "")
             if deploy_status == "idle":
@@ -136,11 +137,11 @@ class ServicesAPI:
 
     def list(self, *, project_id: str) -> list[Service]:
         """List all services in a project."""
-        return [Service._from_dict(s) for s in self._client.get(f"/api/projects/{project_id}/apps")]
+        return [Service._from_dict(s) for s in self._client.get(f"/api/projects/{_q(project_id)}/apps")]
 
     def get(self, id: str) -> Service:
         """Get a service by ID."""
-        return Service._from_dict(self._client.get(f"/api/apps/{id}"))
+        return Service._from_dict(self._client.get(f"/api/apps/{_q(id)}"))
 
     def deploy(
         self,
@@ -181,7 +182,7 @@ class ServicesAPI:
             "containerPort": port,
             "region": region,
         }
-        svc = self._client.post(f"/api/projects/{project_id}/apps", {k: v for k, v in body.items() if v is not None})
+        svc = self._client.post(f"/api/projects/{_q(project_id)}/apps", {k: v for k, v in body.items() if v is not None})
         handle = DeployHandle(self._client, svc["id"], svc.get("buildId"))
         if wait_for_deploy:
             handle.wait()
@@ -193,7 +194,7 @@ class ServicesAPI:
                port: int | None = None, region: str | None = None) -> DeployHandle:
         if not name and not service_id:
             raise ValueError("name or service_id is required")
-        path = query(f"/api/projects/{project_id}/apps/upload", name=name, appId=service_id,
+        path = query(f"/api/projects/{_q(project_id)}/apps/upload", name=name, appId=service_id,
                      startCommand=start_command, buildCommand=build_command,
                      preDeployCommand=pre_deploy_command, port=port, region=region)
         result = self._client.send_bytes("POST", path, source)
@@ -201,28 +202,28 @@ class ServicesAPI:
 
     def redeploy(self, id: str) -> DeployHandle:
         """Trigger a redeploy (rebuild from current source)."""
-        build = self._client.post(f"/api/apps/{id}/redeploy")
+        build = self._client.post(f"/api/apps/{_q(id)}/redeploy")
         return DeployHandle(self._client, id, build["id"])
 
     def restart(self, id: str) -> None:
         """Restart a service without rebuilding."""
-        self._client.post(f"/api/apps/{id}/restart")
+        self._client.post(f"/api/apps/{_q(id)}/restart")
 
     def pause(self, id: str) -> dict:
         """Pause a service: it scales to 0 (its URL answers 503) and keeps its URL, settings,
         env and volumes. Restart and redeploy are refused until it is resumed.
         Returns ``{"ok": True, "status": "paused"}``."""
-        return self._client.post(f"/api/apps/{id}/pause")
+        return self._client.post(f"/api/apps/{_q(id)}/pause")
 
     def resume(self, id: str) -> dict:
         """Resume a paused service: it starts again from the same image, with its data.
         Returns ``{"ok": True, "status": "running"}``."""
-        return self._client.post(f"/api/apps/{id}/resume")
+        return self._client.post(f"/api/apps/{_q(id)}/resume")
 
     def get_sleep(self, id: str) -> dict:
         """Serverless setting of a service: ``enabled``, ``idleMinutes``, ``sleeps``, ``wakes``,
         ``lastSleptAt``, ``lastWokeAt``, ``lastError``."""
-        return self._client.get(f"/api/apps/{id}/sleep")
+        return self._client.get(f"/api/apps/{_q(id)}/sleep")
 
     def set_sleep(self, id: str, *, enabled: bool, idle_minutes: int | None = None) -> dict:
         """Make a service serverless (sleep when idle, wake in about a second on the next
@@ -230,14 +231,14 @@ class ServicesAPI:
         body: dict = {"enabled": enabled}
         if idle_minutes is not None:
             body["idleMinutes"] = idle_minutes
-        return self._client.put(f"/api/apps/{id}/sleep", body)
+        return self._client.put(f"/api/apps/{_q(id)}/sleep", body)
 
     def scale(self, id: str, *, replicas: int | None = None, cpu_millis: int | None = None,
               memory_mi: int | None = None, storage_mi: int | None = None) -> None:
         if storage_mi is not None:
             raise ValueError("Storage scaling is only supported for addons")
         if replicas is not None:
-            self._client.patch(f"/api/apps/{id}/scale", {"replicas": replicas})
+            self._client.patch(f"/api/apps/{_q(id)}/scale", {"replicas": replicas})
         opts = {}
         if cpu_millis is not None:
             opts["cpuLimit"] = f"{cpu_millis}m"
@@ -249,7 +250,7 @@ class ServicesAPI:
     def update(self, id: str, opts: dict, *, revision: int | None = None, force: bool = False) -> dict:
         svc = self.get(id)
         if not force and revision is None:
-            revision = self._client.get(f"/api/projects/{svc.project_id}")["configRevision"]
+            revision = self._client.get(f"/api/projects/{_q(svc.project_id)}")["configRevision"]
         body = {"services": [{"name": svc.name, **opts, "id": id}]}
         if not force and revision is not None:
             body["revision"] = revision
@@ -257,13 +258,13 @@ class ServicesAPI:
 
     def logs(self, id: str, *, limit: int = 200, since: str | None = None) -> list[LogLine]:
         svc = self.get(id)
-        result = self._client.get(query(f"/api/projects/{svc.project_id}/logs", service=svc.name, limit=limit, since=since))
+        result = self._client.get(query(f"/api/projects/{_q(svc.project_id)}/logs", service=svc.name, limit=limit, since=since))
         rows = result if isinstance(result, list) else result.get("logs", [])
         return [LogLine._from_dict(row) if isinstance(row, dict) else LogLine("info", str(row), 0) for row in rows]
 
     def exec_(self, id: str, cmd: str, *, timeout_ms: int = 300_000) -> dict:
         result = {"stdout": "", "stderr": "", "exitCode": None}
-        for event in self._client.events(f"/api/apps/{id}/exec", method="POST", body={"cmd": cmd}, timeout=timeout_ms / 1000):
+        for event in self._client.events(f"/api/apps/{_q(id)}/exec", method="POST", body={"cmd": cmd}, timeout=timeout_ms / 1000):
             if event["event"] == "error":
                 raise LizardError(event["data"])
             data = json.loads(event["data"])
@@ -276,20 +277,20 @@ class ServicesAPI:
         return result
 
     def events(self, id: str, *, build_id: str | None = None) -> list[dict]:
-        return self._client.get(query(f"/api/apps/{id}/deploy-events", buildId=build_id))
+        return self._client.get(query(f"/api/apps/{_q(id)}/deploy-events", buildId=build_id))
 
     def pods(self, id: str) -> dict:
-        return self._client.get(f"/api/apps/{id}/pod-status")
+        return self._client.get(f"/api/apps/{_q(id)}/pod-status")
 
     def history(self, id: str, *, limit: int | None = None, before: str | None = None, level: str | None = None):
-        return self._client.get(query(f"/api/apps/{id}/logs/history", limit=limit, before=before, level=level))
+        return self._client.get(query(f"/api/apps/{_q(id)}/logs/history", limit=limit, before=before, level=level))
 
     def stream_logs(self, id: str):
-        return self._client.events(f"/api/apps/{id}/logs")
+        return self._client.events(f"/api/apps/{_q(id)}/logs")
 
     def build_logs(self, build_id: str):
-        return self._client.events(f"/api/builds/{build_id}/logs")
+        return self._client.events(f"/api/builds/{_q(build_id)}/logs")
 
     def delete(self, id: str) -> None:
         """Delete a service."""
-        self._client.delete(f"/api/apps/{id}")
+        self._client.delete(f"/api/apps/{_q(id)}")

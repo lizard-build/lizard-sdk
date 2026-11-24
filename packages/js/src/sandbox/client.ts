@@ -200,6 +200,7 @@ export class SandboxClient {
     // the server places the sandbox there instead.
     const defaultRegion = !opts?.region && !opts?.volumeId && !opts?.volumeName && !opts?.snapshotId
     const post = (region: string | undefined) => fetch(`${config.apiUrl}/api/sandboxes`, {
+      redirect: 'error',
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({
@@ -242,7 +243,8 @@ export class SandboxClient {
 
   protected static async killSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}`, {
+      redirect: 'error',
       method: 'DELETE',
       headers: config.headers,
     })
@@ -255,7 +257,8 @@ export class SandboxClient {
     const config = new ConnectionConfig(opts)
     // Memory pauses are off: no choice is sent, so the platform's default (files only) applies.
     // fast/full/memory are still accepted (deprecated) so older callers compile, and ignored.
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/pause`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}/pause`, {
+      redirect: 'error',
       method: 'POST',
       headers: config.headers,
     })
@@ -266,7 +269,8 @@ export class SandboxClient {
 
   protected static async resumeSandbox(sandboxId: string, opts?: ConnectionOpts): Promise<boolean> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/resume`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}/resume`, {
+      redirect: 'error',
       method: 'POST',
       headers: config.headers,
     })
@@ -279,6 +283,7 @@ export class SandboxClient {
     const config = new ConnectionConfig(opts)
     const path = opts?.projectId ? `/api/projects/${encodeURIComponent(opts.projectId)}/sandboxes` : '/api/sandboxes'
     const res = await fetch(`${config.apiUrl}${path}`, {
+      redirect: 'error',
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -287,7 +292,8 @@ export class SandboxClient {
 
   protected static async getSandboxInfo(sandboxId: string, opts?: ConnectionOpts): Promise<SandboxInfo> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}`, {
+      redirect: 'error',
       headers: config.headers,
     })
     if (!res.ok) await handleApiError(res)
@@ -296,7 +302,8 @@ export class SandboxClient {
 
   protected static async setTimeoutSandbox(sandboxId: string, timeoutMs: number, opts?: ConnectionOpts): Promise<void> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/timeout`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}/timeout`, {
+      redirect: 'error',
       method: 'POST',
       headers: config.headers,
       body: JSON.stringify({ timeoutMs }),
@@ -310,7 +317,8 @@ export class SandboxClient {
     opts?: ConnectionOpts
   ): Promise<ExposedPort> {
     const config = new ConnectionConfig(opts)
-    const res = await fetch(`${config.apiUrl}/api/sandboxes/${sandboxId}/expose/${port}`, {
+    const res = await fetch(`${config.apiUrl}/api/sandboxes/${encodeURIComponent(sandboxId)}/expose/${encodeURIComponent(port)}`, {
+      redirect: 'error',
       method: 'POST',
       headers: config.headers,
     })

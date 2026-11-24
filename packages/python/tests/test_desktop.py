@@ -139,8 +139,15 @@ def test_open_url_passes_url_as_positional_arg(execs):
     url = "https://example.com/?q=$(id)&x=`id`"
     sandbox().desktop.open_url(url)
     cmd = argv(execs)
-    assert cmd == ["sh", "-c", 'setsid chromium --new-window "$1" >/dev/null 2>&1 < /dev/null &', "sh", url]
+    assert cmd == ["sh", "-c", 'setsid chromium --new-window -- "$1" >/dev/null 2>&1 < /dev/null &', "sh", url]
     assert url not in cmd[2]
+
+
+@pytest.mark.parametrize("bad", ["--renderer-cmd-prefix=touch /tmp/x", "file:///etc/passwd", "javascript:alert(1)", " https://x", ""])
+def test_open_url_refuses_non_http(execs, bad):
+    with pytest.raises(LizardError):
+        sandbox().desktop.open_url(bad)
+    assert execs == []
 
 
 def test_cursor_position(execs):

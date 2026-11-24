@@ -22,7 +22,10 @@ _SCROLL_BUTTONS = {"up": "4", "down": "5", "left": "6", "right": "7"}
 _TYPE_DELAY_MS = 12
 #: Where ``lizard-desktop screenshot --path`` writes its file (mktemp suffix).
 _SCREENSHOT_PATH = re.compile(r"/tmp/lizard-screenshot-[A-Za-z0-9_-]+\.png")
-_OPEN_URL_SCRIPT = 'setsid chromium --new-window "$1" >/dev/null 2>&1 < /dev/null &'
+_OPEN_URL_SCRIPT = 'setsid chromium --new-window -- "$1" >/dev/null 2>&1 < /dev/null &'
+#: Only http(s) URLs: anything else (e.g. ``--renderer-cmd-prefix=...``) could
+#: become a Chromium switch.
+_OPEN_URL_OK = re.compile(r"https?://", re.I)
 
 
 @dataclass
@@ -211,6 +214,8 @@ class Desktop:
         Returns once Chromium has been launched, not when the page has loaded -- take
         a screenshot to see it.
         """
+        if not isinstance(url, str) or not _OPEN_URL_OK.match(url):
+            raise LizardError("open_url() needs an http:// or https:// URL")
         # The URL is "$1" of the script, never part of the script text.
         self._run(["sh", "-c", _OPEN_URL_SCRIPT, "sh", url])
 

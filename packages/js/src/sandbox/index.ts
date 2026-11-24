@@ -436,7 +436,7 @@ export class Sandbox extends SandboxClient {
    */
   async fork(opts: { count?: number; timeoutMs?: number } = {}): Promise<ForkResult<this>[]> {
     const result = await new PlatformClient(this.resolveOpts()).post<Array<{ sandbox?: SandboxInfo; error?: string }>>(
-      `/api/sandboxes/${this.sandboxId}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
+      `/api/sandboxes/${encodeURIComponent(this.sandboxId)}/fork`, { count: opts.count ?? 1, timeoutMs: opts.timeoutMs ?? 0 })
     const Ctor = this.constructor as new (o: { sandboxId: string } & ConnectionOpts) => this
     return (Array.isArray(result) ? result : []).map((entry): ForkResult<this> => {
       const id = entry.sandbox?.sandboxId ?? (entry.sandbox as { id?: string } | undefined)?.id
@@ -455,14 +455,14 @@ export class Sandbox extends SandboxClient {
   snapshot(name = `Snapshot ${this.sandboxId}`, opts: SnapshotOpts = {}): Promise<SandboxSnapshot> {
     // opts.scope, opts.full and opts.fast are not sent: every snapshot restores only in its own
     // project, and memory snapshots are off (the platform's default, files only, applies).
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/snapshot`, { name, poolSize: opts.poolSize ?? 5 }, SNAPSHOT_TIMEOUT_MS)
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${encodeURIComponent(this.sandboxId)}/snapshot`, { name, poolSize: opts.poolSize ?? 5 }, SNAPSHOT_TIMEOUT_MS)
   }
   unexpose(port: number): Promise<void> {
-    return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${this.sandboxId}/expose/${port}`)
+    return new PlatformClient(this.resolveOpts()).delete(`/api/sandboxes/${encodeURIComponent(this.sandboxId)}/expose/${encodeURIComponent(port)}`)
   }
   /** Stream the sandbox's logs. Not available yet (`LizardError`, 501). */
   logs(opts: { tail?: number; signal?: AbortSignal } = {}) {
-    return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${this.sandboxId}/logs`, { tail: opts.tail }), { signal: opts.signal })
+    return new PlatformClient(this.resolveOpts()).events(query(`/api/sandboxes/${encodeURIComponent(this.sandboxId)}/logs`, { tail: opts.tail }), { signal: opts.signal })
   }
   static snapshots(projectId: string, opts?: ConnectionOpts): Promise<SandboxSnapshot[]> {
     return new PlatformClient(opts ?? {}).get(`/api/projects/${encodeURIComponent(projectId)}/snapshots`)
@@ -535,11 +535,11 @@ export class Sandbox extends SandboxClient {
    * ```
    */
   schedule(opts: ScheduleOpts): Promise<SandboxSchedule> {
-    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${this.sandboxId}/schedules`, withoutKeepMemory(opts))
+    return new PlatformClient(this.resolveOpts()).post(`/api/sandboxes/${encodeURIComponent(this.sandboxId)}/schedules`, withoutKeepMemory(opts))
   }
   /** This sandbox's schedules. */
   async schedules(): Promise<SandboxSchedule[]> {
-    return (await new PlatformClient(this.resolveOpts()).get<{ schedules: SandboxSchedule[] }>(`/api/sandboxes/${this.sandboxId}/schedules`)).schedules
+    return (await new PlatformClient(this.resolveOpts()).get<{ schedules: SandboxSchedule[] }>(`/api/sandboxes/${encodeURIComponent(this.sandboxId)}/schedules`)).schedules
   }
   /** Every schedule you can see, or one sandbox's with `sandboxId`. */
   static async listSchedules(opts: ConnectionOpts & { sandboxId?: string } = {}): Promise<SandboxSchedule[]> {

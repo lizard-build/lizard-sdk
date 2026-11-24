@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from .client import query
 from typing import TYPE_CHECKING
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -48,13 +49,13 @@ class MetricsAPI:
         self._client = client
 
     def service(self, id: str, *, range: str = "1h") -> dict:
-        return self._client.get(query(f"/api/apps/{id}/metrics", range=range))
+        return self._client.get(query(f"/api/apps/{_q(id)}/metrics", range=range))
 
     def addon(self, project_id: str, addon_id: str, *, range: str = "1h") -> dict:
-        return self._client.get(query(f"/api/projects/{project_id}/addons/{addon_id}/metrics", range=range))
+        return self._client.get(query(f"/api/projects/{_q(project_id)}/addons/{_q(addon_id)}/metrics", range=range))
 
     def project(self, id: str, *, range: str = "1h", live: bool = False) -> dict:
-        return self._client.get(query(f"/api/projects/{id}/metrics", range=range, live=live))
+        return self._client.get(query(f"/api/projects/{_q(id)}/metrics", range=range, live=live))
 
     @staticmethod
     def _points(raw: dict, name: str) -> list[MetricPoint]:
@@ -83,6 +84,6 @@ class MetricsAPI:
             disk_read=self._points(raw, "disk_read"), disk_write=self._points(raw, "disk_write"))
 
     def cost(self, project_id: str, *, range: str = "30d") -> dict | None:
-        project = self._client.get(f"/api/projects/{project_id}")
+        project = self._client.get(f"/api/projects/{_q(project_id)}")
         summary = self._client.get(query("/api/billing/summary", workspaceId=project["workspaceId"], range=range))
         return next((p for p in summary["projects"] if p["projectId"] == project_id), None)

@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .config import ConnectionConfig, HTTP_TIMEOUT_S
+from .config import path_segment as _q
 
 
 @dataclass
@@ -94,7 +95,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.post(
-            f"{config.api_url}/api/projects/{project_id}/volumes",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes",
             headers=config.headers,
             json=_body(name, size_gb, region),
             timeout=HTTP_TIMEOUT_S,
@@ -130,7 +131,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.post(
-            f"{config.api_url}/api/projects/{project_id}/volumes",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes",
             headers=config.headers,
             json={**_body(name, size_gb, region), "getOrCreate": True},
             timeout=HTTP_TIMEOUT_S,
@@ -157,7 +158,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.get(
-            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -183,7 +184,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.delete(
-            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -225,7 +226,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.patch(
-            f"{config.api_url}/api/projects/{project_id}/volumes/{quote(name_or_id, safe='')}",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes/{quote(name_or_id, safe='')}",
             headers=config.headers,
             json={"sizeGb": size_gb},
             timeout=HTTP_TIMEOUT_S,
@@ -249,7 +250,7 @@ class Volume:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.get(
-            f"{config.api_url}/api/projects/{project_id}/volumes",
+            f"{config.api_url}/api/projects/{_q(project_id)}/volumes",
             headers=config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -264,7 +265,7 @@ class Volume:
         import httpx
 
         res = httpx.get(
-            f"{self._config.api_url}/api/projects/{project_id}/volumes/{self.volume_id}",
+            f"{self._config.api_url}/api/projects/{_q(project_id)}/volumes/{_q(self.volume_id)}",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -294,7 +295,7 @@ class Volume:
         import httpx
 
         res = httpx.delete(
-            f"{self._config.api_url}/api/projects/{project_id}/volumes/{self.volume_id}",
+            f"{self._config.api_url}/api/projects/{_q(project_id)}/volumes/{_q(self.volume_id)}",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )

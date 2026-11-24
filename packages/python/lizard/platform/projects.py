@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -58,7 +59,7 @@ class ProjectsAPI:
 
     def get(self, id: str) -> Project:
         """Get a project by ID."""
-        return Project._from_dict(self._client.get(f"/api/projects/{id}"))
+        return Project._from_dict(self._client.get(f"/api/projects/{_q(id)}"))
 
     def create(self, *, workspace_id: str, name: str) -> Project:
         """Create a new project.
@@ -70,34 +71,34 @@ class ProjectsAPI:
 
     def update(self, id: str, *, name: str | None = None) -> Project:
         """Rename a project."""
-        return Project._from_dict(self._client.patch(f"/api/projects/{id}", {"name": name}))
+        return Project._from_dict(self._client.patch(f"/api/projects/{_q(id)}", {"name": name}))
 
     def pause(self, id: str) -> PauseResult:
         """Pause every app and managed database of a project: each scales to 0 and keeps its
         URL, host, port, password, settings and volumes. Skipped ones are listed with why."""
-        return PauseResult._from_dict(self._client.post(f"/api/projects/{id}/pause"))
+        return PauseResult._from_dict(self._client.post(f"/api/projects/{_q(id)}/pause"))
 
     def resume(self, id: str) -> PauseResult:
         """Resume what was paused in a project (not what a billing freeze paused)."""
-        return PauseResult._from_dict(self._client.post(f"/api/projects/{id}/resume"))
+        return PauseResult._from_dict(self._client.post(f"/api/projects/{_q(id)}/resume"))
 
     def delete(self, id: str) -> None:
         """Delete a project."""
-        self._client.delete(f"/api/projects/{id}")
+        self._client.delete(f"/api/projects/{_q(id)}")
 
     def apply(self, id: str, config: dict) -> dict:
         """Apply config; pass revision to reject concurrent changes."""
         return self._client.apply_config(id, config)
 
     def services(self, id: str) -> dict:
-        return self._client.get(f"/api/projects/{id}/services")
+        return self._client.get(f"/api/projects/{_q(id)}/services")
 
     def volume_limits(self, id: str) -> dict:
-        return self._client.get(f"/api/projects/{id}/volume-limits")
+        return self._client.get(f"/api/projects/{_q(id)}/volume-limits")
 
     def logs(self, id: str, *, service: str | None = None, level: str | None = None, limit: int = 200, since: str | None = None, until: str | None = None):
         from .client import query
-        return self._client.get(query(f"/api/projects/{id}/logs", service=service, level=level, limit=limit, since=since, until=until))
+        return self._client.get(query(f"/api/projects/{_q(id)}/logs", service=service, level=level, limit=limit, since=since, until=until))
 
     def stream_logs(self, id: str):
-        return self._client.events(f"/api/projects/{id}/logs/stream")
+        return self._client.events(f"/api/projects/{_q(id)}/logs/stream")

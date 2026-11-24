@@ -24,7 +24,7 @@ export class DomainsAPI {
     return [...result.domains.map(domain => ({ domain, verified: true, live: result.dnsOk?.[domain], cnameTarget: result.cnameTarget })),
       ...result.pending.map(item => ({ ...item, domain: item.hostname, verified: false }))]
   }
-  info(serviceId: string): Promise<DomainStatus> { return this.client.get(`/api/apps/${serviceId}/domains`) }
+  info(serviceId: string): Promise<DomainStatus> { return this.client.get(`/api/apps/${encodeURIComponent(serviceId)}/domains`) }
 
   /**
    * Attach a custom domain to a service.
@@ -37,7 +37,7 @@ export class DomainsAPI {
    * ```
    */
   async add(serviceId: string, domain: string, opts: { force?: boolean } = {}): Promise<DomainInfo> {
-    const result = await this.client.post<DomainInfo>(`/api/apps/${serviceId}/domains`, { hostname: domain, ...opts })
+    const result = await this.client.post<DomainInfo>(`/api/apps/${encodeURIComponent(serviceId)}/domains`, { hostname: domain, ...opts })
     return { ...result, domain: result.hostname ?? domain }
   }
 
@@ -46,14 +46,14 @@ export class DomainsAPI {
    * Call after adding the CNAME or TXT record returned by `add()`.
    */
   async verify(serviceId: string, domain: string): Promise<DomainInfo> {
-    const result = await this.client.post<DomainInfo>(`/api/apps/${serviceId}/domains/verify`, { hostname: domain })
+    const result = await this.client.post<DomainInfo>(`/api/apps/${encodeURIComponent(serviceId)}/domains/verify`, { hostname: domain })
     return { ...result, domain: result.hostname ?? domain }
   }
   generate(serviceId: string): Promise<{ hostname: string; generated: boolean }> {
-    return this.client.post(`/api/apps/${serviceId}/domains`, { generate: true })
+    return this.client.post(`/api/apps/${encodeURIComponent(serviceId)}/domains`, { generate: true })
   }
   delete(serviceId: string, hostname: string): Promise<void> {
-    return this.client.delete(`/api/apps/${serviceId}/domains/${segment(hostname)}`)
+    return this.client.delete(`/api/apps/${encodeURIComponent(serviceId)}/domains/${segment(hostname)}`)
   }
 }
 

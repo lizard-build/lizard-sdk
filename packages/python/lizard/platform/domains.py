@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from .client import segment
 from typing import TYPE_CHECKING
+from ..config import path_segment as _q
 
 if TYPE_CHECKING:
     from .client import PlatformClient
@@ -33,20 +34,20 @@ class DomainsAPI:
         self._client = client
 
     def info(self, service_id: str) -> dict:
-        return self._client.get(f"/api/apps/{service_id}/domains")
+        return self._client.get(f"/api/apps/{_q(service_id)}/domains")
 
     def list(self, service_id: str) -> list[DomainInfo]:
         result = self.info(service_id)
         return [DomainInfo._from_dict({"domain": d, "verified": True, "cnameTarget": result.get("cnameTarget"), "live": result.get("dnsOk", {}).get(d)}) for d in result.get("domains", [])] + [DomainInfo._from_dict(d) for d in result.get("pending", [])]
 
     def add(self, service_id: str, domain: str, *, force: bool = False) -> DomainInfo:
-        return DomainInfo._from_dict(self._client.post(f"/api/apps/{service_id}/domains", {"hostname": domain, "force": force}))
+        return DomainInfo._from_dict(self._client.post(f"/api/apps/{_q(service_id)}/domains", {"hostname": domain, "force": force}))
 
     def verify(self, service_id: str, domain: str) -> DomainInfo:
-        return DomainInfo._from_dict(self._client.post(f"/api/apps/{service_id}/domains/verify", {"hostname": domain}))
+        return DomainInfo._from_dict(self._client.post(f"/api/apps/{_q(service_id)}/domains/verify", {"hostname": domain}))
 
     def generate(self, service_id: str) -> dict:
-        return self._client.post(f"/api/apps/{service_id}/domains", {"generate": True})
+        return self._client.post(f"/api/apps/{_q(service_id)}/domains", {"generate": True})
 
     def delete(self, service_id: str, hostname: str) -> None:
-        self._client.delete(f"/api/apps/{service_id}/domains/{segment(hostname)}")
+        self._client.delete(f"/api/apps/{_q(service_id)}/domains/{segment(hostname)}")

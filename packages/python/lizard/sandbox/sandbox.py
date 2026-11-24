@@ -7,6 +7,7 @@ from ..config import ConnectionConfig, HTTP_TIMEOUT_S, DEFAULT_SANDBOX_REGION, D
 from .process import Process
 from .fs import Fs
 from .desktop import Desktop
+from ..config import path_segment as _q
 
 
 class SandboxSnapshot(TypedDict):
@@ -376,7 +377,7 @@ class Sandbox:
         unsupported = bool(allowed_hosts) and not isinstance(data.get("allowedHosts"), list)
         if unsupported or ((internet_access is False or allowed_hosts) and data.get("internetAccess") is not False):
             try:
-                httpx.delete(f"{config.api_url}/api/sandboxes/{data['sandboxId']}",
+                httpx.delete(f"{config.api_url}/api/sandboxes/{_q(data['sandboxId'])}",
                              headers=config.headers, timeout=HTTP_TIMEOUT_S)
             except Exception:
                 pass
@@ -416,7 +417,7 @@ class Sandbox:
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
         res = httpx.get(
-            f"{config.api_url}/api/sandboxes/{sandbox_id}",
+            f"{config.api_url}/api/sandboxes/{_q(sandbox_id)}",
             headers=config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -432,7 +433,7 @@ class Sandbox:
         import httpx
 
         config = ConnectionConfig(api_key=api_key, api_url=api_url)
-        res = httpx.get(f"{config.api_url}/api/projects/{project_id}/sandboxes" if project_id else f"{config.api_url}/api/sandboxes", headers=config.headers, timeout=HTTP_TIMEOUT_S)
+        res = httpx.get(f"{config.api_url}/api/projects/{_q(project_id)}/sandboxes" if project_id else f"{config.api_url}/api/sandboxes", headers=config.headers, timeout=HTTP_TIMEOUT_S)
         if not res.is_success:
             from ..errors import handle_api_error
             handle_api_error(res.status_code, res.text)
@@ -451,7 +452,7 @@ class Sandbox:
         import httpx
 
         res = httpx.delete(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -472,7 +473,7 @@ class Sandbox:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/pause",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}/pause",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -489,7 +490,7 @@ class Sandbox:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/resume",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}/resume",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -510,7 +511,7 @@ class Sandbox:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/timeout",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}/timeout",
             headers=self._config.headers,
             json={"timeoutMs": timeout_ms},
             timeout=HTTP_TIMEOUT_S,
@@ -524,7 +525,7 @@ class Sandbox:
         import httpx
 
         res = httpx.get(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -570,7 +571,7 @@ class Sandbox:
         import httpx
 
         res = httpx.post(
-            f"{self._config.api_url}/api/sandboxes/{self.sandbox_id}/expose/{port}",
+            f"{self._config.api_url}/api/sandboxes/{_q(self.sandbox_id)}/expose/{_q(port)}",
             headers=self._config.headers,
             timeout=HTTP_TIMEOUT_S,
         )
@@ -627,7 +628,7 @@ class Sandbox:
                 if f.sandbox:
                     f.sandbox.process.exec_("echo hi")
         """
-        result = self._platform().post(f"/api/sandboxes/{self.sandbox_id}/fork", {"count": count, "timeoutMs": timeout_ms})
+        result = self._platform().post(f"/api/sandboxes/{_q(self.sandbox_id)}/fork", {"count": count, "timeoutMs": timeout_ms})
         out: list[ForkResult] = []
         for entry in result if isinstance(result, list) else []:
             info = entry.get("sandbox") if isinstance(entry, dict) else None
@@ -655,7 +656,7 @@ class Sandbox:
         # memory snapshots are off (the platform's default, files only, applies).
         body: dict = {"name": name if name is not None else f"Snapshot {self.sandbox_id}", "poolSize": pool_size}
         # The server allows a snapshot 10 minutes; a little more here.
-        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/snapshot", body, timeout=11 * 60)
+        return self._platform().post(f"/api/sandboxes/{_q(self.sandbox_id)}/snapshot", body, timeout=11 * 60)
 
     def wait_for_status(self, status: Literal["paused", "running"], *, wait_timeout_ms: int = 600_000) -> SandboxInfo:
         from ..errors import ConflictError, TimeoutError
@@ -672,13 +673,13 @@ class Sandbox:
 
     def unexpose(self, port: int) -> None:
         """Unpublish a port exposed with :meth:`get_host` / :meth:`expose_port`."""
-        self._platform().delete(f"/api/sandboxes/{self.sandbox_id}/expose/{port}")
+        self._platform().delete(f"/api/sandboxes/{_q(self.sandbox_id)}/expose/{_q(port)}")
 
     def logs(self, *, tail: int | None = None):
         """Stream the sandbox's logs. Not available yet
         (:class:`~lizard.LizardError`, 501)."""
         from ..platform.client import query
-        return self._platform().events(query(f"/api/sandboxes/{self.sandbox_id}/logs", tail=tail))
+        return self._platform().events(query(f"/api/sandboxes/{_q(self.sandbox_id)}/logs", tail=tail))
 
     def close(self) -> None:
         """Release this handle's HTTP connections. The sandbox keeps running."""
@@ -751,11 +752,11 @@ class Sandbox:
         """
         body = self._schedule_body(every, cron, timezone, prompt, command, agent, model, reasoning_effort,
                                    timeout_seconds, keep_memory, name, enabled)
-        return self._platform().post(f"/api/sandboxes/{self.sandbox_id}/schedules", body)
+        return self._platform().post(f"/api/sandboxes/{_q(self.sandbox_id)}/schedules", body)
 
     def schedules(self) -> list[dict]:
         """This sandbox's schedules."""
-        return self._platform().get(f"/api/sandboxes/{self.sandbox_id}/schedules")["schedules"]
+        return self._platform().get(f"/api/sandboxes/{_q(self.sandbox_id)}/schedules")["schedules"]
 
     @classmethod
     def list_schedules(cls, *, sandbox_id: str | None = None, api_key: str | None = None, api_url: str | None = None) -> list[dict]:

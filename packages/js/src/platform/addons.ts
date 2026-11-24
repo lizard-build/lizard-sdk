@@ -34,7 +34,7 @@ export class AddonsAPI {
 
   /** List all addons in a project. */
   list(opts: { projectId: string }): Promise<Addon[]> {
-    return this.client.get(`/api/projects/${opts.projectId}/addons`)
+    return this.client.get(`/api/projects/${encodeURIComponent(opts.projectId)}/addons`)
   }
 
   /** Get an addon by ID. */
@@ -57,7 +57,7 @@ export class AddonsAPI {
    * ```
    */
   create(opts: CreateAddonOpts): Promise<Addon> {
-    return this.client.post(`/api/projects/${opts.projectId}/addons`, {
+    return this.client.post(`/api/projects/${encodeURIComponent(opts.projectId)}/addons`, {
       type: opts.type === 'mongodb' ? 'mongo' : opts.type, name: opts.name, region: opts.region,
       config: { version: opts.version,
         cpuLimit: opts.vcpu === undefined ? undefined : `${opts.vcpu * 1000}m`,
@@ -68,7 +68,7 @@ export class AddonsAPI {
 
   /** Delete an addon. */
   delete(projectId: string, addonId: string): Promise<void> {
-    return this.client.delete(`/api/projects/${projectId}/addons/${addonId}`)
+    return this.client.delete(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}`)
   }
 
   /** Resize an addon (CPU / memory / storage). */
@@ -82,7 +82,7 @@ export class AddonsAPI {
 
   /** Restart an addon. */
   redeploy(projectId: string, addonId: string): Promise<void> {
-    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/redeploy`, {})
+    return this.client.post(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/redeploy`, {})
   }
 
   /**
@@ -90,31 +90,31 @@ export class AddonsAPI {
    * port, password and data. Postgres and Redis.
    */
   pause(projectId: string, addonId: string): Promise<PauseState> {
-    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/pause`, {})
+    return this.client.post(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/pause`, {})
   }
 
   /** Resume a paused database: same host, port, password and data. */
   resume(projectId: string, addonId: string): Promise<PauseState> {
-    return this.client.post(`/api/projects/${projectId}/addons/${addonId}/resume`, {})
+    return this.client.post(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/resume`, {})
   }
 
   /** Serverless setting of a database (Postgres, Redis). */
   getSleep(projectId: string, addonId: string): Promise<SleepSetting> {
-    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/sleep`)
+    return this.client.get(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/sleep`)
   }
 
   /** Make a database serverless (sleep when idle, wake on the next connection) or always on. */
   setSleep(projectId: string, addonId: string, opts: SleepOpts): Promise<SleepSetting> {
-    return this.client.put(`/api/projects/${projectId}/addons/${addonId}/sleep`, opts)
+    return this.client.put(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/sleep`, opts)
   }
   rename(projectId: string, addonId: string, name: string): Promise<unknown> {
-    return this.client.patch(`/api/projects/${projectId}/addons/${addonId}`, { name })
+    return this.client.patch(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}`, { name })
   }
   secrets(projectId: string, addonId: string): Promise<Array<{ key: string; value: string }>> {
-    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/secrets`)
+    return this.client.get(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/secrets`)
   }
   logs(projectId: string, addonId: string): Promise<unknown> {
-    return this.client.get(`/api/projects/${projectId}/addons/${addonId}/logs`)
+    return this.client.get(`/api/projects/${encodeURIComponent(projectId)}/addons/${encodeURIComponent(addonId)}/logs`)
   }
 
 }
